@@ -1,4 +1,5 @@
-# falcon-linux-install-bash
+# Falcon Linux Bash installation script
+
 Bash script to install Falcon Sensor, through the Falcon APIs, on a Linux endpoint.
 
 ## Configuration
