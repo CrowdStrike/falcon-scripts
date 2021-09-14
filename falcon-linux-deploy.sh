@@ -4,8 +4,8 @@
 #          create here a sensor download api creds : https://falcon.eu-1.crowdstrike.com/support/api-clients-and-keys
  
 # before running the script set the API Creds in env or uncomment and fill below
-#export CS_API_CLIENT_ID="XXXXXXX"
-#export CS_API_CLIENT_SECRET="YYYYYYYYY"
+#export FALCON_CLIENT_ID="XXXXXXX"
+#export FALCON_CLIENT_SECRET="YYYYYYYYY"
  
 target_cloud_api="api.crowdstrike.com"
 # Possible values:
@@ -31,8 +31,8 @@ crowdstrike_oauth2_token=$(curl --request POST \
   --silent \
   --url "https://$target_cloud_api/oauth2/token" \
   --header "content-type: application/x-www-form-urlencoded" \
-  --data client_id=$CS_API_CLIENT_ID \
-  --data client_secret=$CS_API_CLIENT_SECRET | \
+  --data client_id=$FALCON_CLIENT_ID \
+  --data client_secret=$FALCON_CLIENT_SECRET | \
     python3 -c "import sys, json; print(json.load(sys.stdin)['access_token'])")
  
 # find the target CID based on download credentials
