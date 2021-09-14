@@ -6,12 +6,13 @@ Bash script to install Falcon Sensor, through the Falcon APIs, on a Linux endpoi
 
 - Step 1 : Get sensor download API credentials here : 
   - https://falcon.crowdstrike.com/support/api-clients-and-keys
+  - or https://falcon.us-2.crowdstrike.com/support/api-clients-and-keys
   - or https://falcon.eu-1.crowdstrike.com/support/api-clients-and-keys
 
-  Configure in the script or set environment variable with those credentials.
+  Configure set environment variables with your api credentials (scope Sensor Download [read]).
 
-  - `export CS_API_CLIENT_ID="XXXXXXX"`
-  - `export CS_API_CLIENT_SECRET="YYYYYYYYY"`
+  - `export FALCON_CLIENT_ID="XXXXXXX"`
+  - `export FALCON_CLIENT_SECRET="YYYYYYYYY"`
 
 - Step 2 : Configure the target OS and the target path
 
