@@ -1,26 +1,33 @@
-# Falcon Linux Bash installation script
+# Falcon Linux Bash Installation Script
 
-Bash script to install Falcon Sensor, through the Falcon APIs, on a Linux endpoint.
+Bash script to install Falcon Sensor through the Falcon APIs on a Linux endpoint.
 
 ## Configuration
 
-- Step 1 : Get sensor download API credentials here : 
+### Step 1
+
+Get sensor download API credentials from the cloud where your account has been configured:
+
   - https://falcon.crowdstrike.com/support/api-clients-and-keys
   - or https://falcon.us-2.crowdstrike.com/support/api-clients-and-keys
   - or https://falcon.eu-1.crowdstrike.com/support/api-clients-and-keys
 
-  Configure set environment variables with your api credentials (scope Sensor Download [read]).
+Configure environment variables with your API credentials (scope Sensor Download [read]):
 
-  - `export FALCON_CLIENT_ID="XXXXXXX"`
-  - `export FALCON_CLIENT_SECRET="YYYYYYYYY"`
+```shell
+export FALCON_CLIENT_ID="XXXXXXX"
+export FALCON_CLIENT_SECRET="YYYYYYYYY"
+```
 
-- Step 2 : Configure the target OS and the target path
+### Step 2
 
-- Step 3 : run the script
+Configure the target OS and the target path.
 
-## Usage
+### Step 3
 
-run the script :
+Run the script:
 
-- `chmod 755 falcon-linux-deploy.sh`
-- `./falcon-linux-deploy.sh`
+```shell
+chmod 755 ./falcon-linux-deploy.sh
+./falcon-linux-deploy.sh
+```
