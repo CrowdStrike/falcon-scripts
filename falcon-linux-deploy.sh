@@ -17,7 +17,7 @@ EOF
 
 ## Setup the base API url
 unset Z_FALCON_CLOUD
-if [ ! -z $FALCON_CLOUD ]
+if [ -n "$FALCON_CLOUD" ]
 then 
     Z_FALCON_CLOUD=".${FALCON_CLOUD}"
 fi
