@@ -35,6 +35,11 @@ main() {
     echo 'Falcon Sensor deployed successfully.'
 }
 
+function die(){
+    echo "$0: fatal error: $*" >&2
+    exit 1
+}
+
 cs_sensor_register() {
     /opt/CrowdStrike/falconctl -s --cid="${cs_falcon_cid}"
 }
@@ -295,12 +300,16 @@ cs_os_version=$(
 cs_falcon_client_id=$(
     if [ -n "$FALCON_CLIENT_ID" ]; then
         echo "$FALCON_CLIENT_ID"
+    else
+        die "Missing FALCON_CLIENT_ID environment variable. Please provide your OAuth2 API Client ID for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
     fi
 )
 
 cs_falcon_client_secret=$(
     if [ -n "$FALCON_CLIENT_SECRET" ]; then
         echo "$FALCON_CLIENT_SECRET"
+    else
+        die "Missing FALCON_CLIENT_SECRET environment variable. Please provide your OAuth2 API Client Secret for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
     fi
 )
 
