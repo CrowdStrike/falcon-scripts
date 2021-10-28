@@ -7,24 +7,15 @@ This script installs and configures the CrowdStrike Falcon Sensor for Linux.
 
 CrowdStrike API credentials are needed to download Falcon sensor. The script recognizes the following environmental variables:
 
-    - FALCON_CID
     - FALCON_CLIENT_ID
     - FALCON_CLIENT_SECRET
 
 Optional:
+    - FALCON_CID
     - FALCON_CLOUD (if not us-1)
     - FALCON_PROVISIONING_TOKEN
 EOF
 }
-
-## Setup the base API url
-unset Z_FALCON_CLOUD
-if [ -n "$FALCON_CLOUD" ]
-then 
-    Z_FALCON_CLOUD=".${FALCON_CLOUD}"
-fi
-CS_API_BASE="api${Z_FALCON_CLOUD}.crowdstrike.com"
-
 
 main() {
     if [ -n "$1" ]; then
@@ -37,16 +28,20 @@ main() {
     echo 'Falcon Sensor deployed successfully.'
 }
 
-function die(){
-    echo "$0: fatal error: $*" >&2
-    exit 1
-}
-
 cs_sensor_register() {
-    if [ -n "${cs_falcon_token}" ]; then
-        TOKEN=--provisioning-token="${cs_falcon_token}"
+    if [ -z "${cs_falcon_cid}" ]; then
+        cs_target_cid=$(curl -s -L "https://$cs_cloud/sensors/queries/installers/ccid/v1" \
+                             -H "authorization: Bearer $cs_falcon_oauth_token")
+
+        cs_falcon_cid=$(echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}')
     fi
-    /opt/CrowdStrike/falconctl -s --cid="${cs_falcon_cid}" "${TOKEN}"
+
+    cs_falcon_args=--cid="${cs_falcon_cid}"
+    if [ -n "${cs_falcon_token}" ]; then
+        cs_token=--provisioning-token="${cs_falcon_token}"
+        cs_falcon_args+=" $cs_token"
+    fi
+    /opt/CrowdStrike/falconctl -s "${cs_falcon_args}"
 }
 
 cs_sensor_restart() {
@@ -74,7 +69,7 @@ cs_sensor_download() {
     destination_dir="$1"
 
     existing_installers=$(
-        curl -s -L -G "https://$CS_API_BASE/sensors/combined/installers/v1" \
+        curl -s -L -G "https://$cs_cloud/sensors/combined/installers/v1" \
              --data-urlencode "filter=os:\"$cs_os_name\"" \
              -H "Authorization: Bearer $cs_falcon_oauth_token"
     )
@@ -125,7 +120,7 @@ cs_sensor_download() {
     file_type=$(echo "$existing_installers" | json_value "file_type" "$INDEX" | sed 's/ *$//g' | sed 's/^ *//g')
 
     installer="${destination_dir}/falcon-sensor.${file_type}"
-    curl -s -L "https://$CS_API_BASE/sensors/entities/download-installer/v1?id=$sha" \
+    curl -s -L "https://$cs_cloud/sensors/entities/download-installer/v1?id=$sha" \
          -H "Authorization: Bearer $cs_falcon_oauth_token" -o "$installer"
     echo "$installer"
 }
@@ -331,8 +326,27 @@ cs_falcon_token=$(
     fi
 )
 
+cs_falcon_cloud=$(
+    if [ -n "$FALCON_CLOUD" ]; then
+        echo "$FALCON_CLOUD"
+    else
+        # api.crowdstrike.com is the default
+        echo "us-1"
+    fi
+)
+
+cs_cloud=$(
+    case "${cs_falcon_cloud}" in
+        "us-1")      echo "api.crowdstrike.com";;
+        us-2)      echo "api.us-2.crowdstrike.com";;
+        eu-1)      echo "api.eu-1.crowdstrike.com";;
+        us-gov-1)  echo "api.laggar.gcw.crowdstrike.com";;
+        *)         die "Unrecognized Falcon Cloud: ${cs_falcon_cloud}";;
+    esac
+)
+
 cs_falcon_oauth_token=$(
-    token_result=$(curl -X POST -s -L "https://$CS_API_BASE/oauth2/token" \
+    token_result=$(curl -X POST -s -L "https://$cs_cloud/oauth2/token" \
                        -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
                        -d "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret")
     token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
