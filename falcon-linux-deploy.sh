@@ -29,10 +29,13 @@ main() {
 }
 
 cs_sensor_register() {
+    cs_falcon_args=--cid="${cs_falcon_cid}"
+
     if [ -n "${cs_falcon_token}" ]; then
-        TOKEN=--provisioning-token="${cs_falcon_token}"
+        cs_token=--provisioning-token="${cs_falcon_token}"
+        cs_falcon_args+=" $cs_token"
     fi
-    /opt/CrowdStrike/falconctl -s --cid="${cs_falcon_cid}" "${TOKEN}"
+    /opt/CrowdStrike/falconctl -s "${cs_falcon_args}"
 }
 
 cs_sensor_restart() {
