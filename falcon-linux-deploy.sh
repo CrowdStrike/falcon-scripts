@@ -1,5 +1,4 @@
 #!/bin/bash
-# TODO: support of installation tokens
 # TODO: support of arm
 
 print_usage() {
@@ -11,7 +10,10 @@ CrowdStrike API credentials are needed to download Falcon sensor. The script rec
     - FALCON_CID
     - FALCON_CLIENT_ID
     - FALCON_CLIENT_SECRET
+
+Optional:
     - FALCON_CLOUD (if not us-1)
+    - FALCON_PROVISIONING_TOKEN
 EOF
 }
 
@@ -36,7 +38,10 @@ main() {
 }
 
 cs_sensor_register() {
-    /opt/CrowdStrike/falconctl -s --cid="${cs_falcon_cid}"
+    if [ -n "${cs_falcon_token}" ]; then
+        TOKEN=--provisioning-token="${cs_falcon_token}"
+    fi
+    /opt/CrowdStrike/falconctl -s --cid="${cs_falcon_cid}" "${TOKEN}"
 }
 
 cs_sensor_restart() {
@@ -308,6 +313,12 @@ cs_falcon_cid=$(
     # shellcheck disable=SC2154
     if [ -n "$FALCON_CID" ]; then
         echo "$FALCON_CID"
+    fi
+)
+
+cs_falcon_token=$(
+    if [ -n "$FALCON_PROVISIONING_TOKEN" ]; then
+        echo "$FALCON_PROVISIONING_TOKEN"
     fi
 )
 
