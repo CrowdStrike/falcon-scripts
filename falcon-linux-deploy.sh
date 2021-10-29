@@ -1,5 +1,4 @@
 #!/bin/bash
-# TODO: support of arm
 
 print_usage() {
     cat <<EOF
@@ -101,21 +100,21 @@ cs_sensor_download() {
                 done
             fi
 
-	          if [ "$l" = "$cs_os_version" ]; then
+            if [ "$l" = "$cs_os_version" ]; then
                 found=1
                 break
             fi
-	          INDEX=$((INDEX+1))
+            INDEX=$((INDEX+1))
         done
         if [ $found = 0 ]; then
-            die "Unable to locate matching sensor: $cs_os_name@$cs_os_version"
+            die "Unable to locate matching sensor: $cs_os_name, version: $cs_os_version"
         fi
     fi
 
     sha=$(echo "$existing_installers" | json_value "sha256" "$INDEX" \
               | sed 's/ *$//g' | sed 's/^ *//g')
     if [ -z "$sha" ]; then
-        die "Unable to identify a sensor installer matching: $cs_os_name@$cs_os_version"
+        die "Unable to identify a sensor installer matching: $cs_os_name, version: $cs_os_version"
     fi
     file_type=$(echo "$existing_installers" | json_value "file_type" "$INDEX" | sed 's/ *$//g' | sed 's/^ *//g')
 
@@ -294,7 +293,13 @@ cs_os_name=$(
 )
 
 cs_os_version=$(
-    echo "$os_version" | awk -F'.' '{print $1}'
+    cs_os_arch=$(uname -m)
+    version=$(echo "$os_version" | awk -F'.' '{print $1}')
+    if [ "$cs_os_arch" == "aarch64" ] ; then
+        echo "$os_version - arm64"
+    else
+	echo "$version"
+    fi
 )
 
 cs_falcon_client_id=$(
