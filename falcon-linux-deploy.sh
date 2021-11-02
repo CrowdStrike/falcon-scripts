@@ -10,9 +10,10 @@ CrowdStrike API credentials are needed to download Falcon sensor. The script rec
     - FALCON_CLIENT_SECRET
 
 Optional:
-    - FALCON_CID
-    - FALCON_CLOUD (if not us-1)
-    - FALCON_PROVISIONING_TOKEN
+    - FALCON_CID                 (default: auto)
+    - FALCON_CLOUD               (default: us-1)
+    - FALCON_SENSOR_VERSION      (default: latest)
+    - FALCON_PROVISIONING_TOKEN  (default: unset)
 EOF
 }
 
@@ -302,7 +303,7 @@ cs_os_version=$(
     if [ "$cs_os_arch" = "aarch64" ] ; then
         echo "$os_version - arm64"
     else
-	echo "$version"
+        echo "$version"
     fi
 )
 
@@ -370,6 +371,10 @@ cs_cloud=$(
 )
 
 cs_falcon_oauth_token=$(
+    if ! command -v curl &> /dev/null; then
+        die "The 'curl' command is missing. Please install it before continuing. Aborting..."
+    fi
+
     token_result=$(curl -X POST -s -L "https://$cs_cloud/oauth2/token" \
                        -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
                        -d "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret")
@@ -379,6 +384,5 @@ cs_falcon_oauth_token=$(
     fi
     echo "$token"
 )
-
 
 main "$@"
