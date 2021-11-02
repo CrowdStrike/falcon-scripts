@@ -83,6 +83,7 @@ cs_sensor_download() {
     fi
 
     INDEX=1
+    OLDER_VERSION="$cs_falcon_sensor_version"
     if [ -n "$cs_os_version" ]; then
         found=0
         IFS='
@@ -102,7 +103,10 @@ cs_sensor_download() {
 
             if [ "$l" = "$cs_os_version" ]; then
                 found=1
-                break
+                if [ "$OLDER_VERSION" -eq 0 ] ; then
+                    break
+                fi
+                OLDER_VERSION=$((OLDER_VERSION-1))
             fi
             INDEX=$((INDEX+1))
         done
@@ -340,9 +344,24 @@ cs_falcon_cloud=$(
     fi
 )
 
+cs_falcon_sensor_version=$(
+    re='^[0-9]+$'
+    if [ -n "$FALCON_SENSOR_VERSION" ]; then
+       if ! [[ $FALCON_SENSOR_VERSION =~ $re ]]; then
+          die "The FALCON_SENSOR_VERSION must be an integer greater than or equal to 0 or less than 5. FALCON_SENSOR_VERSION: \"$FALCON_SENSOR_VERSION\""
+       elif ! [[ $FALCON_SENSOR_VERSION -ge 0 && $FALCON_SENSOR_VERSION -le 5 ]]; then
+          die "The FALCON_SENSOR_VERSION must be an integer greater than or equal to 0 or less than 5. FALCON_SENSOR_VERSION: \"$FALCON_SENSOR_VERSION\""
+       else
+          echo "$FALCON_SENSOR_VERSION"
+       fi
+    else
+       echo "0"
+    fi
+)
+
 cs_cloud=$(
     case "${cs_falcon_cloud}" in
-        "us-1")      echo "api.crowdstrike.com";;
+        us-1)      echo "api.crowdstrike.com";;
         us-2)      echo "api.us-2.crowdstrike.com";;
         eu-1)      echo "api.eu-1.crowdstrike.com";;
         us-gov-1)  echo "api.laggar.gcw.crowdstrike.com";;
