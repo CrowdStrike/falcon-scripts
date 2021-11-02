@@ -299,7 +299,7 @@ cs_os_name=$(
 cs_os_version=$(
     cs_os_arch=$(uname -m)
     version=$(echo "$os_version" | awk -F'.' '{print $1}')
-    if [ "$cs_os_arch" == "aarch64" ] ; then
+    if [ "$cs_os_arch" = "aarch64" ] ; then
         echo "$os_version - arm64"
     else
 	echo "$version"
