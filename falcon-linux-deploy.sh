@@ -2,7 +2,7 @@
 
 print_usage() {
     cat <<EOF
-This script installs and configures the CrowdStrike Falcon Sensor for Linux. 
+This script installs and configures the CrowdStrike Falcon Sensor for Linux.
 
 CrowdStrike API credentials are needed to download Falcon sensor. The script recognizes the following environmental variables:
 
@@ -14,6 +14,7 @@ Optional:
     - FALCON_CLOUD               (default: us-1)
     - FALCON_SENSOR_VERSION      (default: latest)
     - FALCON_PROVISIONING_TOKEN  (default: unset)
+    - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
 EOF
 }
 
@@ -65,12 +66,52 @@ cs_sensor_install() {
     tempdir_cleanup
 }
 
+cs_sensor_policy_version() {
+    cs_policy_name="$1"
+
+    sensor_update_policies=$(
+        curl -s -L -G "https://$cs_cloud/policy/combined/sensor-update/v2" \
+             --data-urlencode "filter=platform_name:\"Linux\"+name:\"$cs_policy_name\"" \
+             --header "authorization: Bearer $cs_falcon_oauth_token"
+    )
+
+    if echo "$sensor_update_policies" | grep "denied"; then
+        die "Invalid Access Token: $cs_falcon_oauth_token"
+    fi
+
+    sensor_update_versions=$(echo "$sensor_update_policies" | json_value "sensor_version")
+    sensor_versions=( )
+    for i in $sensor_update_versions; do
+        sensor_versions+=("$i")
+    done
+
+    if [[ "${#sensor_versions[@]}" -gt 1 ]]; then
+        if [ "$cs_os_arch" = "aarch64" ] ; then
+            echo "${sensor_versions[1]}"
+        else
+            echo "${sensor_versions[0]}"
+        fi
+    else
+        echo "${sensor_versions[0]}"
+    fi
+}
+
 cs_sensor_download() {
     destination_dir="$1"
 
+    if [ -n "$cs_sensor_policy_name" ]; then
+        cs_sensor_version=$(cs_sensor_policy_version "$cs_sensor_policy_name")
+        cs_api_version_filter="+version:\"$cs_sensor_version\""
+
+        if [[ $cs_falcon_sensor_version -gt 0 ]]; then
+            echo "WARNING: Disabling FALCON_SENSOR_VERSION because it conflicts with FALCON_SENSOR_UPDATE_POLICY_NAME"
+            cs_falcon_sensor_version=0
+        fi
+    fi
+
     existing_installers=$(
         curl -s -L -G "https://$cs_cloud/sensors/combined/installers/v1" \
-             --data-urlencode "filter=os:\"$cs_os_name\"" \
+             --data-urlencode "filter=os:\"$cs_os_name\"$cs_api_version_filter" \
              -H "Authorization: Bearer $cs_falcon_oauth_token"
     )
 
@@ -297,8 +338,11 @@ cs_os_name=$(
     esac
 )
 
+cs_os_arch=$(
+    uname -m
+)
+
 cs_os_version=$(
-    cs_os_arch=$(uname -m)
     version=$(echo "$os_version" | awk -F'.' '{print $1}')
     if [ "$cs_os_arch" = "aarch64" ] ; then
         echo "$os_version - arm64"
@@ -342,6 +386,14 @@ cs_falcon_cloud=$(
     else
         # api.crowdstrike.com is the default
         echo "us-1"
+    fi
+)
+
+cs_sensor_policy_name=$(
+    if [ -n "$FALCON_SENSOR_UPDATE_POLICY_NAME" ]; then
+        echo "$FALCON_SENSOR_UPDATE_POLICY_NAME"
+    else
+        echo ""
     fi
 )
 
