@@ -75,7 +75,9 @@ cs_sensor_policy_version() {
              --header "authorization: Bearer $cs_falcon_oauth_token"
     )
 
-    if echo "$sensor_update_policies" | grep "denied"; then
+    if echo "$sensor_update_policies" | grep "authorization failed"; then
+        die "Access denied: Please make sure that your Falcon API credentials allow access to sensor update policies (scope Sensor update policies [read])"
+    elif echo "$sensor_update_policies" | grep "invalid bearer token"; then
         die "Invalid Access Token: $cs_falcon_oauth_token"
     fi
 
@@ -103,6 +105,10 @@ cs_sensor_download() {
         cs_sensor_version=$(cs_sensor_policy_version "$cs_sensor_policy_name")
         cs_api_version_filter="+version:\"$cs_sensor_version\""
 
+        exit_status=$?
+        if [[ $exit_status -ne 0 ]]; then
+            exit $exit_status
+        fi
         if [[ $cs_falcon_sensor_version -gt 0 ]]; then
             echo "WARNING: Disabling FALCON_SENSOR_VERSION because it conflicts with FALCON_SENSOR_UPDATE_POLICY_NAME"
             cs_falcon_sensor_version=0
@@ -115,7 +121,9 @@ cs_sensor_download() {
              -H "Authorization: Bearer $cs_falcon_oauth_token"
     )
 
-    if echo "$existing_installers" | grep "denied"; then
+    if echo "$existing_installers" | grep "authorization failed"; then
+        die "Access denied: Please make sure that your Falcon API credentials allow sensor download (scope Sensor Download [read])"
+    elif echo "$existing_installers" | grep "invalid bearer token"; then
         die "Invalid Access Token: $cs_falcon_oauth_token"
     fi
 
