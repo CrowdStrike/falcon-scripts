@@ -213,6 +213,12 @@ os_install_package() {
         RHEL)
             rpm_install_package "$pkg"
             ;;
+        Rocky)
+            rpm_install_package "$pkg"
+            ;;
+        AlmaLinux)
+            rpm_install_package "$pkg"
+            ;;
         SLES)
             rpm_install_package "$pkg"
             ;;
@@ -340,6 +346,8 @@ cs_os_name=$(
         Debian)  echo "Debian";;
         Oracle)  echo "RHEL/CentOS/Oracle";;
         RHEL)    echo "RHEL/CentOS/Oracle";;
+        Rocky)   echo "RHEL/CentOS/Oracle";;
+        AlmaLinux)  echo "RHEL/CentOS/Oracle";;
         SLES)    echo "SLES";;
         Ubuntu)  echo "Ubuntu";;
         *)       die "Unrecognized OS: ${os_name}";;
