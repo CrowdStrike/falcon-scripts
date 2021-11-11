@@ -42,7 +42,7 @@ cs_sensor_register() {
         cs_token=--provisioning-token="${cs_falcon_token}"
         cs_falcon_args+=" $cs_token"
     fi
-    /opt/CrowdStrike/falconctl -s "${cs_falcon_args}"
+    /opt/CrowdStrike/falconctl -s -f "${cs_falcon_args}"
 }
 
 cs_sensor_restart() {
