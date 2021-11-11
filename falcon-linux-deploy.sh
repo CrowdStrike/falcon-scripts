@@ -69,19 +69,23 @@ cs_sensor_install() {
 cs_sensor_policy_version() {
     cs_policy_name="$1"
 
-    sensor_update_policies=$(
+    sensor_update_policy=$(
         curl -s -L -G "https://$cs_cloud/policy/combined/sensor-update/v2" \
-             --data-urlencode "filter=platform_name:\"Linux\"+name:\"$cs_policy_name\"" \
+             --data-urlencode "filter=platform_name:\"Linux\"+name.raw:\"$cs_policy_name\"" \
              --header "authorization: Bearer $cs_falcon_oauth_token"
     )
 
-    if echo "$sensor_update_policies" | grep "authorization failed"; then
+    if echo "$sensor_update_policy" | grep "authorization failed"; then
         die "Access denied: Please make sure that your Falcon API credentials allow access to sensor update policies (scope Sensor update policies [read])"
-    elif echo "$sensor_update_policies" | grep "invalid bearer token"; then
+    elif echo "$sensor_update_policy" | grep "invalid bearer token"; then
         die "Invalid Access Token: $cs_falcon_oauth_token"
     fi
 
-    sensor_update_versions=$(echo "$sensor_update_policies" | json_value "sensor_version")
+    sensor_update_versions=$(echo "$sensor_update_policy" | json_value "sensor_version")
+    if [ -z "$sensor_update_versions" ]; then
+	die "Could not find a sensor update policy with name: $cs_policy_name"
+    fi
+
     sensor_versions=( )
     for i in $sensor_update_versions; do
         sensor_versions+=("$i")
