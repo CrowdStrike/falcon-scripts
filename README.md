@@ -20,10 +20,10 @@ export FALCON_CLIENT_SECRET="YYYYYYYYY"
 
 Optional environment variables that can be exported:
 ```bash
-FALCON_CID                 (default: auto)
-FALCON_CLOUD               (default: us-1)
-FALCON_SENSOR_VERSION      (default: latest)
-FALCON_PROVISIONING_TOKEN  (default: unset)
+FALCON_CID                        (default: auto)
+FALCON_CLOUD                      (default: us-1)
+FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
+FALCON_PROVISIONING_TOKEN         (default: unset)
 FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
 ```
 The `FALCON_SENSOR_UPDATE_POLICY_NAME` variable requires to have additional API access. Make sure that scope Sensor update policies [read] is enabled.
