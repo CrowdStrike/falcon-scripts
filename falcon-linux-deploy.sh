@@ -10,10 +10,10 @@ CrowdStrike API credentials are needed to download Falcon sensor. The script rec
     - FALCON_CLIENT_SECRET
 
 Optional:
-    - FALCON_CID                 (default: auto)
-    - FALCON_CLOUD               (default: us-1)
-    - FALCON_SENSOR_VERSION      (default: latest)
-    - FALCON_PROVISIONING_TOKEN  (default: unset)
+    - FALCON_CID                        (default: auto)
+    - FALCON_CLOUD                      (default: us-1)
+    - FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
+    - FALCON_PROVISIONING_TOKEN         (default: unset)
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
 EOF
 }
@@ -113,9 +113,9 @@ cs_sensor_download() {
         if [[ $exit_status -ne 0 ]]; then
             exit $exit_status
         fi
-        if [[ $cs_falcon_sensor_version -gt 0 ]]; then
-            echo "WARNING: Disabling FALCON_SENSOR_VERSION because it conflicts with FALCON_SENSOR_UPDATE_POLICY_NAME"
-            cs_falcon_sensor_version=0
+        if [[ $cs_falcon_sensor_version_dec -gt 0 ]]; then
+            echo "WARNING: Disabling FALCON_SENSOR_VERSION_DECREMENT because it conflicts with FALCON_SENSOR_UPDATE_POLICY_NAME"
+            cs_falcon_sensor_version_dec=0
         fi
     fi
 
@@ -137,7 +137,7 @@ cs_sensor_download() {
     fi
 
     INDEX=1
-    OLDER_VERSION="$cs_falcon_sensor_version"
+    OLDER_VERSION="$cs_falcon_sensor_version_dec"
     if [ -n "$cs_os_version" ]; then
         found=0
         IFS='
@@ -417,15 +417,15 @@ cs_sensor_policy_name=$(
     fi
 )
 
-cs_falcon_sensor_version=$(
+cs_falcon_sensor_version_dec=$(
     re='^[0-9]+$'
-    if [ -n "$FALCON_SENSOR_VERSION" ]; then
-       if ! [[ $FALCON_SENSOR_VERSION =~ $re ]]; then
-          die "The FALCON_SENSOR_VERSION must be an integer greater than or equal to 0 or less than 5. FALCON_SENSOR_VERSION: \"$FALCON_SENSOR_VERSION\""
-       elif ! [[ $FALCON_SENSOR_VERSION -ge 0 && $FALCON_SENSOR_VERSION -le 5 ]]; then
-          die "The FALCON_SENSOR_VERSION must be an integer greater than or equal to 0 or less than 5. FALCON_SENSOR_VERSION: \"$FALCON_SENSOR_VERSION\""
+    if [ -n "$FALCON_SENSOR_VERSION_DECREMENT" ]; then
+       if ! [[ $FALCON_SENSOR_VERSION_DECREMENT =~ $re ]]; then
+          die "The FALCON_SENSOR_VERSION_DECREMENT must be an integer greater than or equal to 0 or less than 5. FALCON_SENSOR_VERSION_DECREMENT: \"$FALCON_SENSOR_VERSION_DECREMENT\""
+       elif ! [[ $FALCON_SENSOR_VERSION_DECREMENT -ge 0 && $FALCON_SENSOR_VERSION_DECREMENT -le 5 ]]; then
+          die "The FALCON_SENSOR_VERSION_DECREMENT must be an integer greater than or equal to 0 or less than 5. FALCON_SENSOR_VERSION_DECREMENT: \"$FALCON_SENSOR_VERSION_DECREMENT\""
        else
-          echo "$FALCON_SENSOR_VERSION"
+          echo "$FALCON_SENSOR_VERSION_DECREMENT"
        fi
     else
        echo "0"
