@@ -11,7 +11,7 @@ CrowdStrike API credentials are needed to download Falcon sensor. The script rec
 
 Optional:
     - FALCON_CID                        (default: auto)
-    - FALCON_CLOUD                      (default: us-1)
+    - FALCON_CLOUD                      (default: auto)
     - FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
     - FALCON_PROVISIONING_TOKEN         (default: unset)
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
@@ -414,7 +414,7 @@ cs_falcon_cloud=$(
     if [ -n "$FALCON_CLOUD" ]; then
         echo "$FALCON_CLOUD"
     else
-        # api.crowdstrike.com is the default
+        # Auto-discovery is using us-1 initially
         echo "us-1"
     fi
 )
@@ -442,6 +442,8 @@ cs_falcon_sensor_version_dec=$(
     fi
 )
 
+response_headers=$(mktemp)
+
 cs_falcon_oauth_token=$(
     if ! command -v curl &> /dev/null; then
         die "The 'curl' command is missing. Please install it before continuing. Aborting..."
@@ -449,6 +451,7 @@ cs_falcon_oauth_token=$(
 
     token_result=$(curl -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
                        -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
+                       --dump-header "${response_headers}" \
                        -d "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret")
     token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
     if [ -z "$token" ]; then
@@ -456,5 +459,19 @@ cs_falcon_oauth_token=$(
     fi
     echo "$token"
 )
+
+region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
+rm "${response_headers}"
+
+if [ -z "${FALCON_CLOUD}" ]; then
+    if [ -z "${region_hint}" ]; then
+        die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
+    fi
+    cs_falcon_cloud="${region_hint}"
+else
+    if [ "x${FALCON_CLOUD}" != "x${region_hint}" ]; then
+        echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
+    fi
+fi
 
 main "$@"
