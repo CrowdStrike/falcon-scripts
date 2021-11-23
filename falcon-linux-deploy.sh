@@ -86,7 +86,7 @@ cs_sensor_policy_version() {
 	die "Could not find a sensor update policy with name: $cs_policy_name"
     fi
 
-    sensor_versions=( )
+    local sensor_versions
     for i in $sensor_update_versions; do
         sensor_versions+=("$i")
     done
