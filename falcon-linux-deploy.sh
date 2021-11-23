@@ -11,7 +11,7 @@ CrowdStrike API credentials are needed to download Falcon sensor. The script rec
 
 Optional:
     - FALCON_CID                        (default: auto)
-    - FALCON_CLOUD                      (default: us-1)
+    - FALCON_CLOUD                      (default: auto)
     - FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
     - FALCON_PROVISIONING_TOKEN         (default: unset)
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
@@ -31,7 +31,7 @@ main() {
 
 cs_sensor_register() {
     if [ -z "${cs_falcon_cid}" ]; then
-        cs_target_cid=$(curl -s -L "https://$cs_cloud/sensors/queries/installers/ccid/v1" \
+        cs_target_cid=$(curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" \
                              -H "authorization: Bearer $cs_falcon_oauth_token")
 
         cs_falcon_cid=$(echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}')
@@ -70,7 +70,7 @@ cs_sensor_policy_version() {
     cs_policy_name="$1"
 
     sensor_update_policy=$(
-        curl -s -L -G "https://$cs_cloud/policy/combined/sensor-update/v2" \
+        curl -s -L -G "https://$(cs_cloud)/policy/combined/sensor-update/v2" \
              --data-urlencode "filter=platform_name:\"Linux\"+name.raw:\"$cs_policy_name\"" \
              --header "authorization: Bearer $cs_falcon_oauth_token"
     )
@@ -120,7 +120,7 @@ cs_sensor_download() {
     fi
 
     existing_installers=$(
-        curl -s -L -G "https://$cs_cloud/sensors/combined/installers/v1" \
+        curl -s -L -G "https://$(cs_cloud)/sensors/combined/installers/v1" \
              --data-urlencode "filter=os:\"$cs_os_name\"$cs_api_version_filter" \
              -H "Authorization: Bearer $cs_falcon_oauth_token"
     )
@@ -177,7 +177,7 @@ cs_sensor_download() {
     file_type=$(echo "$existing_installers" | json_value "file_type" "$INDEX" | sed 's/ *$//g' | sed 's/^ *//g')
 
     installer="${destination_dir}/falcon-sensor.${file_type}"
-    curl -s -L "https://$cs_cloud/sensors/entities/download-installer/v1?id=$sha" \
+    curl -s -L "https://$(cs_cloud)/sensors/entities/download-installer/v1?id=$sha" \
          -H "Authorization: Bearer $cs_falcon_oauth_token" -o "$installer"
     echo "$installer"
 }
@@ -309,6 +309,16 @@ die() {
     exit 1
 }
 
+cs_cloud() {
+    case "${cs_falcon_cloud}" in
+        us-1)      echo "api.crowdstrike.com";;
+        us-2)      echo "api.us-2.crowdstrike.com";;
+        eu-1)      echo "api.eu-1.crowdstrike.com";;
+        us-gov-1)  echo "api.laggar.gcw.crowdstrike.com";;
+        *)         die "Unrecognized Falcon Cloud: ${cs_falcon_cloud}";;
+    esac
+}
+
 os_name=$(
     # returns either: Amazon, Ubuntu, CentOS, RHEL, or SLES
     # lsb_release is not always present
@@ -404,7 +414,7 @@ cs_falcon_cloud=$(
     if [ -n "$FALCON_CLOUD" ]; then
         echo "$FALCON_CLOUD"
     else
-        # api.crowdstrike.com is the default
+        # Auto-discovery is using us-1 initially
         echo "us-1"
     fi
 )
@@ -432,23 +442,16 @@ cs_falcon_sensor_version_dec=$(
     fi
 )
 
-cs_cloud=$(
-    case "${cs_falcon_cloud}" in
-        us-1)      echo "api.crowdstrike.com";;
-        us-2)      echo "api.us-2.crowdstrike.com";;
-        eu-1)      echo "api.eu-1.crowdstrike.com";;
-        us-gov-1)  echo "api.laggar.gcw.crowdstrike.com";;
-        *)         die "Unrecognized Falcon Cloud: ${cs_falcon_cloud}";;
-    esac
-)
+response_headers=$(mktemp)
 
 cs_falcon_oauth_token=$(
     if ! command -v curl &> /dev/null; then
         die "The 'curl' command is missing. Please install it before continuing. Aborting..."
     fi
 
-    token_result=$(curl -X POST -s -L "https://$cs_cloud/oauth2/token" \
+    token_result=$(curl -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
                        -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
+                       --dump-header "${response_headers}" \
                        -d "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret")
     token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
     if [ -z "$token" ]; then
@@ -456,5 +459,19 @@ cs_falcon_oauth_token=$(
     fi
     echo "$token"
 )
+
+region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
+rm "${response_headers}"
+
+if [ -z "${FALCON_CLOUD}" ]; then
+    if [ -z "${region_hint}" ]; then
+        die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
+    fi
+    cs_falcon_cloud="${region_hint}"
+else
+    if [ "x${FALCON_CLOUD}" != "x${region_hint}" ]; then
+        echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
+    fi
+fi
 
 main "$@"
