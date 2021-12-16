@@ -214,6 +214,9 @@ os_install_package() {
         Oracle)
             rpm_install_package "$pkg"
             ;;
+        "Oracle Linux Server")
+            rpm_install_package "$pkg"
+            ;;	    
         RHEL)
             rpm_install_package "$pkg"
             ;;
@@ -335,6 +338,7 @@ cs_os_name=$(
         CentOS)  echo "RHEL/CentOS/Oracle";;
         Debian)  echo "Debian";;
         Oracle)  echo "RHEL/CentOS/Oracle";;
+	"Oracle Linux Server")  echo "RHEL/CentOS/Oracle";;
         RHEL)    echo "RHEL/CentOS/Oracle";;
         Rocky)   echo "RHEL/CentOS/Oracle";;
         AlmaLinux)  echo "RHEL/CentOS/Oracle";;
