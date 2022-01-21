@@ -302,6 +302,8 @@ os_name=$(
     if [ -z "$name" ]; then
         if lsb_release -s -i | grep -q ^RedHat; then
             name="RHEL"
+	elif [ -f /usr/bin/lsb_release ]; then
+	    name=$(/usr/bin/lsb_release -s -i)
         fi
     fi
     if [ -z "$name" ]; then
