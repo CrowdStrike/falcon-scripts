@@ -83,7 +83,7 @@ cs_sensor_policy_version() {
 
     sensor_update_versions=$(echo "$sensor_update_policy" | json_value "sensor_version")
     if [ -z "$sensor_update_versions" ]; then
-	die "Could not find a sensor update policy with name: $cs_policy_name"
+        die "Could not find a sensor update policy with name: $cs_policy_name"
     fi
 
     local sensor_versions
@@ -302,13 +302,15 @@ os_name=$(
     if [ -z "$name" ]; then
         if lsb_release -s -i | grep -q ^RedHat; then
             name="RHEL"
+        elif [ -f /usr/bin/lsb_release ]; then
+            name=$(/usr/bin/lsb_release -s -i)
         fi
     fi
     if [ -z "$name" ]; then
         die "Cannot recognise operating system"
     fi
 
-    echo $name
+    echo "$name"
 )
 
 os_version=$(
@@ -319,6 +321,8 @@ os_version=$(
             version=$(rpm -qf /etc/redhat-release --queryformat '%{VERSION}' | sed 's/\([[:digit:]]\+\).*/\1/g')
         elif [ -f /etc/debian_version ]; then
             version=$(cat /etc/debian_version)
+        elif [ -f /usr/bin/lsb_release ]; then
+            version=$(/usr/bin/lsb_release -r | /usr/bin/cut -f 2-)
         fi
     fi
     if [ -z "$version" ]; then
