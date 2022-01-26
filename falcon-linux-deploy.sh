@@ -83,7 +83,7 @@ cs_sensor_policy_version() {
 
     sensor_update_versions=$(echo "$sensor_update_policy" | json_value "sensor_version")
     if [ -z "$sensor_update_versions" ]; then
-	die "Could not find a sensor update policy with name: $cs_policy_name"
+        die "Could not find a sensor update policy with name: $cs_policy_name"
     fi
 
     local sensor_versions
@@ -302,8 +302,8 @@ os_name=$(
     if [ -z "$name" ]; then
         if lsb_release -s -i | grep -q ^RedHat; then
             name="RHEL"
-	elif [ -f /usr/bin/lsb_release ]; then
-	    name=$(/usr/bin/lsb_release -s -i)
+        elif [ -f /usr/bin/lsb_release ]; then
+            name=$(/usr/bin/lsb_release -s -i)
         fi
     fi
     if [ -z "$name" ]; then
