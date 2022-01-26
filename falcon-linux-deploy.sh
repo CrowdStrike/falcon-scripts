@@ -310,7 +310,7 @@ os_name=$(
         die "Cannot recognise operating system"
     fi
 
-    echo $name
+    echo "$name"
 )
 
 os_version=$(
