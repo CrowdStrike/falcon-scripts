@@ -321,8 +321,8 @@ os_version=$(
             version=$(rpm -qf /etc/redhat-release --queryformat '%{VERSION}' | sed 's/\([[:digit:]]\+\).*/\1/g')
         elif [ -f /etc/debian_version ]; then
             version=$(cat /etc/debian_version)
-	elif [ -f /usr/bin/lsb_release ]; then
-	    version=$(/usr/bin/lsb_release -r | /usr/bin/cut -f 2-)
+        elif [ -f /usr/bin/lsb_release ]; then
+            version=$(/usr/bin/lsb_release -r | /usr/bin/cut -f 2-)
         fi
     fi
     if [ -z "$version" ]; then
