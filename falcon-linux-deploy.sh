@@ -234,6 +234,75 @@ os_install_package() {
     esac
 }
 
+aws_ssm_parameter() {
+    local param_name="$1"
+
+    hmac_sha256() {
+        key="$1"
+        data="$2"
+        echo -n "$data" | openssl dgst -sha256 -mac HMAC -macopt "$key" | sed 's/^.* //'
+    }
+
+    api_endpoint="AmazonSSM.GetParameters"
+    iam_role="$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)"
+    aws_my_region="$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone | sed s/.$//)"
+    _security_credentials=$(curl -s "http://169.254.169.254/latest/meta-data/iam/security-credentials/$iam_role")
+    access_key_id="$(echo "$_security_credentials" | grep AccessKeyId | sed -e 's/  "AccessKeyId" : "//' -e 's/",$//')"
+    access_key_secret="$(echo "$_security_credentials" | grep SecretAccessKey | sed -e 's/  "SecretAccessKey" : "//' -e 's/",$//')"
+    security_token="$(echo "$_security_credentials" | grep Token | sed -e 's/  "Token" : "//' -e 's/",$//')"
+    datetime=$(date -u +"%Y%m%dT%H%M%SZ")
+    date=$(date -u +"%Y%m%d")
+    request_data='{"Names":["'"${param_name}"'"],"WithDecryption":"true"}'
+    request_data_dgst=$(echo -n "$request_data" | openssl dgst -sha256 | awk -F' ' '{print $2}')
+    request_dgst=$(
+        cat <<EOF | head -c -1 | openssl dgst -sha256 | awk -F' ' '{print $2}'
+POST
+/
+
+content-type:application/x-amz-json-1.1
+host:ssm.$aws_my_region.amazonaws.com
+x-amz-date:$datetime
+x-amz-security-token:$security_token
+x-amz-target:$api_endpoint
+
+content-type;host;x-amz-date;x-amz-security-token;x-amz-target
+$request_data_dgst
+EOF
+    )
+    dateKey=$(hmac_sha256 key:"AWS4$access_key_secret" "$date")
+    dateRegionKey=$(hmac_sha256 "hexkey:$dateKey" "$aws_my_region")
+    dateRegionServiceKey=$(hmac_sha256 "hexkey:$dateRegionKey" ssm)
+    hex_key=$(hmac_sha256 "hexkey:$dateRegionServiceKey" "aws4_request")
+
+    signature=$(
+        cat <<EOF | head -c -1 | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$hex_key" | awk -F' ' '{print $2}'
+AWS4-HMAC-SHA256
+$datetime
+$date/$aws_my_region/ssm/aws4_request
+$request_dgst
+EOF
+    )
+
+    response=$(
+        curl -s "https://ssm.$aws_my_region.amazonaws.com/" \
+            -H "Authorization: AWS4-HMAC-SHA256 \
+            Credential=$access_key_id/$date/$aws_my_region/ssm/aws4_request, \
+            SignedHeaders=content-type;host;x-amz-date;x-amz-security-token;x-amz-target, \
+            Signature=$signature" \
+            -H "x-amz-security-token: $security_token" \
+            -H "x-amz-target: $api_endpoint" \
+            -H "content-type: application/x-amz-json-1.1" \
+            -d "$request_data" \
+            -H "x-amz-date: $datetime"
+            )
+    if ! echo "$response" | grep -q '^.*"InvalidParameters":\[\].*$'; then
+        die "Unexpected response from AWS SSM Parameter Store: $response"
+    elif ! echo "$response" | grep -q '^.*'"${param_name}"'.*$'; then
+        die "Unexpected response from AWS SSM Parameter Store: $response"
+    fi
+    echo "$response"
+}
+
 cs_falcon_gpg_import() {
     tempfile=$(mktemp)
     cat > "$tempfile" <<EOF
@@ -361,9 +430,24 @@ cs_os_version=$(
     fi
 )
 
+aws_instance=$(
+    if [ -f /sys/hypervisor/uuid ] && grep -qi ec2 /sys/hypervisor/uuid; then
+        echo true
+    elif [ -f /sys/devices/virtual/dmi/id/board_asset_tag ] && awk -e '$0 ~ /i-[a-z0-9]/ {print}' /sys/devices/virtual/dmi/id/board_asset_tag > /dev/null 2>&1; then
+        echo true
+    else
+        curl_output="$(curl -s --connect-timeout 5 http://169.254.169.254/latest/dynamic/instance-identity/)"
+        if [ -n "$curl_output" ] && ! echo "$curl_output" | grep 'Not Found'; then
+            echo true
+        fi
+    fi
+)
+
 cs_falcon_client_id=$(
     if [ -n "$FALCON_CLIENT_ID" ]; then
         echo "$FALCON_CLIENT_ID"
+    elif [ -n "$aws_instance" ]; then
+        aws_ssm_parameter "FALCON_CLIENT_ID" | json_value Value 1
     else
         die "Missing FALCON_CLIENT_ID environment variable. Please provide your OAuth2 API Client ID for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
     fi
@@ -372,15 +456,18 @@ cs_falcon_client_id=$(
 cs_falcon_client_secret=$(
     if [ -n "$FALCON_CLIENT_SECRET" ]; then
         echo "$FALCON_CLIENT_SECRET"
+    elif [ -n "$aws_instance" ]; then
+        aws_ssm_parameter "FALCON_CLIENT_SECRET" | json_value Value 1
     else
         die "Missing FALCON_CLIENT_SECRET environment variable. Please provide your OAuth2 API Client Secret for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
     fi
 )
 
 cs_falcon_cid=$(
-    # shellcheck disable=SC2154
     if [ -n "$FALCON_CID" ]; then
         echo "$FALCON_CID"
+    else
+        aws_ssm_parameter "FALCON_CID" | json_value Value 1
     fi
 )
 
