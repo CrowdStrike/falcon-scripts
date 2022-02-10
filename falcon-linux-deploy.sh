@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# IGnore
 print_usage() {
     cat <<EOF
 This script installs and configures the CrowdStrike Falcon Sensor for Linux.
