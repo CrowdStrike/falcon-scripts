@@ -5,8 +5,7 @@ on:
     branches: [ main ]
 
 jobs:
-  shellcheck:
-    name: bash
+  bash:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -15,8 +14,7 @@ jobs:
       with:
         format: tty
 
-  shellcheck:
-    name: dash
+  dash:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
