@@ -40,7 +40,7 @@ cs_sensor_register() {
     cs_falcon_args=--cid="${cs_falcon_cid}"
     if [ -n "${cs_falcon_token}" ]; then
         cs_token=--provisioning-token="${cs_falcon_token}"
-        cs_falcon_args+=" $cs_token"
+        cs_falcon_args="$cs_falcon_args $cs_token"
     fi
     /opt/CrowdStrike/falconctl -s -f "${cs_falcon_args}"
 }
@@ -86,20 +86,20 @@ cs_sensor_policy_version() {
         die "Could not find a sensor update policy with name: $cs_policy_name"
     fi
 
-    local sensor_versions
-    for i in $sensor_update_versions; do
-        sensor_versions+=("$i")
-    done
-
-    if [[ "${#sensor_versions[@]}" -gt 1 ]]; then
+    oldIFS=$IFS
+    IFS=" "
+    # shellcheck disable=SC2086
+    set -- $sensor_update_versions
+    if [ "$(echo "$sensor_update_versions" | wc -w)" -gt 1 ]; then
         if [ "$cs_os_arch" = "aarch64" ] ; then
-            echo "${sensor_versions[1]}"
+            echo "$2"
         else
-            echo "${sensor_versions[0]}"
+            echo "$1"
         fi
     else
-        echo "${sensor_versions[0]}"
+        echo "$1"
     fi
+    IFS=$oldIFS
 }
 
 cs_sensor_download() {
@@ -110,10 +110,10 @@ cs_sensor_download() {
         cs_api_version_filter="+version:\"$cs_sensor_version\""
 
         exit_status=$?
-        if [[ $exit_status -ne 0 ]]; then
+        if [ $exit_status -ne 0 ]; then
             exit $exit_status
         fi
-        if [[ $cs_falcon_sensor_version_dec -gt 0 ]]; then
+        if [ "$cs_falcon_sensor_version_dec" -gt 0 ]; then
             echo "WARNING: Disabling FALCON_SENSOR_VERSION_DECREMENT because it conflicts with FALCON_SENSOR_UPDATE_POLICY_NAME"
             cs_falcon_sensor_version_dec=0
         fi
@@ -408,11 +408,11 @@ cs_sensor_policy_name=$(
 )
 
 cs_falcon_sensor_version_dec=$(
-    re='^[0-9]+$'
+    re='^[0-9]\+$'
     if [ -n "$FALCON_SENSOR_VERSION_DECREMENT" ]; then
-       if ! [[ $FALCON_SENSOR_VERSION_DECREMENT =~ $re ]]; then
+       if ! expr "$FALCON_SENSOR_VERSION_DECREMENT" : "$re" > /dev/null 2>&1; then
           die "The FALCON_SENSOR_VERSION_DECREMENT must be an integer greater than or equal to 0 or less than 5. FALCON_SENSOR_VERSION_DECREMENT: \"$FALCON_SENSOR_VERSION_DECREMENT\""
-       elif ! [[ $FALCON_SENSOR_VERSION_DECREMENT -ge 0 && $FALCON_SENSOR_VERSION_DECREMENT -le 5 ]]; then
+       elif [ "$FALCON_SENSOR_VERSION_DECREMENT" -lt 0 ] || [ "$FALCON_SENSOR_VERSION_DECREMENT" -gt 5 ]; then
           die "The FALCON_SENSOR_VERSION_DECREMENT must be an integer greater than or equal to 0 or less than 5. FALCON_SENSOR_VERSION_DECREMENT: \"$FALCON_SENSOR_VERSION_DECREMENT\""
        else
           echo "$FALCON_SENSOR_VERSION_DECREMENT"
@@ -425,7 +425,7 @@ cs_falcon_sensor_version_dec=$(
 response_headers=$(mktemp)
 
 cs_falcon_oauth_token=$(
-    if ! command -v curl &> /dev/null; then
+    if ! command -v curl > /dev/null 2>&1; then
         die "The 'curl' command is missing. Please install it before continuing. Aborting..."
     fi
 
