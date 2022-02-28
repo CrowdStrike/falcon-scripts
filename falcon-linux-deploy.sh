@@ -437,7 +437,7 @@ aws_instance=$(
         echo true
     else
         curl_output="$(curl -s --connect-timeout 5 http://169.254.169.254/latest/dynamic/instance-identity/)"
-        if [ -n "$curl_output" ] && ! echo "$curl_output" | grep 'Not Found'; then
+        if [ -n "$curl_output" ] && ! echo "$curl_output" | grep --silent -i 'Not Found'; then
             echo true
         fi
     fi
