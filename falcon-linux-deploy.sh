@@ -26,7 +26,7 @@ main() {
     echo -n 'Falcon Sensor Install  ... '; cs_sensor_install;  echo '[ Ok ]'
     echo -n 'Falcon Sensor Register ... '; cs_sensor_register; echo '[ Ok ]'
     echo -n 'Falcon Sensor Restart  ... '; cs_sensor_restart;  echo '[ Ok ]'
-    echo 'Falcon Sensor deployed successfully.'
+    echo 'Falcon Sensor installed successfully.'
 }
 
 cs_sensor_register() {
@@ -64,6 +64,26 @@ cs_sensor_install() {
     os_install_package "$package_name"
 
     tempdir_cleanup
+}
+
+cs_sensor_remove() {
+    remove_package() {
+        pkg="$1"
+
+        if type dnf > /dev/null 2>&1; then
+            dnf remove -q -y "$pkg" || rpm -e --nodeps "$pkg"
+        elif type yum > /dev/null 2>&1; then
+            yum remove -q -y "$pkg" || rpm -e --nodeps "$pkg"
+        elif type zypper > /dev/null 2>&1; then
+            zypper --quiet remove -y "$pkg" || rpm -e --nodeps "$pkg"
+        elif type apt > /dev/null 2>&1; then
+            DEBIAN_FRONTEND=noninteractive apt purge -y "$pkg" > /dev/null
+        else
+            rpm -e --nodeps "$pkg"
+        fi
+    }
+
+    remove_package "falcon-sensor"
 }
 
 cs_sensor_policy_version() {
@@ -363,6 +383,15 @@ cs_cloud() {
         *)         die "Unrecognized Falcon Cloud: ${cs_falcon_cloud}";;
     esac
 }
+
+# shellcheck disable=SC2034
+cs_uninstall=$(
+    if [ -n "$FALCON_UNINSTALL" ]; then
+        echo -n 'Removing Falcon Sensor  ... '; cs_sensor_remove;  echo '[ Ok ]'
+        echo 'Falcon Sensor removed successfully.'
+	exit 2
+    fi
+)
 
 os_name=$(
     # returns either: Amazon, Ubuntu, CentOS, RHEL, or SLES
