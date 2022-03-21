@@ -462,7 +462,7 @@ cs_os_version=$(
 aws_instance=$(
     if [ -f /sys/hypervisor/uuid ] && grep -qi ec2 /sys/hypervisor/uuid; then
         echo true
-    elif [ -f /sys/devices/virtual/dmi/id/board_asset_tag ] && awk -e '$0 ~ /i-[a-z0-9]/ {print}' /sys/devices/virtual/dmi/id/board_asset_tag > /dev/null 2>&1; then
+    elif [ -f /sys/devices/virtual/dmi/id/board_asset_tag ] && grep -q '^i-[a-z0-9]*$' /sys/devices/virtual/dmi/id/board_asset_tag; then
         echo true
     else
         curl_output="$(curl -s --connect-timeout 5 http://169.254.169.254/latest/dynamic/instance-identity/)"
