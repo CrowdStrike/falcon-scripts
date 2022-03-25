@@ -15,6 +15,7 @@ Optional:
     - FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
     - FALCON_PROVISIONING_TOKEN         (default: unset)
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
+    - FALCON_UNINSTALL                  (default: false)
 EOF
 }
 
@@ -386,10 +387,10 @@ cs_cloud() {
 
 # shellcheck disable=SC2034
 cs_uninstall=$(
-    if [ -n "$FALCON_UNINSTALL" ]; then
+    if [ "$FALCON_UNINSTALL" ]; then
         echo -n 'Removing Falcon Sensor  ... '; cs_sensor_remove;  echo '[ Ok ]'
         echo 'Falcon Sensor removed successfully.'
-	exit 2
+        exit 2
     fi
 )
 

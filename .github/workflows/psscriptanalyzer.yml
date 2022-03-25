@@ -1,0 +1,21 @@
+on:
+  push:
+    paths:
+      - 'powershell/**'
+      - '.github/workflows/psscriptanalyzer.yml'
+
+  pull_request:
+    paths:
+      - 'powershell/**'
+      - '.github/workflows/psscriptanalyzer.yml'
+
+jobs:
+  powershell:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Install-Module -Name PSScriptAnalyzer -Force
+          Invoke-ScriptAnalyzer -Path .\powershell -Recurse -EnableExit
