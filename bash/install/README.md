@@ -31,21 +31,21 @@ The `FALCON_SENSOR_UPDATE_POLICY_NAME` variable requires to have additional API 
 2. Run the script:
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-linux-install-bash/main/falcon-linux-deploy.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/main/bash/install/falcon-linux-install.sh | bash
 ```
 
 Alternatively, you can run the script by cloning the repo:
 
 ```bash
-git clone https://github.com/crowdstrike/falcon-linux-install-bash
+git clone https://github.com/crowdstrike/falcon-scripts
 ```
 
 Then, run the following command:
 
 ```bash
-./falcon-linux-deploy.sh
+./falcon-linux-install.sh
 ```
 or
 ```bash
-bash falcon-linux-deploy.sh
+bash falcon-linux-install.sh
 ```
