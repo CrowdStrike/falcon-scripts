@@ -1,51 +1,16 @@
-# Falcon Linux Bash Installation Script
+# Falcon Scripts
 
-Bash script to install Falcon Sensor through the Falcon APIs on a Linux endpoint.
+This repository contains different types of scripts to facilitate the use of the CrowdStrike Falcon Sensor on different platforms.
 
-## Configuration
+| Scripts | Description |
+|:-|:-|
+| [Bash](bash) | Bash scripts for interacting with the CrowdStrike Falcon Sensor for Linux |
+| [PowerShell](powershell) | PowerShell scripts for interacting with the CrowdStrike Falcon Sensor for Windows |
 
-1. Get sensor download API credentials from the cloud where your account has been configured:
+## Contributing
 
-  - https://falcon.crowdstrike.com/support/api-clients-and-keys
-  - or https://falcon.us-2.crowdstrike.com/support/api-clients-and-keys
-  - or https://falcon.eu-1.crowdstrike.com/support/api-clients-and-keys
+All contributions are welcome. Please make sure to verify that the CI/CD checks pass and are not failing.
 
-Configure environment variables with your API credentials. Make sure that scope Sensor Download [read] is enabled.
+## License
 
-Export the required environment variables:
-```bash
-export FALCON_CLIENT_ID="XXXXXXX"
-export FALCON_CLIENT_SECRET="YYYYYYYYY"
-```
-
-Optional environment variables that can be exported:
-```bash
-FALCON_CID                        (default: auto)
-FALCON_CLOUD                      (default: us-1)
-FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
-FALCON_PROVISIONING_TOKEN         (default: unset)
-FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
-```
-The `FALCON_SENSOR_UPDATE_POLICY_NAME` variable requires to have additional API access. Make sure that scope Sensor update policies [read] is enabled.
-
-2. Run the script:
-
-```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-linux-install-bash/main/falcon-linux-deploy.sh | bash
-```
-
-Alternatively, you can run the script by cloning the repo:
-
-```bash
-git clone https://github.com/crowdstrike/falcon-linux-install-bash
-```
-
-Then, run the following command:
-
-```bash
-./falcon-linux-deploy.sh
-```
-or
-```bash
-bash falcon-linux-deploy.sh
-```
+See [LICENSE](LICENSE)
