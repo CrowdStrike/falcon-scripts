@@ -50,10 +50,10 @@ param(
     [string] $LogPath,
 
     [Parameter(Position = 5)]
-    [string] $DeleteUninstaller = $true,
+    [bool] $DeleteUninstaller = $true,
 
     [Parameter(Position = 6)]
-    [string] $DeleteScript = $true
+    [bool] $DeleteScript = $true
 )
 begin {
     $ScriptName = $MyInvocation.MyCommand.Name
@@ -68,9 +68,9 @@ begin {
     }
 
     if ($UninstallTool -match "installcache") {
-        $UninstallerName = 'WindowsSensor.exe'
+        $UninstallerName = 'WindowsSensor*.exe'
         $UninstallerCachePath = "C:\ProgramData\Package Cache"
-        $UninstallerPath = Get-ChildItem -Filter $UninstallerName -Path $UninstallerCachePath -Recurse | ForEach-Object{$_.FullName}
+        $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerCachePath -Recurse | ForEach-Object{$_.FullName}
     }
 
     if ($UninstallTool -match "standalone") {
