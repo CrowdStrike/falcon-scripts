@@ -30,7 +30,9 @@ Script log location ['Windows\Temp\csfalcon_install.log' if left undefined]
 .PARAMETER DeleteInstaller
 Delete sensor installer package when complete [default: $true]
 .PARAMETER DeleteScript
-Delete script when complete [default: $true]
+Delete script when complete [default: $false]
+.PARAMETER Uninstall
+Uninstall the sensor from the host [default: $false]
 .EXAMPLE
 PS>.\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string>
 
@@ -48,7 +50,6 @@ Updated 2021-10-22 to include 'sensor_version' property when matching policy to 
 
 [CmdletBinding()]
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'DeleteInstaller')]
-[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'DeleteScript')]
 param(
     [Parameter(Position = 1)]
     [ValidateSet('https://api.crowdstrike.com', 'https://api.us-2.crowdstrike.com',
@@ -77,10 +78,13 @@ param(
     [string] $LogPath,
 
     [Parameter(Position = 8)]
-    [string] $DeleteInstaller = $true,
+    [bool] $DeleteInstaller = $true,
 
     [Parameter(Position = 9)]
-    [string] $DeleteScript = $true
+    [bool] $DeleteScript = $false,
+
+    [Parameter(Position = 10)]
+    [bool] $Uninstall = $false
 )
 begin {
     if ($PSVersionTable.PSVersion -lt '3.0')
@@ -96,6 +100,12 @@ begin {
     $WinTemp = $WinSystem -replace 'system32','Temp'
     if (!$LogPath) {
         $LogPath = Join-Path -Path $WinTemp -ChildPath 'InstallFalcon.log'
+    }
+
+    if ($Uninstall) {
+        $UninstallerName = 'WindowsSensor*.exe'
+        $UninstallerCachePath = "C:\ProgramData\Package Cache"
+        $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerCachePath -Recurse | ForEach-Object{$_.FullName}
     }
 
     $Falcon = New-Object System.Net.WebClient
@@ -192,6 +202,72 @@ process {
         $Message = 'Unable to proceed without administrative privileges'
         Write-FalconLog 'CheckAdmin' $Message
         throw $Message
+    } elseif ($Uninstall) {
+        $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
+        if (!$AgentService) {
+            $Message = "'CSFalconService' is not installed"
+            Write-FalconLog 'CheckService' $Message
+            throw $Message
+        }
+
+        if (not (Test-Path -Path $UninstallerPath))
+        {
+            $Message = "${UninstallerName} not found."
+            Write-FalconLog 'CheckUninstaller' $Message
+            throw $Message
+        }
+
+        $Message = 'Uninstalling Falcon Sensor...'
+        Write-FalconLog 'Uninstaller' $Message
+
+        $UninstallParams = '/uninstall /quiet'
+        $UninstallerProcess = Start-Process -FilePath "$UninstallerPath" -ArgumentList $UninstallParams -PassThru -Wait
+        $UninstallerProcessId = $UninstallerProcess.Id
+        Write-FalconLog 'StartProcess' "Started '$UninstallerPath' ($UninstallerProcessId)"
+        if ($UninstallerProcess.ExitCode -ne 0)
+        {
+            $Message = "Uninstaller returned exit code $($UninstallerProcess.ExitCode)"
+            Write-FalconLog "UninstallError" $Message
+            throw $Message
+        }
+
+        $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
+        if ($AgentService -and $AgentService.Status -eq 'Running')
+        {
+            $Message = 'Service uninstall failed...'
+            Write-FalconLog "ServiceError" $Message
+            throw $Message
+        }
+
+        if (Test-Path -Path HKLM:\System\Crowdstrike)
+        {
+            $Message = 'Registry key removal failed...'
+            Write-FalconLog "RegistryError" $Message
+            throw $Message
+        }
+
+        if (Test-Path -Path"${env:SYSTEMROOT}\System32\drivers\CrowdStrike")
+        {
+            $Message = 'Driver removal failed...'
+            Write-FalconLog "DriverError" $Message
+            throw $Message
+        }
+
+        if ($DeleteScript) {
+                $FilePath = Join-Path -Path $ScriptPath -ChildPath $ScriptName
+                if (Test-Path $FilePath) {
+                    Remove-Item -Path $FilePath -Force
+                }
+                if (Test-Path $FilePath) {
+                    Write-FalconLog $_ "Failed to delete '$FilePath'"
+                } else {
+                    Write-FalconLog $_ "Deleted '$FilePath'"
+                }
+        }
+
+        $Message = 'Successfully finished uninstall...'
+        Write-FalconLog 'Uninstaller' $Message
+        Exit 0
     } elseif (Get-Service | Where-Object { $_.Name -eq 'CSFalconService' }) {
         $Message = "'CSFalconService' running"
         Write-FalconLog 'CheckService' $Message
