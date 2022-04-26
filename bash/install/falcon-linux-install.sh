@@ -397,7 +397,7 @@ cs_uninstall=$(
 os_name=$(
     # returns either: Amazon, Ubuntu, CentOS, RHEL, or SLES
     # lsb_release is not always present
-    name=$(cat /etc/*release | grep ^NAME= | awk -F'=' '{ print $2 }' | sed "s/\"//g;s/Red Hat.*/RHEL/g;s/ Linux$//g;s/ GNU\/Linux$//g;s/Oracle.*/Oracle/g")
+    name=$(cat /etc/*release | grep ^NAME= | awk -F'=' '{ print $2 }' | sed "s/\"//g;s/Red Hat.*/RHEL/g;s/ Linux$//g;s/ GNU\/Linux$//g;s/ Linux AMI$//g;s/Oracle.*/Oracle/g")
     if [ -z "$name" ]; then
         if lsb_release -s -i | grep -q ^RedHat; then
             name="RHEL"
