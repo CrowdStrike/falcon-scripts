@@ -456,7 +456,7 @@ cs_os_version=$(
     if [ "$cs_os_arch" = "aarch64" ] ; then
         echo "$os_version - arm64"
     elif [ "$os_name" = "Amazon" ] && [ "$version" -ge 2017 ] ; then
-      echo "1"
+        echo "1"
     else
         echo "$version"
     fi
