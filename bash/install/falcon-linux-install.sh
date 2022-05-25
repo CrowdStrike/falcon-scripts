@@ -498,7 +498,7 @@ cs_falcon_client_secret=$(
 cs_falcon_cid=$(
     if [ -n "$FALCON_CID" ]; then
         echo "$FALCON_CID"
-    else
+    elif [ -n "$aws_instance" ]; then
         aws_ssm_parameter "FALCON_CID" | json_value Value 1
     fi
 )
