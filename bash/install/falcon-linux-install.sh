@@ -31,11 +31,8 @@ main() {
 }
 
 cs_sensor_register() {
-    if [ -z "${cs_falcon_cid}" ]; then
-        cs_target_cid=$(curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" \
-                             -H "authorization: Bearer $cs_falcon_oauth_token")
-
-        cs_falcon_cid=$(echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}')
+    if [ -z "$cs_falcon_cid" ]; then
+        die "Could not find FALCON CID!"
     fi
 
     cs_falcon_args=--cid="${cs_falcon_cid}"
@@ -495,14 +492,6 @@ cs_falcon_client_secret=$(
     fi
 )
 
-cs_falcon_cid=$(
-    if [ -n "$FALCON_CID" ]; then
-        echo "$FALCON_CID"
-    else
-        aws_ssm_parameter "FALCON_CID" | json_value Value 1
-    fi
-)
-
 cs_falcon_token=$(
     if [ -n "$FALCON_PROVISIONING_TOKEN" ]; then
         echo "$FALCON_PROVISIONING_TOKEN"
@@ -557,6 +546,17 @@ cs_falcon_oauth_token=$(
         die "Unable to obtain CrowdStrike Falcon OAuth Token. Response was $token_result"
     fi
     echo "$token"
+)
+
+cs_falcon_cid=$(
+    if [ -n "$FALCON_CID" ]; then
+        echo "$FALCON_CID"
+    else
+        cs_target_cid=$(curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" \
+                                -H "authorization: Bearer $cs_falcon_oauth_token")
+
+        echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}'
+    fi
 )
 
 region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
