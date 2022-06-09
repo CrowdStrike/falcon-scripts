@@ -548,17 +548,6 @@ cs_falcon_oauth_token=$(
     echo "$token"
 )
 
-cs_falcon_cid=$(
-    if [ -n "$FALCON_CID" ]; then
-        echo "$FALCON_CID"
-    else
-        cs_target_cid=$(curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" \
-                                -H "authorization: Bearer $cs_falcon_oauth_token")
-
-        echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}'
-    fi
-)
-
 region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
 rm "${response_headers}"
 
@@ -572,5 +561,16 @@ else
         echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
     fi
 fi
+
+cs_falcon_cid=$(
+    if [ -n "$FALCON_CID" ]; then
+        echo "$FALCON_CID"
+    else
+        cs_target_cid=$(curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" \
+                                -H "authorization: Bearer $cs_falcon_oauth_token")
+
+        echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}'
+    fi
+)
 
 main "$@"
