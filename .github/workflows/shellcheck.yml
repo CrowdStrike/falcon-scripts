@@ -13,7 +13,7 @@ jobs:
   bash:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Run ShellCheck
       uses: ludeeus/action-shellcheck@master
       with:
@@ -23,7 +23,7 @@ jobs:
   dash:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Run ShellCheck to check against dash shells
       uses: ludeeus/action-shellcheck@master
       with:
