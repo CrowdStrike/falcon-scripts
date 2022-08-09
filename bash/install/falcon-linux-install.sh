@@ -138,9 +138,10 @@ cs_sensor_download() {
     fi
 
     existing_installers=$(
+        echo "Authorization: Bearer $cs_falcon_oauth_token" | \
         curl -s -L -G "https://$(cs_cloud)/sensors/combined/installers/v1" \
              --data-urlencode "filter=os:\"$cs_os_name\"$cs_api_version_filter" \
-             -H "Authorization: Bearer $cs_falcon_oauth_token"
+             -H @-
     )
 
     if echo "$existing_installers" | grep "authorization failed"; then
@@ -537,10 +538,11 @@ cs_falcon_oauth_token=$(
         die "The 'curl' command is missing. Please install it before continuing. Aborting..."
     fi
 
-    token_result=$(curl -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
+    token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" | \
+                   curl -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
                        -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
                        --dump-header "${response_headers}" \
-                       -d "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret")
+                       --data @-)
     token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
     if [ -z "$token" ]; then
         die "Unable to obtain CrowdStrike Falcon OAuth Token. Response was $token_result"
@@ -566,8 +568,7 @@ cs_falcon_cid=$(
     if [ -n "$FALCON_CID" ]; then
         echo "$FALCON_CID"
     else
-        cs_target_cid=$(curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" \
-                                -H "authorization: Bearer $cs_falcon_oauth_token")
+        cs_target_cid=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" -H @-)
 
         echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}'
     fi
