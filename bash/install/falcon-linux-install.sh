@@ -88,9 +88,10 @@ cs_sensor_policy_version() {
     cs_policy_name="$1"
 
     sensor_update_policy=$(
+        echo "Authorization: Bearer $cs_falcon_oauth_token" | \
         curl -s -L -G "https://$(cs_cloud)/policy/combined/sensor-update/v2" \
              --data-urlencode "filter=platform_name:\"Linux\"+name.raw:\"$cs_policy_name\"" \
-             --header "authorization: Bearer $cs_falcon_oauth_token"
+             -H @-
     )
 
     if echo "$sensor_update_policy" | grep "authorization failed"; then
@@ -196,8 +197,8 @@ cs_sensor_download() {
     file_type=$(echo "$existing_installers" | json_value "file_type" "$INDEX" | sed 's/ *$//g' | sed 's/^ *//g')
 
     installer="${destination_dir}/falcon-sensor.${file_type}"
-    curl -s -L "https://$(cs_cloud)/sensors/entities/download-installer/v1?id=$sha" \
-         -H "Authorization: Bearer $cs_falcon_oauth_token" -o "$installer"
+
+    echo "Authorization: Bearer $cs_falcon_oauth_token" | curl -s -L "https://$(cs_cloud)/sensors/entities/download-installer/v1?id=$sha" -H @- -o "$installer"
     echo "$installer"
 }
 
