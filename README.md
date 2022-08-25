@@ -6,6 +6,7 @@ This repository contains different types of scripts to facilitate the use of the
 |:-|:-|
 | [Bash](bash) | Bash scripts for interacting with the CrowdStrike Falcon Sensor for Linux |
 | [PowerShell](powershell) | PowerShell scripts for interacting with the CrowdStrike Falcon Sensor for Windows |
+| [SystemD](systemd) | SystemD scripts for starting the CrowdStrike Falcon Container Linux Sensor |
 
 ## Contributing
 
