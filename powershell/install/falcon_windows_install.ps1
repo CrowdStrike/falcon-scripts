@@ -20,7 +20,7 @@ CrowdStrike Falcon OAuth2 API Client Id [Required]
 .PARAMETER FalconClientSecret
 CrowdStrike Falcon OAuth2 API Client Secret [Required]
 .PARAMETER MemberCid
-Member CID, used only in multi-CID ("Falcon Flight Control") configurations
+Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID.
 .PARAMETER SensorUpdatePolicyName
 Sensor Update Policy name to check for assigned sensor version ['platform_default' if left undefined]
 .PARAMETER InstallParams
@@ -302,7 +302,7 @@ process {
     $ApiClient["client_secret"] = $FalconClientSecret
 
     if ($MemberCid) {
-        $ApiClient["member_cid"] = $MemberCid
+        $ApiClient["&member_cid"] = $MemberCid
     }
 
     Invoke-FalconAuth $ApiClient
