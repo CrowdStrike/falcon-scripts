@@ -1,61 +1,121 @@
 #!/bin/bash
 : <<'#DESCRIPTION#'
 File: falcon-container-sensor-pull.sh
-Description: Bash script to pull Falcon DaemonSet & Container Sensor images from CrowdStrike Container Registry.
+Description: Bash script to copy Falcon DaemonSet & Container Sensor images from CrowdStrike Container Registry.
 #DESCRIPTION#
 
-usage() 
+set -e
+
+usage()
 {
-    echo "usage: 
-$0 \\
-    -f | --cid <FALCONCID> \\
-    -u | --clientid <FALCONCLIENTID> \\
-    -s | --clientsecret <FALCONCLIENTSECRET> \\
-    -r | --region <FALCONREGION> \\
-    -n | --node (OPTIONAL FLAG) tells script to download node sensor instead of container sensor \\
-    -g | --gov (OPTIONAL FLAG) tells the script to use Gov Cloud endpoints
-    -h | --help display this help message"
+    echo "usage: $0
+
+Required Flags:
+    -u, --client-id <FALCON_CLIENT_ID>             Falcon API OAUTH Client ID
+    -s, --client-secret <FALCON_CLIENT_SECRET>     Falcon API OAUTH Client Secret
+
+Optional Flags:
+    -f, --cid <FALCON_CID>            Falcon Customer ID
+    -r, --region <FALCON_REGION>      Falcon Cloud
+    -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
+    -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
+
+    -n, --node          download node sensor instead of container sensor
+    --runtime           use a different container runtime [docker, podman, skopeo]. Default is docker.
+    --dump-credentials  print registry credentials to stdout to copy/paste into container tools.
+
+Help Options:
+    -h, --help display this help message"
     exit 2
 }
 
-while (( "$#" )); do
+die() {
+    echo "Fatal error: $*" >&2
+    exit 1
+}
+
+cs_container() {
+    case "${CONTAINER_TOOL}" in
+        skopeo)      echo "skopeo";;
+        podman)      echo "podman";;
+        docker)      echo "docker";;
+        *)           die "Unrecognized option: ${CONTAINER_TOOL}";;
+    esac
+}
+
+cs_cloud() {
+    case "${FALCON_CLOUD}" in
+        us-1)      echo "api.crowdstrike.com";;
+        us-2)      echo "api.us-2.crowdstrike.com";;
+        eu-1)      echo "api.eu-1.crowdstrike.com";;
+        us-gov-1)  echo "api.laggar.gcw.crowdstrike.com";;
+        *)         die "Unrecognized option: ${FALCON_CLOUD}";;
+    esac
+}
+
+json_value() {
+    KEY=$1
+    num=$2
+    awk -F"[,:}]" '{for(i=1;i<=NF;i++){if($i~/'"$KEY"'\042/){print $(i+1)}}}' | tr -d '"' | sed -n "${num}p"
+}
+
+
+while [ $# != 0 ]; do
 case "$1" in
-    -u|--clientid)
-    if [[ -n ${2:-} ]] ; then
-        CS_CLIENT_ID="$2"
+    -u|--client-id)
+    if [ -n "${2:-}" ] ; then
+        FALCON_CLIENT_ID="${2}"
         shift
     fi
     ;;
-    -s|--clientsecret)
-    if [[ -n ${2:-} ]]; then
-        CS_CLIENT_SECRET="$2"
+    -s|--client-secret)
+    if [ -n "${2:-}" ]; then
+        FALCON_CLIENT_SECRET="${2}"
         shift
     fi
     ;;
     -r|--region)
-    if [[ -n ${2:-} ]]; then
-        CS_REGION="$2"
+    if [ -n "${2:-}" ]; then
+        FALCON_CLOUD="${2}"
         shift
     fi
     ;;
     -f|--cid)
-    if [[ -n ${2:-} ]]; then
-        CID="$2"
+    if [ -n "${2:-}" ]; then
+        FALCON_CID="${2}"
         shift
     fi
     ;;
-    -n|--node)
-    if [[ -n ${1} ]]; then
-        NODE=true
+    -c|--copy)
+    if [ -n "${2}" ]; then
+        COPY="${2}"
+        shift
     fi
     ;;
-    -g|--gov)
-    if [[ -n ${1} ]]; then
-        GOV=true
+    -v|--version)
+    if [ -n "${2:-}" ]; then
+        SENSOR_VERSION="${2}"
+        shift
+    fi
+    ;;
+    --runtime)
+    if [ -n "${2}" ]; then
+        CONTAINER_TOOL="${2}"
+        shift
+    fi
+    ;;
+    --dump-credentials)
+    if [ -n "${1}" ]; then
+        CREDS=true
+    fi
+    ;;
+    -n|--node)
+    if [ -n "${1}" ]; then
+        SENSORTYPE="falcon-sensor"
     fi
     ;;
     -h|--help)
-    if [[ -n ${1} ]]; then
+    if [ -n "${1}" ]; then
         usage
     fi
     ;;
@@ -64,7 +124,7 @@ case "$1" in
     break
     ;;
     -*) # unsupported flags
-    >&2 echo "ERROR: Unsupported flag: '$1'"
+    >&2 echo "ERROR: Unsupported flag: '${1}'"
     usage
     exit 1
     ;;
@@ -72,64 +132,121 @@ esac
 shift
 done
 
+# shellcheck disable=SC2086
+FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
+# shellcheck disable=SC2086
+CONTAINER_TOOL=$(echo ${CONTAINER_TOOL:-docker} | tr '[:upper:]' '[:lower:]')
+# shellcheck disable=SC2005,SC2001
+cs_registry=$(echo "$(cs_cloud)" | tr '[:upper:]' '[:lower:]' | sed 's/api/registry/g')
+FALCON_CID=$(echo "${FALCON_CID}" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]')
+SENSOR_VERSION=$(echo "$SENSOR_VERSION" | tr '[:upper:]' '[:lower:]')
+COPY=$(echo "$COPY" | tr '[:upper:]' '[:lower:]')
+
+#Check if user wants to download DaemonSet Node Sensor
+if [ -z "$SENSORTYPE" ]; then
+    SENSORTYPE="falcon-container"
+fi
+
 #Check all mandatory variables set
-VARIABLES=(CID CS_CLIENT_ID CS_CLIENT_SECRET)
+VARIABLES="FALCON_CLIENT_ID FALCON_CLIENT_SECRET"
 {
-    for VAR_NAME in "${VARIABLES[@]}"; do
-        [ -z "${!VAR_NAME}" ] && echo "$VAR_NAME is unset refer to help to set" && VAR_UNSET=true
+    for VAR_NAME in $VARIABLES; do
+        [ -z "$(eval "echo \"\$$VAR_NAME\"")" ] && echo "$VAR_NAME is not configured!" && VAR_UNSET=true
     done
         [ -n "$VAR_UNSET" ] && usage
 }
 
-#Check if GOVCLOUD flag setup regions
-if [[ $GOV = true ]]; then
-    echo "GovCloud flag set, using govcloud endpoints"
-    REGION="govcloud"
-    API="api.laggar.gcw"
-    REGISTRY="registry.laggar.gcw"
-    echo "Using Falcon API endpoint of ${API}.crowdstrike.com and Registry endpoint of ${REGISTRY}.crowdstrike.com"
-elif [[ -z "${CS_REGION}" ]] || [[ "${CS_REGION}" = "US-1" ]] || [[ "${CS_REGION}" = "us-1" ]]; then
-    REGION="us-1"
-    API="api"
-    REGISTRY="registry"
-    echo "Using Falcon API endpoint of ${API}.crowdstrike.com and Registry endpoint of ${REGISTRY}.crowdstrike.com"
+if ! command -v "$CONTAINER_TOOL" > /dev/null 2>&1; then
+    echo "The '$CONTAINER_TOOL' command is missing or invalid. Please install it before continuing. Aborting..."
+    exit 2
 else
-    REGION=$(echo "${CS_REGION}" | tr '[:upper:]' '[:lower:]') #Convert to lowercase if user entered as UPPERCASE
-    API="api.${REGION}"
-    REGISTRY="registry"
-    echo "Using Falcon API endpoint of ${API}.crowdstrike.com and Registry endpoint of ${REGISTRY}.crowdstrike.com"
+    CONTAINER_TOOL=$(command -v "$CONTAINER_TOOL")
 fi
 
-#Convert CID to lowercase and remove checksum if present
-CIDLOWER=$(echo "${CID}" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]')
+echo "Using the following settings:"
+echo "Falcon Region:   $(cs_cloud)"
+echo "Falcon Registry: ${cs_registry}"
 
-#Get Bearer token to use with registry credentials api endpoint
-BEARER=$(curl \
---data "client_id=${CS_CLIENT_ID}&client_secret=${CS_CLIENT_SECRET}" \
---request POST \
---silent \
-https://"${API}".crowdstrike.com/oauth2/token | jq -r '.access_token')
+
+response_headers=$(mktemp)
+
+cs_falcon_oauth_token=$(
+    if ! command -v curl > /dev/null 2>&1; then
+        die "The 'curl' command is missing. Please install it before continuing. Aborting..."
+    fi
+
+    token_result=$(echo "client_id=$FALCON_CLIENT_ID&client_secret=$FALCON_CLIENT_SECRET" | \
+                   curl -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
+                       -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
+                       --dump-header "$response_headers" \
+                       --data @-)
+    token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
+    if [ -z "$token" ]; then
+        die "Unable to obtain CrowdStrike Falcon OAuth Token. Response was $token_result"
+    fi
+    echo "$token"
+)
+
+region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
+rm "${response_headers}"
+
+if [ -z "${FALCON_CLOUD}" ]; then
+    if [ -z "${region_hint}" ]; then
+        die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
+    fi
+    FALCON_CLOUD="${region_hint}"
+else
+    if [ "x${FALCON_CLOUD}" != "x${region_hint}" ]; then
+        echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
+    fi
+fi
+
+cs_falcon_cid=$(
+    if [ -n "$FALCON_CID" ]; then
+        echo "$FALCON_CID" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]'
+    else
+        cs_target_cid=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" -H @-)
+        echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}' | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]'
+    fi
+)
 
 #Set Docker token using the BEARER token captured earlier
-ART_PASSWORD=$(curl -s -X GET -H "authorization: Bearer ${BEARER}" \
-https://"${API}".crowdstrike.com/container-security/entities/image-registry-credentials/v1 | \
-jq -r '.resources[].token')
+ART_PASSWORD=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L \
+"https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" -H @- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
 
-#Set docker login
-docker login --username  "fc-${CIDLOWER}" --password "${ART_PASSWORD}" $REGISTRY.crowdstrike.com
+#Set container login
+echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin
 
-#Check if user wants to download DaemonSet Node Sensor
-if [[ $NODE = true ]]; then
-    SENSORTYPE="falcon-sensor"
-else
-    SENSORTYPE="falcon-container"
+#Get latest sensor version
+case "${CONTAINER_TOOL}" in
+        *podman)
+        LATESTSENSOR=$($CONTAINER_TOOL image search --list-tags "$cs_registry/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor" | grep "$SENSOR_VERSION" | tail -1 | cut -d" " -f3);;
+        *docker)
+        REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+	LATESTSENSOR=$(echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "authorization: Bearer ${REGISTRYBEARER}" "https://$cs_registry/v2/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor/tags/list" -H @- | sed 's/ /\n/g' | grep "$SENSOR_VERSION" | sed -e 's/[" },]*\|]//g' -e '/^[[:space:]]*$/d' | tail -1);;
+        *skopeo)
+        LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor" | grep "$SENSOR_VERSION" | sed -e 's/[" }\]]*//g' -e "s/,//g" -e '/^[[:space:]]*$/d' | tail -1) ;;
+        *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
+esac
+
+if [ "$CREDS" ] ; then
+    echo "CS Registry Username: fc-${cs_falcon_cid}"
+    echo "CS Registry Password: ${ART_PASSWORD}"
+    exit 0
 fi
 
-#Get BEARER token for Registry
-REGISTRYBEARER=$(curl -X GET -s -u "fc-${CIDLOWER}:${ART_PASSWORD}" "https://$REGISTRY.crowdstrike.com/v2/token?=fc-${CIDLOWER}&scope=repository:$SENSORTYPE/$REGION/release/falcon-sensor:pull&service=registry.crowdstrike.com" | jq -r '.token')
-#Get latest sensor version
-LATESTSENSOR=$(curl -X GET -s -H "authorization: Bearer ${REGISTRYBEARER}" "https://$REGISTRY.crowdstrike.com/v2/$SENSORTYPE/$REGION/release/falcon-sensor/tags/list" | jq -r '.tags[-1]') 
 #Construct full image path
-FULLIMAGEPATH="$REGISTRY.crowdstrike.com/$SENSORTYPE/${REGION}/release/falcon-sensor:${LATESTSENSOR}"
-#Pull the container image locally
-docker pull "${FULLIMAGEPATH}"
+FULLIMAGEPATH="$cs_registry/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor:${LATESTSENSOR}"
+
+if grep -qw "skopeo" "$CONTAINER_TOOL" ; then
+    "$CONTAINER_TOOL" copy "docker://$FULLIMAGEPATH" "docker://$COPY/falcon-sensor:$LATESTSENSOR"
+else
+    #Pull the container image locally
+    "$CONTAINER_TOOL" pull "$FULLIMAGEPATH"
+
+    # For those that don't want to use skopeo to copy
+    if [ -n "$COPY" ]; then
+        "$CONTAINER_TOOL" tag "$FULLIMAGEPATH" "$COPY/falcon-sensor:$LATESTSENSOR"
+        "$CONTAINER_TOOL" push "$COPY/falcon-sensor:$LATESTSENSOR"
+    fi
+fi
