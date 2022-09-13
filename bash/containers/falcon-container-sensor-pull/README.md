@@ -6,7 +6,7 @@ Bash script to pull latest Falcon Container or Node Kernel Mode DaemonSet Sensor
 - Script requires the following commands to be installed:
   - `curl`
   - `docker`, `podman`, or `skopeo`
-- CrowdStrike API Client created with `Falcon Images Download` scope assigned.
+- CrowdStrike API Client created with `Falcon Images Download (read)` AND `Sensor Download (read)` scope assigned.
 - If you are using docker, make sure that docker is running locally.
 
 ## Usage:
