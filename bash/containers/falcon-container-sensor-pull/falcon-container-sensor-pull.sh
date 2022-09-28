@@ -138,12 +138,9 @@ FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
 CONTAINER_TOOL=$(echo ${CONTAINER_TOOL:-docker} | tr '[:upper:]' '[:lower:]')
 # shellcheck disable=SC2005,SC2001
 cs_registry="registry.crowdstrike.com"
-<<<<<<< HEAD
-=======
 if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
     cs_registry="registry.laggar.gcw"
 fi
->>>>>>> 83cf7e8 (Add support for GOV cloud registry)
 FALCON_CID=$(echo "${FALCON_CID}" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]')
 SENSOR_VERSION=$(echo "$SENSOR_VERSION" | tr '[:upper:]' '[:lower:]')
 COPY=$(echo "$COPY" | tr '[:upper:]' '[:lower:]')
