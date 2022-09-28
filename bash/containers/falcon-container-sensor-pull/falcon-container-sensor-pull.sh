@@ -223,7 +223,7 @@ case "${CONTAINER_TOOL}" in
         LATESTSENSOR=$($CONTAINER_TOOL image search --list-tags "$cs_registry/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor" | grep "$SENSOR_VERSION" | tail -1 | cut -d" " -f3);;
         *docker)
         REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-	LATESTSENSOR=$(echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "authorization: Bearer ${REGISTRYBEARER}" "https://$cs_registry/v2/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor/tags/list" -H @- | sed 's/ /\n/g' | grep "$SENSOR_VERSION" | sed -e 's/[" },]*\|]//g' -e '/^[[:space:]]*$/d' | tail -1);;
+	LATESTSENSOR=$(echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor/tags/list" -H @- | sed 's/ /\n/g' | grep "$SENSOR_VERSION" | sed -e 's/[" },]*\|]//g' -e '/^[[:space:]]*$/d' | tail -1);;
         *skopeo)
         LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor" | grep "$SENSOR_VERSION" | sed -e 's/[" }\]]*//g' -e "s/,//g" -e '/^[[:space:]]*$/d' | tail -1) ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
