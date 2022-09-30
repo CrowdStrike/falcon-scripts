@@ -134,6 +134,7 @@ done
 
 # shellcheck disable=SC2086
 FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
+
 # shellcheck disable=SC2086
 CONTAINER_TOOL=$(echo ${CONTAINER_TOOL:-docker} | tr '[:upper:]' '[:lower:]')
 # shellcheck disable=SC2005,SC2001
@@ -166,13 +167,12 @@ else
     CONTAINER_TOOL=$(command -v "$CONTAINER_TOOL")
 fi
 
-echo "Using the following settings:"
-echo "Falcon Region:   $(cs_cloud)"
-echo "Falcon Registry: ${cs_registry}"
-
+if grep -qw "skopeo" "$CONTAINER_TOOL" && [ -z "${COPY}" ] ; then
+    echo "-c, --copy <REGISTRY/NAMESPACE> must also be set when using skopeo as a runtime"
+    exit 1
+fi
 
 response_headers=$(mktemp)
-
 cs_falcon_oauth_token=$(
     if ! command -v curl > /dev/null 2>&1; then
         die "The 'curl' command is missing. Please install it before continuing. Aborting..."
@@ -193,15 +193,11 @@ cs_falcon_oauth_token=$(
 region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
 rm "${response_headers}"
 
-if [ -z "${FALCON_CLOUD}" ]; then
+if [ "x${FALCON_CLOUD}" != "x${region_hint}" ]; then
     if [ -z "${region_hint}" ]; then
         die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
     fi
     FALCON_CLOUD="${region_hint}"
-else
-    if [ "x${FALCON_CLOUD}" != "x${region_hint}" ]; then
-        echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
-    fi
 fi
 
 cs_falcon_cid=$(
@@ -212,6 +208,10 @@ cs_falcon_cid=$(
         echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}' | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]'
     fi
 )
+
+echo "Using the following settings:"
+echo "Falcon Region:   $(cs_cloud)"
+echo "Falcon Registry: ${cs_registry}"
 
 #Set Docker token using the BEARER token captured earlier
 ART_PASSWORD=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L \
@@ -226,9 +226,9 @@ case "${CONTAINER_TOOL}" in
         LATESTSENSOR=$($CONTAINER_TOOL image search --list-tags "$cs_registry/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor" | grep "$SENSOR_VERSION" | tail -1 | cut -d" " -f3);;
         *docker)
         REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-	LATESTSENSOR=$(echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor/tags/list" -H @- | sed 's/ /\n/g' | grep "$SENSOR_VERSION" | sed -e 's/[" },]*\|]//g' -e '/^[[:space:]]*$/d' | tail -1);;
+        LATESTSENSOR=$(echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor/tags/list" -H @- | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
         *skopeo)
-        LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor" | grep "$SENSOR_VERSION" | sed -e 's/[" }\]]*//g' -e "s/,//g" -e '/^[[:space:]]*$/d' | tail -1) ;;
+        LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor" | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1) ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
 esac
 
