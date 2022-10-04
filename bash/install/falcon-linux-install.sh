@@ -141,7 +141,7 @@ cs_sensor_download() {
     existing_installers=$(
         echo "Authorization: Bearer $cs_falcon_oauth_token" | \
         curl -s -L -G "https://$(cs_cloud)/sensors/combined/installers/v1" \
-             --data-urlencode "filter=os:\"$cs_os_name\"$cs_api_version_filter" \
+             --data-urlencode "filter=os:\"$cs_os_name\"$cs_api_version_filter$cs_os_arch_filter" \
              -H @-
     )
 
@@ -220,31 +220,13 @@ os_install_package() {
             rpm -ivh --nodeps "$pkg"
         fi
     }
-
+    # shellcheck disable=SC2221,SC2222
     case "${os_name}" in
-        Amazon)
-            rpm_install_package "$pkg"
-            ;;
-        CentOS)
+        Amazon|CentOS|Oracle|RHEL|Rocky|AlmaLinux|SLES)
             rpm_install_package "$pkg"
             ;;
         Debian)
             DEBIAN_FRONTEND=noninteractive apt-get -qq install -y "$pkg" > /dev/null
-            ;;
-        Oracle)
-            rpm_install_package "$pkg"
-            ;;
-        RHEL)
-            rpm_install_package "$pkg"
-            ;;
-        Rocky)
-            rpm_install_package "$pkg"
-            ;;
-        AlmaLinux)
-            rpm_install_package "$pkg"
-            ;;
-        SLES)
-            rpm_install_package "$pkg"
             ;;
         Ubuntu)
             DEBIAN_FRONTEND=noninteractive apt-get -qq install -y "$pkg" > /dev/null
@@ -432,17 +414,20 @@ os_version=$(
 
 cs_os_name=$(
     # returns OS name as recognised by CrowdStrike Falcon API
+    # shellcheck disable=SC2221,SC2222
     case "${os_name}" in
-        Amazon)  echo "Amazon Linux";;
-        CentOS)  echo "RHEL/CentOS/Oracle";;
-        Debian)  echo "Debian";;
-        Oracle)  echo "RHEL/CentOS/Oracle";;
-        RHEL)    echo "RHEL/CentOS/Oracle";;
-        Rocky)   echo "RHEL/CentOS/Oracle";;
-        AlmaLinux)  echo "RHEL/CentOS/Oracle";;
-        SLES)    echo "SLES";;
-        Ubuntu)  echo "Ubuntu";;
-        *)       die "Unrecognized OS: ${os_name}";;
+        Amazon)
+            echo "Amazon Linux";;
+        CentOS|Debian|Oracle|RHEL|Rocky|AlmaLinux)
+            echo "RHEL/CentOS/Oracle";;
+        Debian)
+            echo "Debian";;
+        SLES)
+            echo "SLES";;
+        Ubuntu)
+            echo "Ubuntu";;
+        *)
+            die "Unrecognized OS: ${os_name}";;
     esac
 )
 
@@ -450,11 +435,17 @@ cs_os_arch=$(
     uname -m
 )
 
+cs_os_arch_filter=$(
+    if [ "$cs_os_arch" = "x86_64" ]; then
+        echo "+os_version:!~\"arm64\""
+    else
+        echo "+os_version:~\"arm64\""
+    fi
+)
+
 cs_os_version=$(
     version=$(echo "$os_version" | awk -F'.' '{print $1}')
-    if [ "$cs_os_arch" = "aarch64" ] ; then
-        echo "$os_version - arm64"
-    elif [ "$os_name" = "Amazon" ] && [ "$version" -ge 2017 ] ; then
+    if [ "$os_name" = "Amazon" ] && [ "$version" -ge 2017 ] ; then
         echo "1"
     else
         echo "$version"
