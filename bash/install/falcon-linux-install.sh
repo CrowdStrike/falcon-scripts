@@ -220,7 +220,7 @@ os_install_package() {
             rpm -ivh --nodeps "$pkg"
         fi
     }
-
+    # shellcheck disable=SC2221,SC2222
     case "${os_name}" in
         Amazon|CentOS|Oracle|RHEL|Rocky|AlmaLinux|SLES)
             rpm_install_package "$pkg"
@@ -414,6 +414,7 @@ os_version=$(
 
 cs_os_name=$(
     # returns OS name as recognised by CrowdStrike Falcon API
+    # shellcheck disable=SC2221,SC2222
     case "${os_name}" in
         Amazon)
             echo "Amazon Linux";;
