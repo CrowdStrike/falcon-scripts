@@ -445,7 +445,9 @@ cs_os_arch_filter=$(
 
 cs_os_version=$(
     version=$(echo "$os_version" | awk -F'.' '{print $1}')
-    if [ "$os_name" = "Amazon" ] && [ "$version" -ge 2017 ] ; then
+    if [ "$cs_os_arch" = "aarch64" ] ; then
+        echo "$os_version - arm64"
+    elif [ "$os_name" = "Amazon" ] && [ "$version" -ge 2017 ] ; then
         echo "1"
     else
         echo "$version"
