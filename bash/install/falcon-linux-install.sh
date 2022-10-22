@@ -88,10 +88,9 @@ cs_sensor_policy_version() {
     cs_policy_name="$1"
 
     sensor_update_policy=$(
-        echo "Authorization: Bearer $cs_falcon_oauth_token" | \
         curl -s -L -G "https://$(cs_cloud)/policy/combined/sensor-update/v2" \
              --data-urlencode "filter=platform_name:\"Linux\"+name.raw:\"$cs_policy_name\"" \
-             -H @-
+             -H "Authorization: Bearer ${cs_falcon_oauth_token}"
     )
 
     if echo "$sensor_update_policy" | grep "authorization failed"; then
@@ -139,10 +138,9 @@ cs_sensor_download() {
     fi
 
     existing_installers=$(
-        echo "Authorization: Bearer $cs_falcon_oauth_token" | \
         curl -s -L -G "https://$(cs_cloud)/sensors/combined/installers/v1" \
              --data-urlencode "filter=os:\"$cs_os_name\"$cs_api_version_filter$cs_os_arch_filter" \
-             -H @-
+             -H "Authorization: Bearer ${cs_falcon_oauth_token}"
     )
 
     if echo "$existing_installers" | grep "authorization failed"; then
@@ -198,7 +196,7 @@ cs_sensor_download() {
 
     installer="${destination_dir}/falcon-sensor.${file_type}"
 
-    echo "Authorization: Bearer $cs_falcon_oauth_token" | curl -s -L "https://$(cs_cloud)/sensors/entities/download-installer/v1?id=$sha" -H @- -o "$installer"
+    curl -s -L "https://$(cs_cloud)/sensors/entities/download-installer/v1?id=$sha" -H "Authorization: Bearer ${cs_falcon_oauth_token}" -o "$installer"
     echo "$installer"
 }
 
@@ -562,8 +560,10 @@ cs_falcon_cid=$(
     if [ -n "$FALCON_CID" ]; then
         echo "$FALCON_CID"
     else
-        cs_target_cid=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" -H @-)
-
+        cs_target_cid=$(curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" -H "authorization: Bearer ${cs_falcon_oauth_token}")
+        if [ -z "$cs_target_cid" ]; then
+            die "Unable to obtain CrowdStrike Falcon CID. Response was $cs_target_cid"
+        fi
         echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}'
     fi
 )
