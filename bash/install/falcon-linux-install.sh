@@ -418,7 +418,7 @@ cs_os_name=$(
     case "${os_name}" in
         Amazon)
             echo "Amazon Linux";;
-        CentOS|Debian|Oracle|RHEL|Rocky|AlmaLinux)
+        CentOS|Oracle|RHEL|Rocky|AlmaLinux)
             echo "RHEL/CentOS/Oracle";;
         Debian)
             echo "Debian";;
