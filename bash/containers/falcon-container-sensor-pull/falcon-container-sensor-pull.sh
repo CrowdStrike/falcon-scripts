@@ -140,7 +140,7 @@ CONTAINER_TOOL=$(echo ${CONTAINER_TOOL:-docker} | tr '[:upper:]' '[:lower:]')
 # shellcheck disable=SC2005,SC2001
 cs_registry="registry.crowdstrike.com"
 if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
-    cs_registry="registry.laggar.gcw"
+    cs_registry="registry.laggar.gcw.crowdstrike.com"
 fi
 FALCON_CID=$(echo "${FALCON_CID}" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]')
 SENSOR_VERSION=$(echo "$SENSOR_VERSION" | tr '[:upper:]' '[:lower:]')
@@ -193,7 +193,7 @@ cs_falcon_oauth_token=$(
 region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
 rm "${response_headers}"
 
-if [ "x${FALCON_CLOUD}" != "x${region_hint}" ]; then
+if [ "x${FALCON_CLOUD}" != "x${region_hint}" ] && [ "${region_hint}" != "" ]; then
     if [ -z "${region_hint}" ]; then
         die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
     fi
