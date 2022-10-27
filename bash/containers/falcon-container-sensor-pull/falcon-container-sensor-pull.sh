@@ -213,7 +213,7 @@ cs_falcon_cid=$(
     if [ -n "$FALCON_CID" ]; then
         echo "$FALCON_CID" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]'
     else
-        cs_target_cid=$(curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" -H "authorization: Bearer $cs_falcon_oauth_token")
+        cs_target_cid=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" -H @-)
         echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}' | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]'
     fi
 )
@@ -223,8 +223,8 @@ echo "Falcon Region:   $(cs_cloud)"
 echo "Falcon Registry: ${cs_registry}"
 
 #Set Docker token using the BEARER token captured earlier
-ART_PASSWORD=$(curl -s -L "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" \
-               -H "authorization: Bearer $cs_falcon_oauth_token" | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+ART_PASSWORD=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L \
+"https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" -H @- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
 
 #Set container login
 echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin

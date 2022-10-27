@@ -194,7 +194,7 @@ cs_sensor_download() {
 
     installer="${destination_dir}/falcon-sensor.${file_type}"
 
-    curl_command "https://$(cs_cloud)/sensors/entities/download-installer/v1?id=$sha" -o ${installer}
+    curl_command "https://$(cs_cloud)/sensors/entities/download-installer/v1?id=$sha" -o "${installer}"
     echo "$installer"
 }
 
@@ -365,7 +365,7 @@ cs_cloud() {
 # Check for old version of curl that doesn't support -H @-
 old_curl=$(
     # we convert curl's version string to a number by removing the dots and test to see if it's less than version 7.55.0
-    test $(curl --version | head -n 1 | awk '{ print $2 }' | tr -d '.') -lt 7550 && echo 0 || echo 1
+    test "$(curl --version | head -n 1 | awk '{ print $2 }' | tr -d '.')" -lt 7550 && echo 0 || echo 1
 )
 
 # Use correct header for curl depending on version
@@ -373,9 +373,9 @@ curl_command() {
     # get args passed to function
     args=("$@")
     if [ "$old_curl" -eq 0 ]; then
-        curl -s -L -H "Authorization: Bearer ${cs_falcon_oauth_token}" ${args[@]}
+        curl -s -L -H "Authorization: Bearer ${cs_falcon_oauth_token}" "${args[@]}"
     else
-        echo "Authorization: Bearer ${cs_falcon_oauth_token}" | curl -s -L -H @- ${args[@]}
+        echo "Authorization: Bearer ${cs_falcon_oauth_token}" | curl -s -L -H @- "${args[@]}"
     fi
 }
 
