@@ -88,9 +88,8 @@ cs_sensor_policy_version() {
     cs_policy_name="$1"
 
     sensor_update_policy=$(
-        curl -s -L -G "https://$(cs_cloud)/policy/combined/sensor-update/v2" \
-             --data-urlencode "filter=platform_name:\"Linux\"+name.raw:\"$cs_policy_name\"" \
-             -H "Authorization: Bearer ${cs_falcon_oauth_token}"
+        curl_command -G "https://$(cs_cloud)/policy/combined/sensor-update/v2" \
+             --data-urlencode "filter=platform_name:\"Linux\"+name.raw:\"$cs_policy_name\""
     )
 
     if echo "$sensor_update_policy" | grep "authorization failed"; then
@@ -138,9 +137,8 @@ cs_sensor_download() {
     fi
 
     existing_installers=$(
-        curl -s -L -G "https://$(cs_cloud)/sensors/combined/installers/v1" \
-             --data-urlencode "filter=os:\"$cs_os_name\"$cs_api_version_filter$cs_os_arch_filter" \
-             -H "Authorization: Bearer ${cs_falcon_oauth_token}"
+        curl_command -G "https://$(cs_cloud)/sensors/combined/installers/v1" \
+             --data-urlencode "filter=os:\"$cs_os_name\"$cs_api_version_filter$cs_os_arch_filter"
     )
 
     if echo "$existing_installers" | grep "authorization failed"; then
@@ -196,7 +194,7 @@ cs_sensor_download() {
 
     installer="${destination_dir}/falcon-sensor.${file_type}"
 
-    curl -s -L "https://$(cs_cloud)/sensors/entities/download-installer/v1?id=$sha" -H "Authorization: Bearer ${cs_falcon_oauth_token}" -o "$installer"
+    curl_command "https://$(cs_cloud)/sensors/entities/download-installer/v1?id=$sha" -o ${installer}
     echo "$installer"
 }
 
@@ -362,6 +360,23 @@ cs_cloud() {
         us-gov-1)  echo "api.laggar.gcw.crowdstrike.com";;
         *)         die "Unrecognized Falcon Cloud: ${cs_falcon_cloud}";;
     esac
+}
+
+# Check for old version of curl that doesn't support -H @-
+old_curl=$(
+    # we convert curl's version string to a number by removing the dots and test to see if it's less than version 7.55.0
+    test $(curl --version | head -n 1 | awk '{ print $2 }' | tr -d '.') -lt 7550 && echo 0 || echo 1
+)
+
+# Use correct header for curl depending on version
+curl_command() {
+    # get args passed to function
+    args=("$@")
+    if [ "$old_curl" -eq 0 ]; then
+        curl -s -L -H "Authorization: Bearer ${cs_falcon_oauth_token}" ${args[@]}
+    else
+        echo "Authorization: Bearer ${cs_falcon_oauth_token}" | curl -s -L -H @- ${args[@]}
+    fi
 }
 
 # shellcheck disable=SC2034
@@ -560,7 +575,7 @@ cs_falcon_cid=$(
     if [ -n "$FALCON_CID" ]; then
         echo "$FALCON_CID"
     else
-        cs_target_cid=$(curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" -H "authorization: Bearer ${cs_falcon_oauth_token}")
+        cs_target_cid=$(curl_command "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
         if [ -z "$cs_target_cid" ]; then
             die "Unable to obtain CrowdStrike Falcon CID. Response was $cs_target_cid"
         fi
