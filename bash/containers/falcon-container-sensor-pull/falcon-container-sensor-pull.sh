@@ -200,6 +200,15 @@ if [ "x${FALCON_CLOUD}" != "x${region_hint}" ] && [ "${region_hint}" != "" ]; th
     FALCON_CLOUD="${region_hint}"
 fi
 
+registry_opts=$(
+    # Account for govcloud api mismatch
+    if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
+        echo "$SENSORTYPE/govcloud"
+    else
+        echo "$SENSORTYPE/$FALCON_CLOUD"
+    fi
+)
+
 cs_falcon_cid=$(
     if [ -n "$FALCON_CID" ]; then
         echo "$FALCON_CID" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]'
@@ -223,12 +232,12 @@ echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$
 #Get latest sensor version
 case "${CONTAINER_TOOL}" in
         *podman)
-        LATESTSENSOR=$($CONTAINER_TOOL image search --list-tags "$cs_registry/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor" | grep "$SENSOR_VERSION" | tail -1 | cut -d" " -f3);;
+        LATESTSENSOR=$($CONTAINER_TOOL image search --list-tags "$cs_registry/$registry_opts/release/falcon-sensor" | grep "$SENSOR_VERSION" | tail -1 | cut -d" " -f3);;
         *docker)
-        REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-        LATESTSENSOR=$(echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor/tags/list" -H @- | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
+        REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$registry_opts/release/falcon-sensor:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+        LATESTSENSOR=$(echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$registry_opts/release/falcon-sensor/tags/list" -H @- | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
         *skopeo)
-        LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor" | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1) ;;
+        LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$registry_opts/release/falcon-sensor" | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1) ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
 esac
 
@@ -239,7 +248,7 @@ if [ "$CREDS" ] ; then
 fi
 
 #Construct full image path
-FULLIMAGEPATH="$cs_registry/$SENSORTYPE/$FALCON_CLOUD/release/falcon-sensor:${LATESTSENSOR}"
+FULLIMAGEPATH="$cs_registry/$registry_opts/release/falcon-sensor:${LATESTSENSOR}"
 
 if grep -qw "skopeo" "$CONTAINER_TOOL" ; then
     "$CONTAINER_TOOL" copy "docker://$FULLIMAGEPATH" "docker://$COPY/falcon-sensor:$LATESTSENSOR"
