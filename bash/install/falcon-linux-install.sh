@@ -368,14 +368,13 @@ old_curl=$(
     test "$(curl --version | head -n 1 | awk '{ print $2 }' | tr -d '.')" -lt 7550 && echo 0 || echo 1
 )
 
-# Use correct header for curl depending on version
 curl_command() {
-    # get args passed to function
-    args=("$@")
+    # Dash does not support arrays, so we have to pass the args as separate arguments
+    set -- "$@"
     if [ "$old_curl" -eq 0 ]; then
-        curl -s -L -H "Authorization: Bearer ${cs_falcon_oauth_token}" "${args[@]}"
+        curl -s -L -H "Authorization: Bearer ${cs_falcon_oauth_token}" "$@"
     else
-        echo "Authorization: Bearer ${cs_falcon_oauth_token}" | curl -s -L -H @- "${args[@]}"
+        echo "Authorization: Bearer ${cs_falcon_oauth_token}" | curl -s -L -H @- "$@"
     fi
 }
 
