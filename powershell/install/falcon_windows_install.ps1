@@ -12,7 +12,7 @@ the parameter descriptions.
 
 The script must be run as an administrator on the local machine in order for the Falcon Sensor installation
 to complete, and the OAuth2 API Client being used requires 'sensor-update-policies:read' and
-'sensor-installers:read' permissions.
+'sensor-download:read' permissions.
 .PARAMETER FalconCloud
 CrowdStrike Falcon OAuth2 API Hostname ['https://api.crowdstrike.com' if left undefined]
 .PARAMETER FalconClientId
