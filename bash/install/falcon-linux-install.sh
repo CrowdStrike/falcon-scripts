@@ -16,6 +16,7 @@ Optional:
     - FALCON_PROVISIONING_TOKEN         (default: unset)
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
     - FALCON_UNINSTALL                  (default: false)
+    - FALCON_INSTALL_ONLY               (default: false)
 EOF
 }
 
@@ -25,8 +26,11 @@ main() {
         exit 1
     fi
     echo -n 'Falcon Sensor Install  ... '; cs_sensor_install;  echo '[ Ok ]'
-    echo -n 'Falcon Sensor Register ... '; cs_sensor_register; echo '[ Ok ]'
-    echo -n 'Falcon Sensor Restart  ... '; cs_sensor_restart;  echo '[ Ok ]'
+    # Run if FALCON_INSTALL_ONLY is not set
+    if [ -z "$FALCON_INSTALL_ONLY" ]; then
+        echo -n 'Falcon Sensor Register ... '; cs_sensor_register; echo '[ Ok ]'
+        echo -n 'Falcon Sensor Restart  ... '; cs_sensor_restart;  echo '[ Ok ]'
+    fi
     echo 'Falcon Sensor installed successfully.'
 }
 
