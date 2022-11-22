@@ -1,6 +1,9 @@
 # Falcon Linux Bash Installation Script
 
-Bash script to install Falcon Sensor through the Falcon APIs on a Linux endpoint.
+Bash script to install Falcon Sensor through the Falcon APIs on a Linux endpoint. By default,
+this script will install, register the sensor, and start the service. If you would like to simply
+install the sensor without any additional configurations, configure the `FALCON_INSTALL_ONLY`
+environment variable.
 
 ## Configuration
 
@@ -10,7 +13,7 @@ Bash script to install Falcon Sensor through the Falcon APIs on a Linux endpoint
   - or https://falcon.us-2.crowdstrike.com/support/api-clients-and-keys
   - or https://falcon.eu-1.crowdstrike.com/support/api-clients-and-keys
 
-Configure environment variables with your API credentials. Make sure that scope Sensor Download [read] is enabled.
+Configure environment variables with your API credentials. Make sure that scope **Sensor Download** [read] is enabled.
 
 Export the required environment variables:
 ```bash
@@ -25,8 +28,9 @@ FALCON_CLOUD                      (default: us-1)
 FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
 FALCON_PROVISIONING_TOKEN         (default: unset)
 FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
+FALCON_INSTALL_ONLY               (default: false)
 ```
-The `FALCON_SENSOR_UPDATE_POLICY_NAME` variable requires to have additional API access. Make sure that scope Sensor update policies [read] is enabled.
+The `FALCON_SENSOR_UPDATE_POLICY_NAME` variable requires to have additional API access. Make sure that scope **Sensor update policies** [read] is enabled.
 
 2. Run the script:
 
