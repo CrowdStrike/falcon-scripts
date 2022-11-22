@@ -27,7 +27,7 @@ main() {
     fi
     echo -n 'Falcon Sensor Install  ... '; cs_sensor_install;  echo '[ Ok ]'
     # Run if FALCON_INSTALL_ONLY is not set or is set to false
-    if [ -z "$FALCON_INSTALL_ONLY" ] || [ "${FALCON_INSTALL_ONLY}" == "false" ]; then
+    if [ -z "$FALCON_INSTALL_ONLY" ] || [ "${FALCON_INSTALL_ONLY}" = "false" ]; then
         echo -n 'Falcon Sensor Register ... '; cs_sensor_register; echo '[ Ok ]'
         echo -n 'Falcon Sensor Restart  ... '; cs_sensor_restart;  echo '[ Ok ]'
     fi
