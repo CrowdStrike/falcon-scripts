@@ -168,7 +168,7 @@ cs_sensor_download() {
             if echo "$l" | grep -q '/'; then
                 # Sensor for Ubuntu has l="14/16/18/20"
                 for v in $(echo "$l" | tr '/' '\n'); do
-                    if [ "$v" == "$cs_os_version" ]; then
+                    if [ "$v" = "$cs_os_version" ]; then
                         l="$v"
                         break
                     fi
