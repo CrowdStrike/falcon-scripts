@@ -168,7 +168,7 @@ cs_sensor_download() {
             if echo "$l" | grep -q '/'; then
                 # Sensor for Ubuntu has l="14/16/18/20"
                 for v in $(echo "$l" | tr '/' '\n'); do
-                    if [ "$v" -eq "$cs_os_version" ]; then
+                    if [ "$v" = "$cs_os_version" ]; then
                         l="$v"
                         break
                     fi
@@ -462,7 +462,7 @@ cs_os_arch_filter=$(
 cs_os_version=$(
     version=$(echo "$os_version" | awk -F'.' '{print $1}')
     if [ "$cs_os_arch" = "aarch64" ] ; then
-        echo "$os_version - arm64"
+        echo "$version - arm64"
     elif [ "$os_name" = "Amazon" ] && [ "$version" -ge 2017 ] ; then
         echo "1"
     else
