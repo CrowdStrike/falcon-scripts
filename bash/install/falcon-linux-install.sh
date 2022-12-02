@@ -435,7 +435,7 @@ cs_os_name=$(
         Amazon)
             echo "Amazon Linux";;
         CentOS|Oracle|RHEL|Rocky|AlmaLinux)
-            echo "RHEL/CentOS/Oracle";;
+            echo "*RHEL*";;
         Debian)
             echo "Debian";;
         SLES)
