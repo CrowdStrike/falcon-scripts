@@ -23,7 +23,7 @@ Optional Flags:
     -n, --node          download node sensor instead of container sensor
     --runtime           use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials  print registry credentials to stdout to copy/paste into container tools.
-    --list-tags         list all tags available
+    --list-tags         list all tags available for the selected sensor
 
 Help Options:
     -h, --help display this help message"

@@ -27,6 +27,7 @@ Optional Flags:
     -n, --node          download node sensor instead of container sensor
     --runtime           use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials  print registry credentials to stdout to copy/paste into container tools.
+    --list-tags         list all tags available for the selected sensor
 
 Help Options:
     -h, --help display this help message
@@ -67,4 +68,5 @@ Settings can be passed to the script through CLI Flags or environment variables:
 | `-n`, `--node`                                 | `$SENSORTYPE`           | `falcon-sensor` (Optional) | Flag to download Node Sensor, if not set script defaults to downloading container sensor |
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. Default is docker.           |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools.                 |
+| `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                 |
 | `-h`, `--help`                                 | N/A                     | `None`                     | Display help message                                                                     |
