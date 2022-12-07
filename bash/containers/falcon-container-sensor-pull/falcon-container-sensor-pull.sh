@@ -233,23 +233,24 @@ fi
 ART_PASSWORD=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L \
 "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" -H @- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
 
+#Set container login
+(echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin >/dev/null 2>&1) || ERROR=true
+if [ "${ERROR}" = true ]; then
+    die "ERROR: ${CONTAINER_TOOL} login failed"
+fi
+
 if [ "$LISTTAGS" ] ; then
-    #Set container login
-    echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin >/dev/null 2>&1
     case "${CONTAINER_TOOL}" in
         *podman)
         die "Please use docker runtime to list tags" ;;
         *docker)
         REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$registry_opts/release/falcon-sensor:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-        echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$registry_opts/release/falcon-sensor/tags/list" -H @- | awk -v RS=" " '{print}';;
+        echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$registry_opts/release/falcon-sensor/tags/list" -H @- | sed "s/, /, \\n/g" ;;
         *skopeo)
         die "Please use docker runtime to list tags" ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
     esac    
     exit 0
-else
-    #Set container login
-    echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin
 fi
 
 #Get latest sensor version
