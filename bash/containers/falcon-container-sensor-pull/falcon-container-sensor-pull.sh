@@ -23,6 +23,7 @@ Optional Flags:
     -n, --node          download node sensor instead of container sensor
     --runtime           use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials  print registry credentials to stdout to copy/paste into container tools.
+    --list-tags         list all tags available for the selected sensor
 
 Help Options:
     -h, --help display this help message"
@@ -107,6 +108,11 @@ case "$1" in
     --dump-credentials)
     if [ -n "${1}" ]; then
         CREDS=true
+    fi
+    ;;
+    --list-tags)
+    if [ -n "${1}" ]; then
+        LISTTAGS=true
     fi
     ;;
     -n|--node)
@@ -218,16 +224,34 @@ cs_falcon_cid=$(
     fi
 )
 
-echo "Using the following settings:"
-echo "Falcon Region:   $(cs_cloud)"
-echo "Falcon Registry: ${cs_registry}"
-
+if [ ! "$LISTTAGS" ] ; then
+    echo "Using the following settings:"
+    echo "Falcon Region:   $(cs_cloud)"
+    echo "Falcon Registry: ${cs_registry}"
+fi
 #Set Docker token using the BEARER token captured earlier
 ART_PASSWORD=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L \
 "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" -H @- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
 
 #Set container login
-echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin
+(echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin >/dev/null 2>&1) || ERROR=true
+if [ "${ERROR}" = true ]; then
+    die "ERROR: ${CONTAINER_TOOL} login failed"
+fi
+
+if [ "$LISTTAGS" ] ; then
+    case "${CONTAINER_TOOL}" in
+        *podman)
+        die "Please use docker runtime to list tags" ;;
+        *docker)
+        REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$registry_opts/release/falcon-sensor:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+        echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$registry_opts/release/falcon-sensor/tags/list" -H @- | sed "s/, /, \\n/g" ;;
+        *skopeo)
+        die "Please use docker runtime to list tags" ;;
+        *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
+    esac    
+    exit 0
+fi
 
 #Get latest sensor version
 case "${CONTAINER_TOOL}" in
