@@ -132,7 +132,6 @@ case "$1" in
     -*) # unsupported flags
     >&2 echo "ERROR: Unsupported flag: '${1}'"
     usage
-    exit 1
     ;;
 esac
 shift
