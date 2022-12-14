@@ -25,6 +25,7 @@ main() {
         print_usage
         exit 1
     fi
+    echo -n 'Check if Falcon Sensor is running ...'; cs_sensor_is_running; echo '[ Not present ]'
     echo -n 'Falcon Sensor Install  ... '; cs_sensor_install;  echo '[ Ok ]'
     # Run if FALCON_INSTALL_ONLY is not set or is set to false
     if [ -z "$FALCON_INSTALL_ONLY" ] || [ "${FALCON_INSTALL_ONLY}" = "false" ]; then
@@ -45,6 +46,13 @@ cs_sensor_register() {
         cs_falcon_args="$cs_falcon_args $cs_token"
     fi
     /opt/CrowdStrike/falconctl -s -f "${cs_falcon_args}"
+}
+
+cs_sensor_is_running() {
+    if pgrep  -u root falcon-sensor >/dev/null 2>&1 ; then
+        echo "sensor is already running... exiting"
+        exit 0
+    fi
 }
 
 cs_sensor_restart() {
