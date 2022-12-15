@@ -21,6 +21,8 @@ export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 ```
 
+The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET` are not provided AND the script is running on an AWS instance, the script will try to get API credentials from the SSM store of the region.
+
 Optional environment variables that can be exported:
 ```bash
 FALCON_CID                        (default: auto)
@@ -29,6 +31,13 @@ FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
 FALCON_PROVISIONING_TOKEN         (default: unset)
 FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
 FALCON_INSTALL_ONLY               (default: false)
+FALCON_TAGS                       (default: unset)
+FALCON_APD                        (default: unset)
+FALCON_APH                        (default: unset)
+FALCON_APP                        (default: unset)
+FALCON_BILLING                    (default: default) possible values: [default|metered]
+FALCON_BACKEND                    (default: auto)    possible values: [auto|bpf|kernel]
+FALCON_TRACE                      (default: none)    possible values: [none|err|warn|info|debug]
 ```
 The `FALCON_SENSOR_UPDATE_POLICY_NAME` variable requires to have additional API access. Make sure that scope **Sensor update policies** [read] is enabled.
 
