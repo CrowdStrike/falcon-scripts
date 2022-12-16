@@ -15,6 +15,13 @@ Optional:
     - FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
     - FALCON_PROVISIONING_TOKEN         (default: unset)
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
+    - FALCON_TAGS                       (default: unset)
+    - FALCON_APD                        (default: unset)
+    - FALCON_APH                        (default: unset)
+    - FALCON_APP                        (default: unset)
+    - FALCON_BILLING                    (default: default) possible values: [default|metered]
+    - FALCON_BACKEND                    (default: auto)    possible values: [auto|bpf|kernel]
+    - FALCON_TRACE                      (default: none)    possible values: [none|err|warn|info|debug]
     - FALCON_UNINSTALL                  (default: false)
     - FALCON_INSTALL_ONLY               (default: false)
 EOF
@@ -40,11 +47,48 @@ cs_sensor_register() {
         die "Could not find FALCON CID!"
     fi
 
+    # add the cid to the params
     cs_falcon_args=--cid="${cs_falcon_cid}"
     if [ -n "${cs_falcon_token}" ]; then
         cs_token=--provisioning-token="${cs_falcon_token}"
         cs_falcon_args="$cs_falcon_args $cs_token"
     fi
+    # add tags to the params
+    if [ -n "${FALCON_TAGS}" ]; then
+        cs_falconctl_opt_tags=--tags="$FALCON_TAGS"
+        cs_falcon_args="$cs_falcon_args $cs_falconctl_opt_tags"
+    fi
+    # add proxy enable/disable param
+    if [ -n "${cs_falcon_apd}" ]; then
+        cs_falconctl_opt_apd=--apd=$cs_falcon_apd
+        cs_falcon_args="$cs_falcon_args $cs_falconctl_opt_apd"
+    fi
+    # add proxy host to the params
+    if [ -n "${FALCON_APH}" ]; then
+        cs_falconctl_opt_aph=--aph="${FALCON_APH}"
+        cs_falcon_args="$cs_falcon_args $cs_falconctl_opt_aph"
+    fi
+    # add proxy port to the params
+    if [ -n "${FALCON_APP}" ]; then
+        cs_falconctl_opt_app=--app="${FALCON_APP}"
+        cs_falcon_args="$cs_falcon_args $cs_falconctl_opt_app"
+    fi
+    # add the billing type to the params
+    if [ -n "${FALCON_BILLING}" ]; then
+        cs_falconctl_opt_billing=--billing="${cs_falcon_billing}"
+        cs_falcon_args="$cs_falcon_args $cs_falconctl_opt_billing"
+    fi
+    # add the backend to the params
+    if [ -n "${cs_falcon_backend}" ]; then
+        cs_falconctl_opt_backend=--backend="${cs_falcon_backend}"
+        cs_falcon_args="$cs_falcon_args $cs_falconctl_opt_backend"
+    fi
+    # add the trace level to the params
+    if [ -n "${cs_falcon_trace}" ]; then
+        cs_falconctl_opt_trace=--trace="${cs_falcon_trace}"
+        cs_falcon_args="$cs_falcon_args $cs_falconctl_opt_trace"
+    fi
+    # run the configuration command
     /opt/CrowdStrike/falconctl -s -f "${cs_falcon_args}"
 }
 
@@ -591,6 +635,66 @@ cs_falcon_cid=$(
             die "Unable to obtain CrowdStrike Falcon CID. Response was $cs_target_cid"
         fi
         echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}'
+    fi
+)
+
+cs_falcon_apd=$(
+    if [ -n "$FALCON_APD" ]; then
+        case "${FALCON_APD}" in
+            true)
+                echo "true";;
+            false)
+                echo "false";;
+            *)
+                die "Unrecognized APD: ${FALCON_APD} value must be one of : [true|false]";;
+        esac
+    fi
+)
+
+cs_falcon_billing=$(
+    if [ -n "$FALCON_BILLING" ]; then
+        case "${FALCON_BILLING}" in
+            default)
+                echo "default";;
+            metered)
+                echo "metered";;
+            *)
+                die "Unrecognized BILLING: ${FALCON_BILLING} value must be one of : [default|metered]";;
+        esac
+    fi
+)
+
+cs_falcon_backend=$(
+    if [ -n "$FALCON_BACKEND" ]; then
+        case "${FALCON_BACKEND}" in
+            auto)
+                echo "auto";;
+            bpf)
+                echo "bpf";;
+            kernel)
+                echo "kernel";;
+            *)
+                die "Unrecognized BACKEND: ${FALCON_BACKEND} value must be one of : [auto|bpf|kernel]";;
+        esac
+    fi
+)
+
+cs_falcon_trace=$(
+    if [ -n "$FALCON_TRACE" ]; then
+        case "${FALCON_TRACE}" in
+            none)
+                echo "none";;
+            err)
+                echo "err";;
+            warn)
+                echo "warn";;
+            info)
+                echo "info";;
+            debug)
+                echo "debug";;
+            *)
+                die "Unrecognized TRACE: ${FALCON_TRACE} value must be one of : [none|err|warn|info|debug]";;
+        esac
     fi
 )
 
