@@ -168,3 +168,6 @@ process {
     Write-FalconLog 'Uninstaller' $Message
     Write-Output $Message
 }
+end {
+    Write-Output 'Uninstall complete'
+}

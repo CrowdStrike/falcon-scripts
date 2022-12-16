@@ -122,6 +122,7 @@ begin {
         version       = '"(?<name>sensor_version)": "(?<version>.+)",'
     }
 
+
     function Invoke-FalconCloud ([string] $xCsRegion) {
     $Output = switch ($xCsRegion)
     {
@@ -187,7 +188,12 @@ begin {
         $Falcon.ResponseHeaders.Keys -contains 'X-Cs-TraceId') {
             $Content += ,"[$($Falcon.ResponseHeaders.Get('X-Cs-TraceId'))]"
         }
+
         "$(@($Content + $Source) -join ' '): $Message" >> $LogPath
+
+        if ([string]::IsNullOrEmpty($Source)) {
+            Write-Output $Message.replace($FalconClientId, '***')
+        }
     }
     if (!$SensorUpdatePolicyName) {
         $SensorUpdatePolicyName = 'platform_default'
@@ -383,12 +389,12 @@ process {
         throw $Message
     }
 
-    $LocalHash = if ($CloudHash -and $CloudFile) {
+    if ($CloudHash -and $CloudFile) {
         $LocalFile = Join-Path -Path $WinTemp -ChildPath $CloudFile
         Invoke-FalconDownload "/sensors/entities/download-installer/v1?id=$CloudHash" $LocalFile
         if (Test-Path $LocalFile) {
-            Get-InstallerHash $LocalFile
             Write-FalconLog 'DownloadFile' "Created '$LocalFile'"
+            $LocalHash = Get-InstallerHash $LocalFile
         }
     }
 
@@ -403,7 +409,9 @@ process {
     @('DeleteInstaller', 'DeleteScript') | ForEach-Object {
         if ((Get-Variable $_).Value -eq $true) {
             if ($_ -eq 'DeleteInstaller') {
+                Write-FalconLog $null "Waiting for the installer process to complete with PID ($InstallPid)"
                 Wait-Process -Id $InstallPid
+                Write-FalconLog $null "Installer process with PID ($InstallPid) has completed"
             }
             $FilePath = if ($_ -eq 'DeleteInstaller') {
                 $LocalFile
@@ -418,4 +426,7 @@ process {
             }
         }
     }
+}
+end {
+    Write-FalconLog $null "Installation complete"
 }
