@@ -44,7 +44,7 @@ param(
 
     [Parameter(Position = 3)]
     [ValidateSet('installcache', 'standalone')]
-    [string] $UninstallTool = 'cache',
+    [string] $UninstallTool = 'installcache',
 
     [Parameter(Position = 4)]
     [string] $LogPath,
@@ -71,6 +71,9 @@ begin {
         $UninstallerName = 'WindowsSensor*.exe'
         $UninstallerCachePath = "C:\ProgramData\Package Cache"
         $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerCachePath -Recurse | ForEach-Object{$_.FullName}
+        # write to stdout
+        Write-Output "Uninstaller path testfklsdfjsadlfjsdkf"
+        Write-Output $UninstallerPath
     }
 
     if ($UninstallTool -match "standalone") {
