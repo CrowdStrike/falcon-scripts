@@ -44,7 +44,7 @@ param(
 
     [Parameter(Position = 3)]
     [ValidateSet('installcache', 'standalone')]
-    [string] $UninstallTool = 'cache',
+    [string] $UninstallTool = 'installcache',
 
     [Parameter(Position = 4)]
     [string] $LogPath,
@@ -167,4 +167,7 @@ process {
     $Message = 'Successfully finished uninstall...'
     Write-FalconLog 'Uninstaller' $Message
     Write-Output $Message
+}
+end {
+    Write-Output 'Uninstall complete'
 }
