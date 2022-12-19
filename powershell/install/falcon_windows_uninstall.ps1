@@ -123,7 +123,6 @@ process {
         }
         else {
             $Message = "Uninstaller returned exit code $($UninstallerProcess.ExitCode)"
-
         }
         Write-FalconLog "UninstallError" $Message
         throw $Message
