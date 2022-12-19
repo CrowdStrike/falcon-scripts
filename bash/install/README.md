@@ -5,6 +5,14 @@ this script will install, register the sensor, and start the service. If you wou
 install the sensor without any additional configurations, configure the `FALCON_INSTALL_ONLY`
 environment variable.
 
+## Falcon API Permissions
+
+API clients are granted one or more API scopes. Scopes allow access to specific CrowdStrike APIs and describe the actions that an API client can perform.
+
+Ensure the following API scopes are enabled:
+* **Sensor Download** [read]
+* **Sensor update policies** [read]
+
 ## Configuration
 
 1. Get sensor download API credentials from the cloud where your account has been configured:
