@@ -59,7 +59,8 @@ begin {
     $ScriptName = $MyInvocation.MyCommand.Name
     $ScriptPath = if (!$PSScriptRoot) {
         Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
-    } else {
+    }
+    else {
         $PSScriptRoot
     }
 
@@ -70,7 +71,7 @@ begin {
     if ($UninstallTool -match "installcache") {
         $UninstallerName = 'WindowsSensor*.exe'
         $UninstallerCachePath = "C:\ProgramData\Package Cache"
-        $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerCachePath -Recurse | ForEach-Object{$_.FullName}
+        $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerCachePath -Recurse | ForEach-Object { $_.FullName }
     }
 
     if ($UninstallTool -match "standalone") {
@@ -79,7 +80,7 @@ begin {
     }
 
     $WinSystem = [Environment]::GetFolderPath('System')
-    $WinTemp = $WinSystem -replace 'system32','Temp'
+    $WinTemp = $WinSystem -replace 'system32', 'Temp'
     if (!$LogPath) {
         $LogPath = Join-Path -Path $WinTemp -ChildPath 'csfalcon_uninstall.log'
     }
@@ -91,7 +92,7 @@ begin {
 }
 process {
     if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
-        [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {
+            [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {
         $Message = 'Unable to proceed without administrative privileges'
         throw $Message
     }
@@ -103,8 +104,7 @@ process {
         throw $Message
     }
 
-    if (-not (Test-Path -Path $UninstallerPath))
-    {
+    if (-not (Test-Path -Path $UninstallerPath)) {
         $Message = "${UninstallerName} not found."
         Write-FalconLog 'CheckUninstaller' $Message
         throw $Message
@@ -117,30 +117,31 @@ process {
     $UninstallerProcess = Start-Process -FilePath "$UninstallerPath" -ArgumentList $UninstallParams -PassThru -Wait
     $UninstallerProcessId = $UninstallerProcess.Id
     Write-FalconLog 'StartProcess' "Started '$UninstallerPath' ($UninstallerProcessId)"
-    if ($UninstallerProcess.ExitCode -ne 0)
-    {
-        $Message = "Uninstaller returned exit code $($UninstallerProcess.ExitCode)"
+    if ($UninstallerProcess.ExitCode -ne 0) {
+        if ($UninstallerProcess.ExitCode -eq 106) {
+            $Message = 'Unable to uninstall, Falcon Sensor is protected with a maintenance token. Provide a valid maintenance token and try again.'
+        }
+        else {
+            $Message = "Uninstaller returned exit code $($UninstallerProcess.ExitCode)"
+        }
         Write-FalconLog "UninstallError" $Message
         throw $Message
     }
 
     $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
-    if ($AgentService -and $AgentService.Status -eq 'Running')
-    {
+    if ($AgentService -and $AgentService.Status -eq 'Running') {
         $Message = 'Service uninstall failed...'
         Write-FalconLog "ServiceError" $Message
         throw $Message
     }
 
-    if (Test-Path -Path HKLM:\System\Crowdstrike)
-    {
+    if (Test-Path -Path HKLM:\System\Crowdstrike) {
         $Message = 'Registry key removal failed...'
         Write-FalconLog "RegistryError" $Message
         throw $Message
     }
 
-    if (Test-Path -Path"${env:SYSTEMROOT}\System32\drivers\CrowdStrike")
-    {
+    if (Test-Path -Path"${env:SYSTEMROOT}\System32\drivers\CrowdStrike") {
         $Message = 'Driver removal failed...'
         Write-FalconLog "DriverError" $Message
         throw $Message
@@ -150,7 +151,8 @@ process {
         if ((Get-Variable $_).Value -eq $true) {
             $FilePath = if ($_ -eq 'DeleteUninstaller') {
                 "$UninstallerPath"
-            } else {
+            }
+            else {
                 Join-Path -Path $ScriptPath -ChildPath $ScriptName
             }
             if (Test-Path $FilePath) {
@@ -158,7 +160,8 @@ process {
             }
             if (Test-Path $FilePath) {
                 Write-FalconLog $_ "Failed to delete '$FilePath'"
-            } else {
+            }
+            else {
                 Write-FalconLog $_ "Deleted '$FilePath'"
             }
         }
