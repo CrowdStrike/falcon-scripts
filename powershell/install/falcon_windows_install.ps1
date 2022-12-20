@@ -429,7 +429,7 @@ process {
 
     $process = (Start-Process -FilePath $LocalFile -ArgumentList $InstallParams -PassThru -ErrorAction SilentlyContinue)
     Write-FalconLog 'StartProcess' "Started '$LocalFile' ($($process.Id))"
-    Write-FalconLog $null "Waiting for the installer process to complete with PID ($($process.Id))" 
+    Write-FalconLog $null "Waiting for the installer process to complete with PID ($($process.Id))"
     Wait-Process -Id $process.Id
     Write-FalconLog $null "Installer process with PID ($($process.Id)) has completed"
 
