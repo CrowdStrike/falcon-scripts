@@ -80,7 +80,7 @@ param(
 
     [Parameter(Position = 11)]
     [string] $MemberCid
-    
+
 )
 begin {
     $ScriptName = $MyInvocation.MyCommand.Name
@@ -107,10 +107,10 @@ begin {
         }
         return $Output
     }
-      
+
     function Invoke-FalconAuth($Falcon, [hashtable] $Body, [string] $FalconCloud) {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
-      
+
         try {
             $response = Invoke-WebRequest -Uri "$($Falcon.BaseAddress)oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body -MaximumRedirection 0
             $content = ConvertFrom-Json -InputObject $response.Content
@@ -119,7 +119,7 @@ begin {
         catch {
             # Handle redirects
             $response = $_.Exception.Response
-      
+
             if ($response.StatusCode -in @(301, 302, 303, 307, 308)) {
                 # If autodiscover is enabled, try to get the correct cloud
                 if ($FalconCloud -eq 'autodiscover') {
@@ -130,7 +130,7 @@ begin {
                         $Message = "Received a redirect but no X-Cs-Region header was provided. Unable to autodiscover the FalconCloud. Please set FalconCloud to the correct region."
                         throw $Message
                     }
-      
+
                     $Falcon.BaseAddress = Get-FalconCloud($region)
                     $Falcon = Invoke-FalconAuth $Falcon $Body $FalconCloud
                 }
@@ -139,13 +139,36 @@ begin {
                     throw $Message
                 }
             }
-            else {  
+            else {
                 $Message = "Received a $($response.StatusCode) response from $($Falcon.BaseAddress)oauth2/token. Please check your credentials and try again."
                 throw $Message
             }
         }
-      
+
         return $Falcon
+    }
+
+    function Get-AID {
+        $reg_paths = 'HKLM:\SYSTEM\CrowdStrike\{9b03c1d9-3138-44ed-9fae-d9f4c034b88d}\{16e0423f-7058-48c9-a204-725362b67639}\Default', 'HKLM:\SYSTEM\CurrentControlSet\Services\CSAgent\Sim'
+        $aid = $null
+        foreach ($path in $reg_paths) {
+          try {
+            $aid = [System.BitConverter]::ToString( ((Get-ItemProperty "$path" -Name AG).AG)).ToLower() -replace '-',''
+            break
+          }
+          catch {
+            $Message = "Unable to find AID in registry path: $path"
+            Write-FalconLog 'AID' $Message
+          }
+        }
+        if (!$aid) {
+          $Message = "Unable to find AID in registry"
+          Write-FalconLog 'AID' $Message
+          throw $Message
+        }
+        $Message = "Found AID: $aid"
+        Write-FalconLog 'AID' $Message
+        return $aid
     }
 
     if ($MaintenanceToken) {
