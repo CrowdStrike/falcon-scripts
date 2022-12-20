@@ -23,6 +23,16 @@ Script log location ['Windows\Temp\csfalcon_uninstall.log' if left undefined]
 Delete sensor uninstaller package when complete [default: $true]
 .PARAMETER DeleteScript
 Delete script when complete [default: $true]
+.PARAMETER RemoveHost
+Remove host from CrowdStrike Falcon [default: $false]
+.PARAMETER FalconCloud
+CrowdStrike Falcon OAuth2 API Hostname [default: autodiscover]
+.PARAMETER FalconClientId
+CrowdStrike Falcon OAuth2 API Client Id [Required if RemoveHost is $true]
+.PARAMETER FalconClientSecret
+CrowdStrike Falcon OAuth2 API Client Secret [Required if RemoveHost is $true]
+.PARAMETER MemberCid
+Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID.
 .EXAMPLE
 PS>.\falcon_windows_uninstall.ps1 -MaintenanceToken <string>
 
@@ -53,7 +63,24 @@ param(
     [bool] $DeleteUninstaller = $true,
 
     [Parameter(Position = 6)]
-    [bool] $DeleteScript = $true
+    [bool] $DeleteScript = $true,
+
+    [Parameter(Position = 7)]
+    [bool] $RemoveHost = $false,
+
+    [Parameter(Position = 8)]
+    [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1')]
+    [string] $FalconCloud = 'autodiscover',
+
+    [Parameter(Position = 9)]
+    [string] $FalconClientId,
+
+    [Parameter(Position = 10)]
+    [string] $FalconClientSecret,
+
+    [Parameter(Position = 11)]
+    [string] $MemberCid
+    
 )
 begin {
     $ScriptName = $MyInvocation.MyCommand.Name
@@ -62,6 +89,63 @@ begin {
     }
     else {
         $PSScriptRoot
+    }
+
+    function Write-FalconLog ([string] $Source, [string] $Message) {
+        $Content = @(Get-Date -Format 'yyyy-MM-dd hh:MM:ss')
+        "$(@($Content + $Source) -join ' '): $Message" >> $LogPath
+    }
+
+    function Get-FalconCloud ([string] $xCsRegion) {
+        $Output = switch ($xCsRegion) {
+            'autodiscover' { 'https://api.crowdstrike.com'; break }
+            'us-1' { 'https://api.crowdstrike.com'; break }
+            'us-2' { 'https://api.us-2.crowdstrike.com'; break }
+            'eu-1' { 'https://api.eu-1.crowdstrike.com'; break }
+            'us-gov-1' { 'https://api.laggar.gcw.crowdstrike.com'; break }
+            default { throw "Provided region $xCsRegion is invalid. Please set FalconCloud to a valid region or 'autodiscover'"; break }
+        }
+        return $Output
+    }
+      
+    function Invoke-FalconAuth($Falcon, [hashtable] $Body, [string] $FalconCloud) {
+        $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
+      
+        try {
+            $response = Invoke-WebRequest -Uri "$($Falcon.BaseAddress)oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body -MaximumRedirection 0
+            $content = ConvertFrom-Json -InputObject $response.Content
+            $Falcon.Headers.Add('Authorization', "bearer $($content.access_token)")
+        }
+        catch {
+            # Handle redirects
+            $response = $_.Exception.Response
+      
+            if ($response.StatusCode -in @(301, 302, 303, 307, 308)) {
+                # If autodiscover is enabled, try to get the correct cloud
+                if ($FalconCloud -eq 'autodiscover') {
+                    if ($response.Headers.Contains('X-Cs-Region')) {
+                        $region = $response.Headers.GetValues('X-Cs-Region')[0]
+                    }
+                    else {
+                        $Message = "Received a redirect but no X-Cs-Region header was provided. Unable to autodiscover the FalconCloud. Please set FalconCloud to the correct region."
+                        throw $Message
+                    }
+      
+                    $Falcon.BaseAddress = Get-FalconCloud($region)
+                    $Falcon = Invoke-FalconAuth $Falcon $Body $FalconCloud
+                }
+                else {
+                    $Message = "Received a redirect. Please set FalconCloud to 'autodiscover' or the correct region."
+                    throw $Message
+                }
+            }
+            else {  
+                $Message = "Received a $($response.StatusCode) response from $($Falcon.BaseAddress)oauth2/token. Please check your credentials and try again."
+                throw $Message
+            }
+        }
+      
+        return $Falcon
     }
 
     if ($MaintenanceToken) {
@@ -84,11 +168,6 @@ begin {
     if (!$LogPath) {
         $LogPath = Join-Path -Path $WinTemp -ChildPath 'csfalcon_uninstall.log'
     }
-
-    function Write-FalconLog ([string] $Source, [string] $Message) {
-        $Content = @(Get-Date -Format 'yyyy-MM-dd hh:MM:ss')
-        "$(@($Content + $Source) -join ' '): $Message" >> $LogPath
-    }
 }
 process {
     if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
@@ -96,6 +175,21 @@ process {
         $Message = 'Unable to proceed without administrative privileges'
         throw $Message
     }
+
+    $Falcon = New-Object System.Net.WebClient
+    $Falcon.Encoding = [System.Text.Encoding]::UTF8
+    $Falcon.BaseAddress = Get-FalconCloud $FalconCloud
+
+    $Body = @{}
+    $Body["client_id"] = $FalconClientId
+    $Body["client_secret"] = $FalconClientSecret
+
+    if ($MemberCid) {
+        $Body["&member_cid"] = $MemberCid
+    }
+
+    $Falcon = Invoke-FalconAuth $Falcon $Body $FalconCloud
+
 
     $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
     if (!$AgentService) {
