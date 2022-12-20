@@ -33,6 +33,10 @@ Delete sensor installer package when complete [default: $true]
 Delete script when complete [default: $false]
 .PARAMETER Uninstall
 Uninstall the sensor from the host [default: $false]
+.PARAMETER ProvToken
+Provisioning token to use for sensor installation [default: $null]
+.PARAMETER ProvWaitTime
+Time to wait, in seconds, for sensor to provision [default: 1200]
 .EXAMPLE
 PS>.\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string>
 
@@ -84,20 +88,26 @@ param(
     [bool] $DeleteScript = $false,
 
     [Parameter(Position = 10)]
-    [bool] $Uninstall = $false
+    [bool] $Uninstall = $false,
+
+    [Parameter(Position = 11)]
+    [string] $ProvToken,
+    [Parameter(Position = 12)]
+    [int] $ProvWaitTime = 1200
 )
 begin {
     if ($PSVersionTable.PSVersion -lt '3.0')
-       { throw "This script requires a miniumum PowerShell 3.0" }
+    { throw "This script requires a miniumum PowerShell 3.0" }
 
     $ScriptName = $MyInvocation.MyCommand.Name
     $ScriptPath = if (!$PSScriptRoot) {
         Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
-    } else {
+    }
+    else {
         $PSScriptRoot
     }
     $WinSystem = [Environment]::GetFolderPath('System')
-    $WinTemp = $WinSystem -replace 'system32','Temp'
+    $WinTemp = $WinSystem -replace 'system32', 'Temp'
     if (!$LogPath) {
         $LogPath = Join-Path -Path $WinTemp -ChildPath 'InstallFalcon.log'
     }
@@ -105,7 +115,7 @@ begin {
     if ($Uninstall) {
         $UninstallerName = 'WindowsSensor*.exe'
         $UninstallerCachePath = "C:\ProgramData\Package Cache"
-        $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerCachePath -Recurse | ForEach-Object{$_.FullName}
+        $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerCachePath -Recurse | ForEach-Object { $_.FullName }
     }
 
     $Falcon = New-Object System.Net.WebClient
@@ -113,41 +123,41 @@ begin {
     $Falcon.BaseAddress = $FalconCloud
 
     $Patterns = @{
-        access_token  = '"(?<name>access_token)": "(?<access_token>.*)",'
-        build         = '"(?<name>build)": "(?<version>.+)",'
-        ccid          = '(?<ccid>\w{32}-\w{2})'
-        csregion      = '(?<name>X-Cs-Region): ([a-z0-9\-]+)'
-        major_minor   = '"(?<name>sensor_version)": "(?<version>\d{1,}\.\d{1,})\.\d+",'
-        policy_id     = '"(?<name>id)": "(?<id>\w{32})",'
-        version       = '"(?<name>sensor_version)": "(?<version>.+)",'
+        access_token = '"(?<name>access_token)": "(?<access_token>.*)",'
+        build        = '"(?<name>build)": "(?<version>.+)",'
+        ccid         = '(?<ccid>\w{32}-\w{2})'
+        csregion     = '(?<name>X-Cs-Region): ([a-z0-9\-]+)'
+        major_minor  = '"(?<name>sensor_version)": "(?<version>\d{1,}\.\d{1,})\.\d+",'
+        policy_id    = '"(?<name>id)": "(?<id>\w{32})",'
+        version      = '"(?<name>sensor_version)": "(?<version>.+)",'
     }
 
 
     function Invoke-FalconCloud ([string] $xCsRegion) {
-    $Output = switch ($xCsRegion)
-    {
-        'us-1' {'https://api.crowdstrike.com'; Break}
-        'us-2' {'https://api.us-2.crowdstrike.com'; Break}
-        'eu-1' {'https://api.eu-1.crowdstrike.com'; Break}
-        'us-gov-1' {'https://api.laggar.gcw.crowdstrike.com'; Break}
+        $Output = switch ($xCsRegion) {
+            'us-1' { 'https://api.crowdstrike.com'; Break }
+            'us-2' { 'https://api.us-2.crowdstrike.com'; Break }
+            'eu-1' { 'https://api.eu-1.crowdstrike.com'; Break }
+            'us-gov-1' { 'https://api.laggar.gcw.crowdstrike.com'; Break }
+        }
+        return $Output
     }
-    return $Output
-}
     function Get-InstallerHash ([string] $Path) {
         $Output = if (Test-Path $Path) {
             $Algorithm = [System.Security.Cryptography.HashAlgorithm]::Create("SHA256")
             $Hash = [System.BitConverter]::ToString(
                 $Algorithm.ComputeHash([System.IO.File]::ReadAllBytes($Path)))
             if ($Hash) {
-                $Hash.Replace('-','')
-            } else {
+                $Hash.Replace('-', '')
+            }
+            else {
                 $null
             }
         }
         return $Output
     }
     function Invoke-FalconAuth ([hashtable] $Body) {
-        $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8'}
+        $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
         $Response = Invoke-WebRequest -Uri "$FalconCloud/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body -MaximumRedirection 0
 
         if ($Response.RawContent -match $Patterns.csregion) {
@@ -185,8 +195,8 @@ begin {
     function Write-FalconLog ([string] $Source, [string] $Message) {
         $Content = @(Get-Date -Format 'yyyy-MM-dd hh:MM:ss')
         if ($Source -notmatch '^(StartProcess|Delete(Installer|Script))$' -and
-        $Falcon.ResponseHeaders.Keys -contains 'X-Cs-TraceId') {
-            $Content += ,"[$($Falcon.ResponseHeaders.Get('X-Cs-TraceId'))]"
+            $Falcon.ResponseHeaders.Keys -contains 'X-Cs-TraceId') {
+            $Content += , "[$($Falcon.ResponseHeaders.Get('X-Cs-TraceId'))]"
         }
 
         "$(@($Content + $Source) -join ' '): $Message" >> $LogPath
@@ -204,11 +214,12 @@ begin {
 }
 process {
     if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
-    [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {
+            [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {
         $Message = 'Unable to proceed without administrative privileges'
         Write-FalconLog 'CheckAdmin' $Message
         throw $Message
-    } elseif ($Uninstall) {
+    }
+    elseif ($Uninstall) {
         $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
         if (!$AgentService) {
             $Message = "'CSFalconService' is not installed"
@@ -216,8 +227,7 @@ process {
             throw $Message
         }
 
-        if (not (Test-Path -Path $UninstallerPath))
-        {
+        if (not (Test-Path -Path $UninstallerPath)) {
             $Message = "${UninstallerName} not found."
             Write-FalconLog 'CheckUninstaller' $Message
             throw $Message
@@ -230,55 +240,54 @@ process {
         $UninstallerProcess = Start-Process -FilePath "$UninstallerPath" -ArgumentList $UninstallParams -PassThru -Wait
         $UninstallerProcessId = $UninstallerProcess.Id
         Write-FalconLog 'StartProcess' "Started '$UninstallerPath' ($UninstallerProcessId)"
-        if ($UninstallerProcess.ExitCode -ne 0)
-        {
+        if ($UninstallerProcess.ExitCode -ne 0) {
             $Message = "Uninstaller returned exit code $($UninstallerProcess.ExitCode)"
             Write-FalconLog "UninstallError" $Message
             throw $Message
         }
 
         $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
-        if ($AgentService -and $AgentService.Status -eq 'Running')
-        {
+        if ($AgentService -and $AgentService.Status -eq 'Running') {
             $Message = 'Service uninstall failed...'
             Write-FalconLog "ServiceError" $Message
             throw $Message
         }
 
-        if (Test-Path -Path HKLM:\System\Crowdstrike)
-        {
+        if (Test-Path -Path HKLM:\System\Crowdstrike) {
             $Message = 'Registry key removal failed...'
             Write-FalconLog "RegistryError" $Message
             throw $Message
         }
 
-        if (Test-Path -Path"${env:SYSTEMROOT}\System32\drivers\CrowdStrike")
-        {
+        if (Test-Path -Path"${env:SYSTEMROOT}\System32\drivers\CrowdStrike") {
             $Message = 'Driver removal failed...'
             Write-FalconLog "DriverError" $Message
             throw $Message
         }
 
         if ($DeleteScript) {
-                $FilePath = Join-Path -Path $ScriptPath -ChildPath $ScriptName
-                if (Test-Path $FilePath) {
-                    Remove-Item -Path $FilePath -Force
-                }
-                if (Test-Path $FilePath) {
-                    Write-FalconLog $_ "Failed to delete '$FilePath'"
-                } else {
-                    Write-FalconLog $_ "Deleted '$FilePath'"
-                }
+            $FilePath = Join-Path -Path $ScriptPath -ChildPath $ScriptName
+            if (Test-Path $FilePath) {
+                Remove-Item -Path $FilePath -Force
+            }
+            if (Test-Path $FilePath) {
+                Write-FalconLog $_ "Failed to delete '$FilePath'"
+            }
+            else {
+                Write-FalconLog $_ "Deleted '$FilePath'"
+            }
         }
 
         $Message = 'Successfully finished uninstall...'
         Write-FalconLog 'Uninstaller' $Message
         Exit 0
-    } elseif (Get-Service | Where-Object { $_.Name -eq 'CSFalconService' }) {
+    }
+    elseif (Get-Service | Where-Object { $_.Name -eq 'CSFalconService' }) {
         $Message = "'CSFalconService' running"
         Write-FalconLog 'CheckService' $Message
         throw $Message
-    } else {
+    }
+    else {
         if (!$FalconClientId) {
             Get-Help $MyInvocation.InvocationName | Out-String
             throw "Missing parameter 'FalconClientId'"
@@ -290,7 +299,8 @@ process {
         if ([Net.ServicePointManager]::SecurityProtocol -notmatch 'Tls12') {
             try {
                 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-            } catch {
+            }
+            catch {
                 $Message = $_
                 Write-FalconLog 'TlsCheck' $Message
                 throw $Message
@@ -314,7 +324,8 @@ process {
     Invoke-FalconAuth $ApiClient
     if ($Falcon.Headers.Keys -contains 'Authorization') {
         Write-FalconLog 'GetAuth' "FalconClientId: $($FalconClientId), FalconCloud: $($Falcon.BaseAddress)"
-    } else {
+    }
+    else {
         $Message = 'Failed to retrieve authorization token'
         Write-FalconLog 'GetAuth' $Message
         throw $Message
@@ -325,7 +336,8 @@ process {
         $Ccid = [regex]::Matches($Response, $Patterns.ccid)[0].Groups['ccid'].Value
         Write-FalconLog 'GetCcid' 'Retrieved CCID'
         $InstallParams += " CID=$Ccid"
-    } else {
+    }
+    else {
         $Message = 'Failed to retrieve CCID'
         Write-FalconLog 'GetCcid' $Message
         throw $Message
@@ -345,17 +357,20 @@ process {
         }
         $Patch = if ($Build) {
             ($Build).Split('|')[0]
-        } elseif ($Version) {
+        }
+        elseif ($Version) {
             ($Version).Split('.')[-1]
         }
         if ($Patch) {
             Write-FalconLog 'GetVersion' "Policy '$PolicyId' has build '$Patch' assigned"
-        } else {
+        }
+        else {
             $Message = "Failed to determine sensor version for policy '$PolicyId'"
             Write-FalconLog 'GetVersion' $Message
             throw $Message
         }
-    } else {
+    }
+    else {
         $Message = "Failed to match policy name '$($SensorUpdatePolicyName.ToLower())'"
         Write-FalconLog 'GetPolicy' $Message
         throw $Message
@@ -368,13 +383,14 @@ process {
             $BuildMatch = "($BuildMatch|$([regex]::Escape($MajorMinor))\.\d+)"
         }
         $Installer = '"name": "(?<filename>(\w+\.){1,}?exe)",\n\s+"description": "(.*)?Falcon(.*)",(\n.*){1,}"sh' +
-            'a256": "(?<hash>\w{64})",(\n.*){1,}"version": "' + $BuildMatch + '"'
+        'a256": "(?<hash>\w{64})",(\n.*){1,}"version": "' + $BuildMatch + '"'
         $Match = $Response.Split('}') | Where-Object { $_ -match $Installer }
         if ($Match) {
             $CloudHash = [regex]::Matches($Match, $Installer)[0].Groups['hash'].Value
             $CloudFile = [regex]::Matches($Match, $Installer)[0].Groups['filename'].Value
             Write-FalconLog 'GetInstaller' "Matched installer '$CloudHash' ($CloudFile)"
-        } else {
+        }
+        else {
             $MatchValue = "'$Patch'"
             if ($MajorMinor) {
                 $MatchValue += " or '$MajorMinor'"
@@ -383,7 +399,8 @@ process {
             Write-FalconLog 'GetInstaller' $Message
             throw $Message
         }
-    } else {
+    }
+    else {
         $Message = 'Failed to retrieve available installer list'
         Write-FalconLog 'GetInstaller' $Message
         throw $Message
@@ -404,29 +421,50 @@ process {
         throw $Message
     }
 
-    $InstallPid = (Start-Process -FilePath $LocalFile -ArgumentList $InstallParams -PassThru).id
-    Write-FalconLog 'StartProcess' "Started '$LocalFile' ($InstallPid)"
+    if ($ProvToken) {
+        $InstallParams += " ProvToken=$ProvToken"
+    }
+
+    $InstallParams += " ProvWaitTime=$ProvWaitTime"
+
+    $process = (Start-Process -FilePath $LocalFile -ArgumentList $InstallParams -PassThru -ErrorAction SilentlyContinue)
+    Write-FalconLog 'StartProcess' "Started '$LocalFile' ($($process.Id))"
+    Write-FalconLog $null "Waiting for the installer process to complete with PID ($($process.Id))"
+    Wait-Process -Id $process.Id
+    Write-FalconLog $null "Installer process with PID ($($process.Id)) has completed"
+
+    if ($process.ExitCode -eq 1244) {
+        $Message = "Exit code 1244: Falcon was unable to communicate with the CrowdStrike cloud. Please check your installation token and try again."
+    }
+    elseif ($process.ExitCode -ne 0) {
+        errOut = $process.StandardError.ReadToEnd()
+        $Message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
+    }
+    else {
+        $Message = "Falcon installer exited with code $($process.ExitCode)"
+    }
+
+    Write-FalconLog $null $Message
+
+
     @('DeleteInstaller', 'DeleteScript') | ForEach-Object {
         if ((Get-Variable $_).Value -eq $true) {
-            if ($_ -eq 'DeleteInstaller') {
-                Write-FalconLog $null "Waiting for the installer process to complete with PID ($InstallPid)"
-                Wait-Process -Id $InstallPid
-                Write-FalconLog $null "Installer process with PID ($InstallPid) has completed"
-            }
             $FilePath = if ($_ -eq 'DeleteInstaller') {
                 $LocalFile
-            } else {
+            }
+            else {
                 Join-Path -Path $ScriptPath -ChildPath $ScriptName
             }
             Remove-Item -Path $FilePath -Force
             if (Test-Path $FilePath) {
                 Write-FalconLog $_ "Failed to delete '$FilePath'"
-            } else {
+            }
+            else {
                 Write-FalconLog $_ "Deleted '$FilePath'"
             }
         }
     }
 }
 end {
-    Write-FalconLog $null "Installation complete"
+    Write-FalconLog $null "Script complete"
 }

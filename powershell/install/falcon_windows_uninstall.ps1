@@ -172,5 +172,5 @@ process {
     Write-Output $Message
 }
 end {
-    Write-Output 'Uninstall complete'
+    Write-Output 'Script complete'
 }
