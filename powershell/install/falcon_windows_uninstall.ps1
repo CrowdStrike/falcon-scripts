@@ -409,7 +409,7 @@ process {
                 Write-FalconLog $null "Host already removed from CrowdStrike Falcon"
             } elseif ($response.StatusCode -eq 403) {
                 $scope = @{
-                    "host" = @("Write")
+                    "host" = @("Write", "Read")
                 }
                 $Message = New-403Error -url $url -scope $scope
                 Write-FalconLog "RemoveHostError" $Message
