@@ -291,8 +291,10 @@ process {
             $bodyJson = $Body | ConvertTo-Json
 
             try {
+                $url = "policy/combined/reveal-uninstall-token/v1"
+                
                 $Headers['Content-Type'] = 'application/json'
-                $response = Invoke-WebRequest -Uri "$($baseUrl)/policy/combined/reveal-uninstall-token/v1" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
+                $response = Invoke-WebRequest -Uri "$($baseUrl)/$($url)" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
                 $content = ConvertFrom-Json -InputObject $response.Content
 
                 if ($content.errors) {
@@ -315,7 +317,12 @@ process {
                 }
 
                 if ($response.StatusCode -eq 403) {
-                    $Message = "Received a [403] $($response.StatusCode) response from $($baseUrl)/policy/combined/reveal-uninstall-token/v1. Please ensure you have [Write] access to the Sensor Update Policy API scope. Error: $($response.StatusDescription)"
+                    $scope = @{
+                        'Sensor update policies' = @("Write")
+                    }
+
+                    $Message = New-403Error -url $url -scope $scope
+
                     Write-FalconLog "GetTokenError" $Message
                     throw $Message
                 }
@@ -409,14 +416,14 @@ process {
                 Write-FalconLog $null "Host already removed from CrowdStrike Falcon"
             } elseif ($response.StatusCode -eq 403) {
                 $scope = @{
-                    "host" = @("Write", "Read")
+                    "host" = @("Write")
                 }
                 $Message = New-403Error -url $url -scope $scope
                 Write-FalconLog "RemoveHostError" $Message
                 throw $Message
             }
             else {
-                $Message = "Received a $($response.StatusCode) response from $($baseUrl)/devices/entities/devices-actions/v2. Error: $($response.StatusDescription)"
+                $Message = "Received a $($response.StatusCode) response from $($baseUrl)$($url). Error: $($response.StatusDescription)"
                 Write-FalconLog $null $Message
                 throw $Message
             }
