@@ -108,17 +108,22 @@ begin {
         return $Output
     }
 
-    function Invoke-FalconAuth($Falcon, [hashtable] $Body, [string] $FalconCloud) {
+    function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
 
         try {
-            $response = Invoke-WebRequest -Uri "$($Falcon.BaseAddress)oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body -MaximumRedirection 0
+            $response = Invoke-WebRequest -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body -MaximumRedirection 0
             $content = ConvertFrom-Json -InputObject $response.Content
-            $Falcon.Headers.Add('Authorization', "bearer $($content.access_token)")
+            $Headers.Add('Authorization', "bearer $($content.access_token)")
         }
         catch {
             # Handle redirects
             $response = $_.Exception.Response
+
+            if (!$response) {
+                $Message = "Unhandled error occurred while authenticating to the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
+                throw $Message
+            }
 
             if ($response.StatusCode -in @(301, 302, 303, 307, 308)) {
                 # If autodiscover is enabled, try to get the correct cloud
@@ -131,8 +136,8 @@ begin {
                         throw $Message
                     }
 
-                    $Falcon.BaseAddress = Get-FalconCloud($region)
-                    $Falcon = Invoke-FalconAuth $Falcon $Body $FalconCloud
+                    $BaseUrl = Get-FalconCloud($region)
+                    $BaseUrl, $Headers = Invoke-FalconAuth $BaseUrl $Body $FalconCloud
                 }
                 else {
                     $Message = "Received a redirect. Please set FalconCloud to 'autodiscover' or the correct region."
@@ -140,33 +145,44 @@ begin {
                 }
             }
             else {
-                $Message = "Received a $($response.StatusCode) response from $($Falcon.BaseAddress)oauth2/token. Please check your credentials and try again."
+                $Message = "Received a $($response.StatusCode) response from $($BaseUrl)oauth2/token. Please check your credentials and try again. Error: $($response.StatusDescription)"
                 throw $Message
             }
         }
 
-        return $Falcon
+        return $BaseUrl, $Headers
+    }
+
+    function Test-FalconCredentials([string] $FalconClientId , [string] $FalconClientSecret ) {
+        if ($FalconClientId -and $FalconClientSecret) {
+            return $true
+        }
+        else {
+            return $false
+        }
     }
 
     function Get-AID {
         $reg_paths = 'HKLM:\SYSTEM\CrowdStrike\{9b03c1d9-3138-44ed-9fae-d9f4c034b88d}\{16e0423f-7058-48c9-a204-725362b67639}\Default', 'HKLM:\SYSTEM\CurrentControlSet\Services\CSAgent\Sim'
         $aid = $null
         foreach ($path in $reg_paths) {
-          try {
-            $aid = [System.BitConverter]::ToString( ((Get-ItemProperty "$path" -Name AG).AG)).ToLower() -replace '-',''
-            break
-          }
-          catch {
-            $Message = "Unable to find AID in registry path: $path"
-            Write-FalconLog 'AID' $Message
-          }
+            try {
+                $agItemProperty = Get-ItemProperty -Path $path -Name AG -ErrorAction Stop
+                $aid = [System.BitConverter]::ToString( ($agItemProperty.AG)).ToLower() -replace '-', ''
+                break
+            }
+            catch {
+                $Message = "Unable to find AID in registry path: $path"
+                Write-FalconLog 'AID' $Message
+            }
         }
         if (!$aid) {
-          $Message = "Unable to find AID in registry"
-          Write-FalconLog 'AID' $Message
-          throw $Message
+            $Message = "Unable to find AID in registry"
         }
-        $Message = "Found AID: $aid"
+        else {
+            $Message = "Found AID: $aid"
+        }
+
         Write-FalconLog 'AID' $Message
         return $aid
     }
@@ -199,19 +215,36 @@ process {
         throw $Message
     }
 
-    $Falcon = New-Object System.Net.WebClient
-    $Falcon.Encoding = [System.Text.Encoding]::UTF8
-    $Falcon.BaseAddress = Get-FalconCloud $FalconCloud
-
-    $Body = @{}
-    $Body["client_id"] = $FalconClientId
-    $Body["client_secret"] = $FalconClientSecret
-
-    if ($MemberCid) {
-        $Body["&member_cid"] = $MemberCid
+    # Verify creds are provided if using the API
+    $credsProvided = Test-FalconCredentials $FalconClientId $FalconClientSecret
+    if (!$credsProvided) {
+        if ($RemoveHost) {
+            $Message = 'Unable to remove host without credentials, please provide FalconClientId and FalconClientSecret'
+            throw $Message
+        }
+    } else {
+        # Grab AID before uninstalling
+        $aid = Get-AID
     }
 
-    $Falcon = Invoke-FalconAuth $Falcon $Body $FalconCloud
+
+    if ($credsProvided) {
+        $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
+        $BaseUrl = Get-FalconCloud $FalconCloud
+
+
+        $Body = @{}
+        $Body["client_id"] = $FalconClientId
+        $Body["client_secret"] = $FalconClientSecret
+
+        if ($MemberCid) {
+            $Body["&member_cid"] = $MemberCid
+        }
+
+        $BaseUrl, $Headers = Invoke-FalconAuth $BaseUrl $Body $FalconCloud
+        $Headers['Content-Type'] = 'application/json'
+    }
+    
 
 
     $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
