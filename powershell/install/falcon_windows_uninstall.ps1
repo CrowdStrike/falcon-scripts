@@ -93,7 +93,16 @@ begin {
 
     function Write-FalconLog ([string] $Source, [string] $Message) {
         $Content = @(Get-Date -Format 'yyyy-MM-dd hh:MM:ss')
+        if ($Source -notmatch '^(StartProcess|Delete(Installer|Script))$' -and
+            $Falcon.ResponseHeaders.Keys -contains 'X-Cs-TraceId') {
+            $Content += , "[$($Falcon.ResponseHeaders.Get('X-Cs-TraceId'))]"
+        }
+
         "$(@($Content + $Source) -join ' '): $Message" >> $LogPath
+
+        if ([string]::IsNullOrEmpty($Source)) {
+            Write-Output $Message.replace($FalconClientId, '***')
+        }
     }
 
     function Get-FalconCloud ([string] $xCsRegion) {
@@ -112,7 +121,7 @@ begin {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
 
         try {
-            $response = Invoke-WebRequest -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body -MaximumRedirection 0
+            $response = Invoke-WebRequest -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
             $content = ConvertFrom-Json -InputObject $response.Content
             $Headers.Add('Authorization', "bearer $($content.access_token)")
         }
@@ -222,7 +231,8 @@ process {
             $Message = 'Unable to remove host without credentials, please provide FalconClientId and FalconClientSecret'
             throw $Message
         }
-    } else {
+    }
+    else {
         # Grab AID before uninstalling
         $aid = Get-AID
     }
@@ -295,6 +305,55 @@ process {
         $Message = 'Driver removal failed...'
         Write-FalconLog "DriverError" $Message
         throw $Message
+    }
+
+    if ($RemoveHost) {
+        if (!$aid) {
+            $Message = 'AID not found on machine. Unable to remove host without AID, this may be due to the host not being registered with the Falcon console'
+            Write-FalconLog "RemoveHostError" $Message
+            throw $Message
+        }
+      
+        $Body = @{
+            "ids" = @($aid)
+        }
+      
+        $bodyJson = $Body | ConvertTo-Json
+        try {
+            $Headers['Content-Type'] = 'application/json'
+            $response = Invoke-WebRequest -Uri "$($baseUrl)/devices/entities/devices-actions/v2?action_name=hide_host" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
+            $content = ConvertFrom-Json -InputObject $response.Content
+      
+            if ($content.errors) {
+                $Message = "Error removing host: $($content.errors[0].message)"
+                Write-FalconLog "RemoveHostError" $Message
+                throw $Message
+            }
+            else {
+                $Message = "Host removed successfully"
+                Write-FalconLog $null $Message
+            }
+        }
+        catch {
+            $response = $_.Exception.Response
+      
+            if (!$response) {
+                $Message = "Unhandled error occurred while removing host from the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
+                Write-FalconLog "RemoveHostError" $Message
+                throw $Message
+            }
+      
+            if ($response.StatusCode -eq 409) {
+                $Message = "Received a $($response.StatusCode) response from $($baseUrl)/devices/entities/devices-actions/v2. Error: $($response.StatusDescription)"
+                Write-FalconLog "RemoveHostError" $Message
+                Write-FalconLog $null "Host already removed from CrowdStrike Falcon"
+            }
+            else {
+                $Message = "Received a $($response.StatusCode) response from $($baseUrl)/devices/entities/devices-actions/v2. Error: $($response.StatusDescription)"
+                Write-FalconLog $null $Message
+                throw $Message
+            }
+        }
     }
 
     @('DeleteUninstaller', 'DeleteScript') | ForEach-Object {
