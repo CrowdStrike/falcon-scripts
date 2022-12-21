@@ -73,9 +73,11 @@ param(
     [string] $FalconCloud = 'autodiscover',
 
     [Parameter(Position = 9)]
+    [ValidatePattern('\w{32}')]
     [string] $FalconClientId,
 
     [Parameter(Position = 10)]
+    [ValidatePattern('\w{40}')]
     [string] $FalconClientSecret,
 
     [Parameter(Position = 11)]
@@ -196,10 +198,6 @@ begin {
         return $aid
     }
 
-    if ($MaintenanceToken) {
-        $UninstallParams += " MAINTENANCE_TOKEN=$MaintenanceToken"
-    }
-
     if ($UninstallTool -match "installcache") {
         $UninstallerName = 'WindowsSensor*.exe'
         $UninstallerCachePath = "C:\ProgramData\Package Cache"
@@ -254,7 +252,6 @@ process {
         $BaseUrl, $Headers = Invoke-FalconAuth $BaseUrl $Body $FalconCloud
         $Headers['Content-Type'] = 'application/json'
     }
-    
 
 
     $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
@@ -268,6 +265,59 @@ process {
         $Message = "${UninstallerName} not found."
         Write-FalconLog 'CheckUninstaller' $Message
         throw $Message
+    }
+
+    if ($MaintenanceToken) {
+        # Assume the maintenance token is a valid Token and skip API calls
+        $UninstallParams += " MAINTENANCE_TOKEN=$MaintenanceToken"
+    }
+    else {
+        if ($aid) {
+            # Assume user wants to use API to retrieve token
+            # Build request body for retrieving maintenance token
+            $Body = @{
+                'device_id'     = $aid
+                'audit_message' = 'CrowdStrike Falcon Uninstall Powershell Script'
+            }
+
+            $bodyJson = $Body | ConvertTo-Json
+
+            try {
+                $Headers['Content-Type'] = 'application/json'
+                $response = Invoke-WebRequest -Uri "$($baseUrl)/policy/combined/reveal-uninstall-token/v1" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
+                $content = ConvertFrom-Json -InputObject $response.Content
+
+                if ($content.errors) {
+                    $Message = "Failed to retrieve maintenance token: $($content.errors[0].message)"
+                    Write-FalconLog "GetTokenError" $Message
+                    throw $Message
+                }
+                else {
+                    $MaintenanceToken = $content.resources[0].uninstall_token
+                    $UninstallParams += " MAINTENANCE_TOKEN=$MaintenanceToken"
+                }
+            }
+            catch {
+                $response = $_.Exception.Response
+
+                if (!$response) {
+                    $Message = "Unhandled error occurred while retrieving maintenance token from the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
+                    Write-FalconLog "GetTokenError" $Message
+                    throw $Message
+                }
+
+                if ($response.StatusCode -eq 403) {
+                    $Message = "Received a [403] $($response.StatusCode) response from $($baseUrl)/policy/combined/reveal-uninstall-token/v1. Please ensure you have [Write] access to the Sensor Update Policy API scope. Error: $($response.StatusDescription)"
+                    Write-FalconLog "GetTokenError" $Message
+                    throw $Message
+                }
+                else {
+                    $Message = "Received a $($response.StatusCode) response from $($baseUrl)/policy/combined/reveal-uninstall-token/v1. Error: $($response.StatusDescription)"
+                    Write-FalconLog "GetTokenError" $Message
+                    throw $Message
+                }
+            }
+        }
     }
 
     $Message = 'Uninstalling Falcon Sensor...'
@@ -313,17 +363,17 @@ process {
             Write-FalconLog "RemoveHostError" $Message
             throw $Message
         }
-      
+
         $Body = @{
             "ids" = @($aid)
         }
-      
+
         $bodyJson = $Body | ConvertTo-Json
         try {
             $Headers['Content-Type'] = 'application/json'
             $response = Invoke-WebRequest -Uri "$($baseUrl)/devices/entities/devices-actions/v2?action_name=hide_host" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
             $content = ConvertFrom-Json -InputObject $response.Content
-      
+
             if ($content.errors) {
                 $Message = "Error removing host: $($content.errors[0].message)"
                 Write-FalconLog "RemoveHostError" $Message
@@ -336,13 +386,13 @@ process {
         }
         catch {
             $response = $_.Exception.Response
-      
+
             if (!$response) {
                 $Message = "Unhandled error occurred while removing host from the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
                 Write-FalconLog "RemoveHostError" $Message
                 throw $Message
             }
-      
+
             if ($response.StatusCode -eq 409) {
                 $Message = "Received a $($response.StatusCode) response from $($baseUrl)/devices/entities/devices-actions/v2. Error: $($response.StatusDescription)"
                 Write-FalconLog "RemoveHostError" $Message
