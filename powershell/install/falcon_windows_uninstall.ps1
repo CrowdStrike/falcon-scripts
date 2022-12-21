@@ -10,7 +10,8 @@ Script options can be passed as parameters or defined in the param() block. Defa
 the parameter descriptions.
 
 The script must be run as an administrator on the local machine in order for the Falcon Sensor to
-uninstall.
+uninstall and the OAuth2 API Client being used requires 'sensor-update-policies:write' and
+'host:write' permissions.
 .PARAMETER MaintenanceToken
 Sensor uninstall maintenance token ['https://api.crowdstrike.com' if left undefined]
 .PARAMETER UninstallParams
@@ -148,7 +149,8 @@ begin {
                     }
 
                     $BaseUrl = Get-FalconCloud($region)
-                    $BaseUrl, $Headers = Invoke-FalconAuth $BaseUrl $Body $FalconCloud
+                    $BaseUrl, $Headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
+
                 }
                 else {
                     $Message = "Received a redirect. Please set FalconCloud to 'autodiscover' or the correct region."
@@ -164,7 +166,7 @@ begin {
         return $BaseUrl, $Headers
     }
 
-    function Test-FalconCredentials([string] $FalconClientId , [string] $FalconClientSecret ) {
+    function Test-FalconCredential([string] $FalconClientId , [string] $FalconClientSecret ) {
         if ($FalconClientId -and $FalconClientSecret) {
             return $true
         }
@@ -215,7 +217,7 @@ begin {
         $LogPath = Join-Path -Path $WinTemp -ChildPath 'csfalcon_uninstall.log'
     }
 
-    function New-403Error([string] $url, [hashtable] $scope) {
+    function Format-403Error([string] $url, [hashtable] $scope) {
         $Message = "Insufficient permission error when calling $($url). Verify the following scopes are included in the API key:"
         foreach ($key in $scope.Keys) {
           $Message += "`r`n`t '$($key)' with: $($scope[$key])"
@@ -231,7 +233,7 @@ process {
     }
 
     # Verify creds are provided if using the API
-    $credsProvided = Test-FalconCredentials $FalconClientId $FalconClientSecret
+    $credsProvided = Test-FalconCredential $FalconClientId $FalconClientSecret
     if (!$credsProvided) {
         if ($RemoveHost) {
             $Message = 'Unable to remove host without credentials, please provide FalconClientId and FalconClientSecret'
@@ -257,7 +259,7 @@ process {
             $Body["&member_cid"] = $MemberCid
         }
 
-        $BaseUrl, $Headers = Invoke-FalconAuth $BaseUrl $Body $FalconCloud
+        $BaseUrl, $Headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
         $Headers['Content-Type'] = 'application/json'
     }
 
@@ -292,7 +294,7 @@ process {
 
             try {
                 $url = "policy/combined/reveal-uninstall-token/v1"
-                
+
                 $Headers['Content-Type'] = 'application/json'
                 $response = Invoke-WebRequest -Uri "$($baseUrl)/$($url)" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
                 $content = ConvertFrom-Json -InputObject $response.Content
@@ -321,7 +323,7 @@ process {
                         'Sensor update policies' = @("Write")
                     }
 
-                    $Message = New-403Error -url $url -scope $scope
+                    $Message = Format-403Error -url $url -scope $scope
 
                     Write-FalconLog "GetTokenError" $Message
                     throw $Message
@@ -418,7 +420,7 @@ process {
                 $scope = @{
                     "host" = @("Write")
                 }
-                $Message = New-403Error -url $url -scope $scope
+                $Message = Format-403Error -url $url -scope $scope
                 Write-FalconLog "RemoveHostError" $Message
                 throw $Message
             }
