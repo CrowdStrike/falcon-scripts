@@ -122,10 +122,15 @@ begin {
 
     function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
-
         try {
             $response = Invoke-WebRequest -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
             $content = ConvertFrom-Json -InputObject $response.Content
+
+            if ([string]::IsNullOrEmpty($content.access_token)) {
+                $Message = "Unable to authenticate to the CrowdStrike Falcon API. Please check your credentials and try again."
+                throw $Message
+            }
+
             $Headers.Add('Authorization', "bearer $($content.access_token)")
         }
         catch {
@@ -134,6 +139,7 @@ begin {
 
             if (!$response) {
                 $Message = "Unhandled error occurred while authenticating to the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
+                Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
                 throw $Message
             }
 
@@ -145,6 +151,7 @@ begin {
                     }
                     else {
                         $Message = "Received a redirect but no X-Cs-Region header was provided. Unable to autodiscover the FalconCloud. Please set FalconCloud to the correct region."
+                        Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
                         throw $Message
                     }
 
@@ -154,11 +161,13 @@ begin {
                 }
                 else {
                     $Message = "Received a redirect. Please set FalconCloud to 'autodiscover' or the correct region."
+                    Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
                     throw $Message
                 }
             }
             else {
                 $Message = "Received a $($response.StatusCode) response from $($BaseUrl)oauth2/token. Please check your credentials and try again. Error: $($response.StatusDescription)"
+                Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
                 throw $Message
             }
         }
@@ -190,7 +199,7 @@ begin {
             }
         }
         if (!$aid) {
-            $Message = "Unable to find AID in registry"
+            $Message = "AID not found in registry. This could be due to the agent not being installed or being partially installed."
         }
         else {
             $Message = "Found AID: $aid"
@@ -220,15 +229,38 @@ begin {
     function Format-403Error([string] $url, [hashtable] $scope) {
         $Message = "Insufficient permission error when calling $($url). Verify the following scopes are included in the API key:"
         foreach ($key in $scope.Keys) {
-          $Message += "`r`n`t '$($key)' with: $($scope[$key])"
+            $Message += "`r`n`t '$($key)' with: $($scope[$key])"
         }
         return $Message
-      }
+    }
+    
+    function Format-FalconResponseError($errors) {
+        $Message = ""
+        foreach ($error in $errors) {
+            $Message += "`r`n`t $($error.message)"
+        }
+        return $Message
+    }
 }
 process {
     if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
             [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {
         $Message = 'Unable to proceed without administrative privileges'
+        throw $Message
+    }
+
+    $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
+    if (!$AgentService) {
+        $Message = "'CSFalconService' service not found, already uninstalled"
+        Write-FalconLog 'CheckService' $Message
+        Write-FalconLog $null $Message
+        break;
+    }
+
+    if (-not (Test-Path -Path $UninstallerPath)) {
+        $Message = "${UninstallerName} not found. Unable to uninstall without the cached uninstaller or the standalone uninstaller."
+        Write-FalconLog 'CheckUninstaller' $Message
+        Write-FalconLog $null $Message
         throw $Message
     }
 
@@ -263,20 +295,6 @@ process {
         $Headers['Content-Type'] = 'application/json'
     }
 
-
-    $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
-    if (!$AgentService) {
-        $Message = "'CSFalconService' is not installed"
-        Write-FalconLog 'CheckService' $Message
-        throw $Message
-    }
-
-    if (-not (Test-Path -Path $UninstallerPath)) {
-        $Message = "${UninstallerName} not found."
-        Write-FalconLog 'CheckUninstaller' $Message
-        throw $Message
-    }
-
     if ($MaintenanceToken) {
         # Assume the maintenance token is a valid Token and skip API calls
         $UninstallParams += " MAINTENANCE_TOKEN=$MaintenanceToken"
@@ -300,7 +318,8 @@ process {
                 $content = ConvertFrom-Json -InputObject $response.Content
 
                 if ($content.errors) {
-                    $Message = "Failed to retrieve maintenance token: $($content.errors[0].message)"
+                    $Message = "Failed to retrieve maintenance token: "
+                    $Message += Format-FalconResponseError -errors $content.errors
                     Write-FalconLog "GetTokenError" $Message
                     throw $Message
                 }
@@ -329,7 +348,7 @@ process {
                     throw $Message
                 }
                 else {
-                    $Message = "Received a $($response.StatusCode) response from $($baseUrl)/policy/combined/reveal-uninstall-token/v1. Error: $($response.StatusDescription)"
+                    $Message = "Received a $($response.StatusCode) response from $($baseUrl)$($url) Error: $($response.StatusDescription)"
                     Write-FalconLog "GetTokenError" $Message
                     throw $Message
                 }
@@ -376,7 +395,7 @@ process {
 
     if ($RemoveHost) {
         if (!$aid) {
-            $Message = 'AID not found on machine. Unable to remove host without AID, this may be due to the host not being registered with the Falcon console'
+            $Message = 'AID not found on machine. Unable to remove host without AID, this may be due to the sensor not being installed or being partially installed.'
             Write-FalconLog "RemoveHostError" $Message
             throw $Message
         }
@@ -394,7 +413,8 @@ process {
             $content = ConvertFrom-Json -InputObject $response.Content
 
             if ($content.errors) {
-                $Message = "Error removing host: $($content.errors[0].message)"
+                $Message = "Error removing host: "
+                $Message += Format-FalconResponseError -errors $content.errors
                 Write-FalconLog "RemoveHostError" $Message
                 throw $Message
             }
@@ -413,10 +433,11 @@ process {
             }
 
             if ($response.StatusCode -eq 409) {
-                $Message = "Received a $($response.StatusCode) response from $($baseUrl)/devices/entities/devices-actions/v2. Error: $($response.StatusDescription)"
+                $Message = "Received a $($response.StatusCode) response from $($baseUrl)$($url) Error: $($response.StatusDescription)"
                 Write-FalconLog "RemoveHostError" $Message
                 Write-FalconLog $null "Host already removed from CrowdStrike Falcon"
-            } elseif ($response.StatusCode -eq 403) {
+            }
+            elseif ($response.StatusCode -eq 403) {
                 $scope = @{
                     "host" = @("Write")
                 }
