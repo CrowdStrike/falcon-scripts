@@ -214,6 +214,14 @@ begin {
     if (!$LogPath) {
         $LogPath = Join-Path -Path $WinTemp -ChildPath 'csfalcon_uninstall.log'
     }
+
+    function New-403Error([string] $url, [hashtable] $scope) {
+        $Message = "Insufficient permission error when calling $($url). Verify the following scopes are included in the API key:"
+        foreach ($key in $scope.Keys) {
+          $Message += "`r`n`t '$($key)' with: $($scope[$key])"
+        }
+        return $Message
+      }
 }
 process {
     if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
@@ -370,8 +378,10 @@ process {
 
         $bodyJson = $Body | ConvertTo-Json
         try {
+            $url = "/devices/entities/devices-actions/v2?action_name=hide_host"
+
             $Headers['Content-Type'] = 'application/json'
-            $response = Invoke-WebRequest -Uri "$($baseUrl)/devices/entities/devices-actions/v2?action_name=hide_host" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
+            $response = Invoke-WebRequest -Uri "$($baseUrl)$($url)" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
             $content = ConvertFrom-Json -InputObject $response.Content
 
             if ($content.errors) {
@@ -397,6 +407,13 @@ process {
                 $Message = "Received a $($response.StatusCode) response from $($baseUrl)/devices/entities/devices-actions/v2. Error: $($response.StatusDescription)"
                 Write-FalconLog "RemoveHostError" $Message
                 Write-FalconLog $null "Host already removed from CrowdStrike Falcon"
+            } elseif ($response.StatusCode -eq 403) {
+                $scope = @{
+                    "host" = @("Write")
+                }
+                $Message = New-403Error -url $url -scope $scope
+                Write-FalconLog "RemoveHostError" $Message
+                throw $Message
             }
             else {
                 $Message = "Received a $($response.StatusCode) response from $($baseUrl)/devices/entities/devices-actions/v2. Error: $($response.StatusDescription)"
