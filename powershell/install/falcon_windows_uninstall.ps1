@@ -233,7 +233,7 @@ begin {
         }
         return $Message
     }
-    
+
     function Format-FalconResponseError($errors) {
         $Message = ""
         foreach ($error in $errors) {
