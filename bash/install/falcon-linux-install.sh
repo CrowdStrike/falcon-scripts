@@ -638,8 +638,8 @@ cs_falcon_cid=$(
     fi
 )
 
-cs_falcon_apd=$(
-    if [ -n "$FALCON_APD" ]; then
+if [ -n "$FALCON_APD" ]; then
+    cs_falcon_apd=$(
         case "${FALCON_APD}" in
             true)
                 echo "true";;
@@ -648,11 +648,11 @@ cs_falcon_apd=$(
             *)
                 die "Unrecognized APD: ${FALCON_APD} value must be one of : [true|false]";;
         esac
-    fi
-)
+    )
+fi
 
-cs_falcon_billing=$(
-    if [ -n "$FALCON_BILLING" ]; then
+if [ -n "$FALCON_BILLING" ]; then
+    cs_falcon_billing=$(
         case "${FALCON_BILLING}" in
             default)
                 echo "default";;
@@ -661,11 +661,11 @@ cs_falcon_billing=$(
             *)
                 die "Unrecognized BILLING: ${FALCON_BILLING} value must be one of : [default|metered]";;
         esac
-    fi
-)
+    )
+fi
 
-cs_falcon_backend=$(
-    if [ -n "$FALCON_BACKEND" ]; then
+if [ -n "$FALCON_BACKEND" ]; then
+    cs_falcon_backend=$(
         case "${FALCON_BACKEND}" in
             auto)
                 echo "auto";;
@@ -676,11 +676,11 @@ cs_falcon_backend=$(
             *)
                 die "Unrecognized BACKEND: ${FALCON_BACKEND} value must be one of : [auto|bpf|kernel]";;
         esac
-    fi
-)
+    )
+fi
 
-cs_falcon_trace=$(
-    if [ -n "$FALCON_TRACE" ]; then
+if [ -n "$FALCON_TRACE" ]; then
+    cs_falcon_trace=$(
         case "${FALCON_TRACE}" in
             none)
                 echo "none";;
@@ -695,7 +695,7 @@ cs_falcon_trace=$(
             *)
                 die "Unrecognized TRACE: ${FALCON_TRACE} value must be one of : [none|err|warn|info|debug]";;
         esac
-    fi
-)
+    )
+fi
 
 main "$@"
