@@ -504,11 +504,16 @@ cs_os_arch=$(
 )
 
 cs_os_arch_filter=$(
-    if [ "$cs_os_arch" = "x86_64" ]; then
-        echo "+os_version:!~\"arm64\""
-    else
-        echo "+os_version:~\"arm64\""
-    fi
+    case "${cs_os_arch}" in
+        x86_64)
+            echo "+os_version:!~\"arm64\"+os_version:!~\"zLinux\"";;
+        aarch64)
+            echo "+os_version:~\"arm64\"";;
+        s390x)
+            echo "+os_version:~\"zLinux\"";;
+        *)
+            die "Unrecognized OS architecture: ${cs_os_arch}";;
+    esac
 )
 
 cs_os_version=$(
