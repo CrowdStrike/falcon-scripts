@@ -241,6 +241,75 @@ begin {
         }
         return $Message
     }
+
+    # Changes the host visibility status in the CrowdStrike Falcon console
+    # an action of $hide will hide the host, anything else will unhide the host
+    # should only be called to hide/unhide a host that is already in the console
+    function Invoke-HostVisibility ([string] $action) {
+        if ($action -eq "hide") {
+            $action = "hide_host"
+        } else {
+            $action = "unhide_host"
+        }
+
+        if (!$aid) {
+            $Message = "AID not found on machine. Unable to ${action} host without AID, this may be due to the sensor not being installed or being partially installed."
+            Write-FalconLog "HostVisibilityError" $Message
+            throw $Message
+        }
+
+        $Body = @{
+            "ids" = @($aid)
+        }
+
+        $bodyJson = $Body | ConvertTo-Json
+        try {
+            $url = "${baseUrl}/devices/entities/devices-actions/v2?action_name=${action}"
+
+            $Headers['Content-Type'] = 'application/json'
+            $response = Invoke-WebRequest -Uri $url -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
+            $content = ConvertFrom-Json -InputObject $response.Content
+
+            if ($content.errors) {
+                $Message = "Error when calling ${action} on host: "
+                $Message += Format-FalconResponseError -errors $content.errors
+                Write-FalconLog "HostVisibilityError" $Message
+                throw $Message
+            }
+            else {
+                $Message = "Action ${action} executed successfully on host"
+                Write-FalconLog $null $Message
+            }
+        }
+        catch {
+            $response = $_.Exception.Response
+
+            if (!$response) {
+                $Message = "Unhandled error occurred while performing action '${action}' on host from the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
+                Write-FalconLog "HostVisibilityError" $Message
+                throw $Message
+            }
+
+            if ($response.StatusCode -eq 409) {
+                $Message = "Received a $($response.StatusCode) response from ${url} Error: $($response.StatusDescription)"
+                Write-FalconLog "HostVisibilityError" $Message
+                Write-FalconLog $null "Host already removed from CrowdStrike Falcon"
+            }
+            elseif ($response.StatusCode -eq 403) {
+                $scope = @{
+                    "host" = @("Write")
+                }
+                $Message = Format-403Error -url $url -scope $scope
+                Write-FalconLog "HostVisibilityError" $Message
+                throw $Message
+            }
+            else {
+                $Message = "Received a $($response.StatusCode) response from ${url}. Error: $($response.StatusDescription)"
+                Write-FalconLog $null $Message
+                throw $Message
+            }
+        }
+    }
 }
 process {
     if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
@@ -293,6 +362,10 @@ process {
 
         $BaseUrl, $Headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
         $Headers['Content-Type'] = 'application/json'
+    }
+
+    if ($RemoveHost) {
+        Invoke-HostVisibility -action "hide"
     }
 
     if ($MaintenanceToken) {
@@ -371,6 +444,12 @@ process {
             $Message = "Uninstaller returned exit code $($UninstallerProcess.ExitCode)"
         }
         Write-FalconLog "UninstallError" $Message
+        Write-FalconLog $null $Message
+
+        if ($RemoveHost) {
+            Write-FalconLog $null "Uninstall failed, attempting to restore host visibility..."
+            Invoke-HostVisibility -action "show"
+        }
         throw $Message
     }
 
@@ -394,63 +473,7 @@ process {
     }
 
     if ($RemoveHost) {
-        if (!$aid) {
-            $Message = 'AID not found on machine. Unable to remove host without AID, this may be due to the sensor not being installed or being partially installed.'
-            Write-FalconLog "RemoveHostError" $Message
-            throw $Message
-        }
 
-        $Body = @{
-            "ids" = @($aid)
-        }
-
-        $bodyJson = $Body | ConvertTo-Json
-        try {
-            $url = "/devices/entities/devices-actions/v2?action_name=hide_host"
-
-            $Headers['Content-Type'] = 'application/json'
-            $response = Invoke-WebRequest -Uri "$($baseUrl)$($url)" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
-            $content = ConvertFrom-Json -InputObject $response.Content
-
-            if ($content.errors) {
-                $Message = "Error removing host: "
-                $Message += Format-FalconResponseError -errors $content.errors
-                Write-FalconLog "RemoveHostError" $Message
-                throw $Message
-            }
-            else {
-                $Message = "Host removed successfully"
-                Write-FalconLog $null $Message
-            }
-        }
-        catch {
-            $response = $_.Exception.Response
-
-            if (!$response) {
-                $Message = "Unhandled error occurred while removing host from the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
-                Write-FalconLog "RemoveHostError" $Message
-                throw $Message
-            }
-
-            if ($response.StatusCode -eq 409) {
-                $Message = "Received a $($response.StatusCode) response from $($baseUrl)$($url) Error: $($response.StatusDescription)"
-                Write-FalconLog "RemoveHostError" $Message
-                Write-FalconLog $null "Host already removed from CrowdStrike Falcon"
-            }
-            elseif ($response.StatusCode -eq 403) {
-                $scope = @{
-                    "host" = @("Write")
-                }
-                $Message = Format-403Error -url $url -scope $scope
-                Write-FalconLog "RemoveHostError" $Message
-                throw $Message
-            }
-            else {
-                $Message = "Received a $($response.StatusCode) response from $($baseUrl)$($url). Error: $($response.StatusDescription)"
-                Write-FalconLog $null $Message
-                throw $Message
-            }
-        }
     }
 
     @('DeleteUninstaller', 'DeleteScript') | ForEach-Object {
