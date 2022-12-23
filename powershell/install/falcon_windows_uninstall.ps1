@@ -13,7 +13,7 @@ The script must be run as an administrator on the local machine in order for the
 uninstall and the OAuth2 API Client being used requires 'sensor-update-policies:write' and
 'host:write' permissions.
 .PARAMETER MaintenanceToken
-Sensor uninstall maintenance token ['https://api.crowdstrike.com' if left undefined]
+Sensor uninstall maintenance token. If left undefined, the script will attempt to retrieve the token from the API assuming the FalconClientId|FalconClientSecret are defined.
 .PARAMETER UninstallParams
 Sensor uninstall parameters ['/uninstall /quiet' if left undefined]
 .PARAMETER UninstallTool
@@ -37,11 +37,12 @@ Member CID, used only in multi-CID ("Falcon Flight Control") configurations and 
 .EXAMPLE
 PS>.\falcon_windows_uninstall.ps1 -MaintenanceToken <string>
 
-All parameters will use their default values.
+Uninstall the Falcon sensor with the provided MaintenanceToken.
 .EXAMPLE
-PS>.\falcon_windows_uninstall.ps1
+PS>.\falcon_windows_uninstall.ps1 -FalconClientId <string> -FalconClientSecret <string> -RemoveHost $true
 
-Run the script and use all values that were previously defined within the script.
+Use the Falcon API to retrieve the maintenance token and remove the host from the Falcon console
+after uninstalling.
 #>
 [CmdletBinding()]
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'DeleteUninstaller')]
