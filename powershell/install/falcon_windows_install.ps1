@@ -37,6 +37,8 @@ Uninstall the sensor from the host [default: $false]
 Provisioning token to use for sensor installation [default: $null]
 .PARAMETER ProvWaitTime
 Time to wait, in seconds, for sensor to provision [default: 1200]
+.PARAMETER Tags
+A comma-separated list of tags to apply to the host after sensor installation [default: $null]
 .EXAMPLE
 PS>.\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string>
 
@@ -92,8 +94,12 @@ param(
 
     [Parameter(Position = 11)]
     [string] $ProvToken,
+
     [Parameter(Position = 12)]
-    [int] $ProvWaitTime = 1200
+    [int] $ProvWaitTime = 1200,
+
+    [Parameter(Position = 13)]
+    [string] $Tags
 )
 begin {
     if ($PSVersionTable.PSVersion -lt '3.0')
@@ -423,6 +429,10 @@ process {
 
     if ($ProvToken) {
         $InstallParams += " ProvToken=$ProvToken"
+    }
+
+    if ($Tags) {
+        $InstallParams += " GROUPING_TAGS=$Tags"
     }
 
     $InstallParams += " ProvWaitTime=$ProvWaitTime"
