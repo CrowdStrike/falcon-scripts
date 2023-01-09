@@ -1,0 +1,7 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Run whoami to make molecule prepare for windows happy
+      ansible.windows.win_whoami:
