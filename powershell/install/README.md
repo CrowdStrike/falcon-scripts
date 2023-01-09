@@ -46,6 +46,12 @@ Delete sensor installer package when complete [default: $true]
 Delete script when complete [default: $false]
 .PARAMETER Uninstall
 Uninstall the sensor from the host [default: $false]
+.PARAMETER ProvToken
+Provisioning token to use for sensor installation [default: $null]
+.PARAMETER ProvWaitTime
+Time to wait, in seconds, for sensor to provision [default: 1200]
+.PARAMETER Tags
+A comma-separated list of tags to apply to the host after sensor installation [default: $null]
 ```
 
 Example:
