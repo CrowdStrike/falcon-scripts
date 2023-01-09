@@ -1,0 +1,28 @@
+# Create a workflow file to test bash installation script on ubuntu-latest
+name: Test bash installation script
+
+on:
+  push:
+
+jobs:
+  bash-install:
+    name: Test bash installation
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - ubuntu:latest
+          - centos:7
+          - rockylinux:8
+          - almalinux:9
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Install bash
+      run: |
+        docker run --rm -v $(pwd)./bash/install:/install:/tmp -w /tmp ${{ matrix.image }} bash -c "systemctl"
+
+
