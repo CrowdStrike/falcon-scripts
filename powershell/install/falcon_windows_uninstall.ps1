@@ -473,10 +473,6 @@ process {
         throw $Message
     }
 
-    if ($RemoveHost) {
-
-    }
-
     @('DeleteUninstaller', 'DeleteScript') | ForEach-Object {
         if ((Get-Variable $_).Value -eq $true) {
             $FilePath = if ($_ -eq 'DeleteUninstaller') {
