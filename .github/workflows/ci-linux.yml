@@ -12,10 +12,10 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - ubuntu:latest
-          - centos:7
-          - rockylinux:8
-          - almalinux:9
+          - geerlingguy/docker-ubuntu2204-ansible
+          - geerlingguy/docker-centos7-ansible
+          - geerlingguy/docker-rockylinux8-ansible
+          - geerlingguy/docker-rockylinux9-ansible
 
     steps:
     - name: Checkout
@@ -23,6 +23,10 @@ jobs:
 
     - name: Install bash
       run: |
-        docker run --rm -v $(pwd)./bash/install:/install:/tmp -w /tmp ${{ matrix.image }} bash -c "systemctl"
+        docker run --name=bash-test --rm --detach --privileged -v /sys/fs/cgroup:/sys/fs/cgroup:rw --cgroupns=host -v $(pwd)./bash/install:/install ${{ matrix.image }}
+
+        docker exec bash-test systemctl
+
+
 
 
