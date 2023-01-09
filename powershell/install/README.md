@@ -7,8 +7,12 @@ Powershell scripts to install/uninstall Falcon Sensor through the Falcon APIs on
 API clients are granted one or more API scopes. Scopes allow access to specific CrowdStrike APIs and describe the actions that an API client can perform.
 
 Ensure the following API scopes are enabled:
-* **Sensor Download** [read]
-* **Sensor update policies** [read]
+- Install:
+  * **Sensor Download** [read]
+  * **Sensor update policies** [read]
+- Uninstall:
+  * **Host** [write]
+  * **Sensor update policies** [write]
 
 ## Configuration
 
@@ -72,7 +76,8 @@ the parameter descriptions:
 
 ```pwsh
 .PARAMETER MaintenanceToken
-Sensor uninstall maintenance token ['https://api.crowdstrike.com' if left undefined]
+Sensor uninstall maintenance token. If left undefined, the script will attempt to retrieve the
+token from the API assuming the FalconClientId|FalconClientSecret are defined.
 .PARAMETER UninstallParams
 Sensor uninstall parameters ['/uninstall /quiet' if left undefined]
 .PARAMETER UninstallTool
@@ -83,9 +88,27 @@ Script log location ['Windows\Temp\csfalcon_uninstall.log' if left undefined]
 Delete sensor uninstaller package when complete [default: $true]
 .PARAMETER DeleteScript
 Delete script when complete [default: $true]
+.PARAMETER RemoveHost
+Remove host from CrowdStrike Falcon [default: $false]
+.PARAMETER FalconCloud
+CrowdStrike Falcon OAuth2 API Hostname [default: autodiscover]
+.PARAMETER FalconClientId
+CrowdStrike Falcon OAuth2 API Client Id [Required if RemoveHost is $true]
+.PARAMETER FalconClientSecret
+CrowdStrike Falcon OAuth2 API Client Secret [Required if RemoveHost is $true]
+.PARAMETER MemberCid
+Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID.
 ```
 
-Example:
+Examples:
+
+Basic example that will uninstall the sensor with the provided maintenance token
 ```pwsh
 PS>.\falcon_windows_uninstall.ps1 -MaintenanceToken <string>
+```
+
+An example using the Falcon API to retrieve the maintenance token and remove the host from the Falcon console
+after uninstalling.
+```pwsh
+PS>.\falcon_windows_uninstall.ps1 -FalconClientId <string> -FalconClientSecret <string> -RemoveHost $true
 ```
