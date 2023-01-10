@@ -27,9 +27,9 @@ jobs:
       matrix:
         image:
           - { name: "ubuntu:latest", command: "apt-get" }
-          - { name: "centos:7", command: "yum" }
-          - { name: "rockylinux:8", command: "dnf" }
-          - { name: "almalinux:9", command: "dnf" }
+          - { name: "geerlingguy/docker-centos7-ansible", command: "yum" }
+          - { name: "geerlingguy/docker-rockylinux8-ansible", command: "dnf" }
+          - { name: "geerlingguy/docker-rockylinux9-ansible", command: "dnf" }
 
     steps:
     - name: Checkout
@@ -56,7 +56,7 @@ jobs:
         FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
         FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
       run: |
-        docker run --name=bash-test -e FALCON_CLIENT_ID -e FALCON_CLIENT_SECRET -d -v $(pwd)/bash/install:/install ${{ matrix.image.name }} tail -f /dev/null
+        docker run --name=bash-test --privileged -e FALCON_CLIENT_ID -e FALCON_CLIENT_SECRET -d -v $(pwd)/bash/install:/install ${{ matrix.image.name }}
 
         docker exec bash-test ${{ matrix.image.command }} repolist
 
