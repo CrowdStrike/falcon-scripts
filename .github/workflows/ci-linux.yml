@@ -46,7 +46,7 @@ jobs:
 
         docker exec bash-test ${{ matrix.image.command }} install -y curl
 
-        docker exec bash-test bash falcon-linux-install.sh
+        docker exec bash-test bash /install/falcon-linux-install.sh
 
 
 
