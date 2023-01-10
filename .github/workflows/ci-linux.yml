@@ -26,10 +26,10 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - { name: ubuntu:latest, command: "apt-get" }
-          - { name: centos:7, command: "yum" }
-          - { name: rockylinux:8, command: "dnf" }
-          - { name: almalinux:9, command: "dnf" }
+          - { name: "ubuntu:latest", command: "apt-get" }
+          - { name: "centos:7", command: "yum" }
+          - { name: "rockylinux:8", command: "dnf" }
+          - { name: "almalinux:9", command: "dnf" }
 
     steps:
     - name: Checkout
@@ -43,7 +43,7 @@ jobs:
         docker run --name=bash-test -e FALCON_CLIENT_ID -e FALCON_CLIENT_SECRET -d -v $(pwd)/bash/install:/install ${{ matrix.image.name }}
 
         docker exec bash-test ${{ matrix.image.command }} update
-        
+
         docker exec bash-test ${{ matrix.image.command }} install -y curl
 
         docker exec bash-test bash falcon-linux-install.sh
