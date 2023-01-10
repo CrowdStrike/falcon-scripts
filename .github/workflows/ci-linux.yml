@@ -26,10 +26,10 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - { name: geerlingguy/docker-ubuntu2204-ansible, command: "apt-get" }
-          - { name: geerlingguy/docker-centos7-ansible, command: "yum" }
-          - { name: geerlingguy/docker-rockylinux8-ansible, command: "dnf" }
-          - { name: geerlingguy/docker-rockylinux9-ansible, command: "dnf" }
+          - { name: ubuntu:latest, command: "apt-get" }
+          - { name: centos:7, command: "yum" }
+          - { name: rockylinux:8, command: "dnf" }
+          - { name: almalinux:9, command: "dnf" }
 
     steps:
     - name: Checkout
