@@ -56,7 +56,8 @@ jobs:
         FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
         FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
       run: |
-        docker run --name=bash-test --privileged -e FALCON_CLIENT_ID -e FALCON_CLIENT_SECRET -d -v $(pwd)/bash/install:/install ${{ matrix.image.name }}
+        docker run --name=bash-test --privileged -e FALCON_CLIENT_ID -e FALCON_CLIENT_SECRET -d \
+        -v /sys/fs/cgroup:/sys/fs/cgroup:ro -v $(pwd)/bash/install:/install ${{ matrix.image.name }}
 
         docker exec bash-test ${{ matrix.image.command }} repolist
 
