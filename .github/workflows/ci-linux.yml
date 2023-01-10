@@ -59,9 +59,5 @@ jobs:
         docker run --name=bash-test --privileged -e FALCON_CLIENT_ID -e FALCON_CLIENT_SECRET -d \
         -v /sys/fs/cgroup:/sys/fs/cgroup:ro -v $(pwd)/bash/install:/install ${{ matrix.image.name }}
 
-        docker exec bash-test ${{ matrix.image.command }} repolist
-
-        docker exec bash-test ${{ matrix.image.command }} install -y curl
-
         docker exec bash-test bash /install/falcon-linux-install.sh
 
