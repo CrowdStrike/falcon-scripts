@@ -3,29 +3,48 @@ name: Test bash installation script
 
 on:
   push:
+    paths:
+      - 'bash/install/**'
+      - '.github/workflows/ci-linux.yml'
+
+  pull_request_target:
+    types: [ labeled ]
+    paths:
+      - 'bash/install/**'
+      - '.github/workflows/ci-linux.yml'
 
 jobs:
   bash-install:
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'pull_request_target' &&
+      github.event.label.name == 'ok-to-test')
     name: Test bash installation
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
         image:
-          - geerlingguy/docker-ubuntu2204-ansible
-          - geerlingguy/docker-centos7-ansible
-          - geerlingguy/docker-rockylinux8-ansible
-          - geerlingguy/docker-rockylinux9-ansible
+          - { name: geerlingguy/docker-ubuntu2204-ansible, command: "apt-get" }
+          - { name: geerlingguy/docker-centos7-ansible, command: "yum" }
+          - { name: geerlingguy/docker-rockylinux8-ansible, command: "dnf" }
+          - { name: geerlingguy/docker-rockylinux9-ansible, command: "dnf" }
 
     steps:
     - name: Checkout
       uses: actions/checkout@v2
 
     - name: Install bash
+      env:
+        FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
+        FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
       run: |
-        docker run --name=bash-test --rm --detach --privileged -v /sys/fs/cgroup:/sys/fs/cgroup:rw --cgroupns=host -v $(pwd)./bash/install:/install ${{ matrix.image }}
+        docker run --name=bash-test -e FALCON_CLIENT_ID -e FALCON_CLIENT_SECRET --rm -d -v $(pwd)./bash/install:/install ${{ matrix.image.name }}
 
-        docker exec bash-test systemctl
+        docker exec bash-test systemctl ${{ matrix.image.command }} update && ${{ matrix.image.command }} install -y curl
+
+        docker exec bash-test bash falcon-linux-install.sh
 
 
 
