@@ -1,19 +1,4 @@
 ---
-- name: Prepare
-  hosts: all
-  become: true
-  tasks:
-    # Ubuntu specific
-    - name: Install apt dependencies
-      ansible.builtin.apt:
-        name:
-          - gpg-agent
-        update_cache: true
-      when: ansible_pkg_mgr == 'apt'
-
-    - name: Install dependencies
-      ansible.builtin.package:
-        name:
-          - sudo
-          - curl
-        state: present
+# Run default prepare playbook
+- name: Prepare (Default)
+  ansible.builtin.import_playbook: ../bash_install/prepare.yml
