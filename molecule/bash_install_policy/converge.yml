@@ -1,0 +1,20 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: false
+  become: true
+  environment:
+    FALCON_CLIENT_ID: "{{ lookup('env', 'FALCON_CLIENT_ID') }}"
+    FALCON_CLIENT_SECRET: "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
+    FALCON_SENSOR_UPDATE_POLICY_NAME: "platform_default"
+  tasks:
+    # Execute shell command
+    - name: Install Falcon Sensor
+      ansible.builtin.script:
+        cmd: ../../bash/install/falcon-linux-install.sh
+      register: falcon_install
+
+    # Print stdout
+    - name: Task STDOUT
+      ansible.builtin.debug:
+        msg: "{{ falcon_install.stdout_lines }}"

@@ -1,63 +1,74 @@
-# Create a workflow file to test bash installation script on ubuntu-latest
-name: Test bash installation script
-
+name: "Test bash installation script"
 on:
+  schedule:
+    - cron: '0 6 * * *'
   push:
     paths:
-      - 'bash/install/**'
-      - '.github/workflows/ci-linux.yml'
-
+      - 'roles/falcon_install/**'
+      - 'molecule/falcon_install/**'
+      - '.github/workflows/falcon_install.yml'
   pull_request_target:
     types: [ labeled ]
     paths:
-      - 'bash/install/**'
-      - '.github/workflows/ci-linux.yml'
-
+      - 'roles/falcon_install/**'
+      - 'molecule/falcon_install/**'
+      - '.github/workflows/falcon_install.yml'
 jobs:
-  bash-install:
+  molecule:
     if: |
       github.event_name == 'push' ||
       github.event_name == 'schedule' ||
       (github.event_name == 'pull_request_target' &&
       github.event.label.name == 'ok-to-test')
-    name: Test bash installation
     runs-on: ubuntu-20.04
+    env:
+      PY_COLORS: 1
+      ANSIBLE_FORCE_COLOR: 1
+      FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
+      FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
     strategy:
       fail-fast: false
       matrix:
-        image:
-          - { name: "ubuntu:latest", command: "apt-get" }
-          - { name: "geerlingguy/docker-centos7-ansible", command: "yum" }
-          - { name: "geerlingguy/docker-rockylinux8-ansible", command: "dnf" }
-          - { name: "geerlingguy/docker-rockylinux9-ansible", command: "dnf" }
-
+        molecule_distro:
+          - { "distro":"centos7" }
+          - { "distro":"rockylinux8" }
+          - { "distro":"rockylinux9" }
+          - { "distro":"ubuntu2004" }
+        scenario:
+          - bash_install
+          - bash_install_decrement
+          - bash_install_only
+          - bash_install_policy
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+      - name: Check out code
+        uses: actions/checkout@v3
+        if: github.event_name != 'pull_request_target'
 
-    - name: Install bash on debian based distro
-      if: matrix.image.command == 'apt-get'
-      env:
-        FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
-        FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
-      run: |
-        docker run --name=bash-test -e FALCON_CLIENT_ID -e FALCON_CLIENT_SECRET -d -v $(pwd)/bash/install:/install ${{ matrix.image.name }} tail -f /dev/null
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{github.event.pull_request.head.sha}}
+        if: github.event_name == 'pull_request_target'
 
-        docker exec bash-test ${{ matrix.image.command }} update
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
-        docker exec bash-test ${{ matrix.image.command }} install -y curl
+      - name: Install dependencies
+        run: |
+          sudo apt install apt-transport-https ca-certificates curl software-properties-common
+          python -m pip install --upgrade pip
+          pip install molecule[docker,lint] ansible yamllint ansible-lint
 
-        docker exec bash-test bash /install/falcon-linux-install.sh
-
-
-    - name: Install bash on rpm based distro
-      if: matrix.image.command != 'apt-get'
-      env:
-        FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
-        FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
-      run: |
-        docker run --name=bash-test --privileged -e FALCON_CLIENT_ID -e FALCON_CLIENT_SECRET -d \
-        -v /sys/fs/cgroup:/sys/fs/cgroup:ro -v $(pwd)/bash/install:/install ${{ matrix.image.name }}
-
-        docker exec bash-test bash /install/falcon-linux-install.sh
-
+      - name: Run role tests
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 6
+          max_attempts: 3
+          retry_on: error
+          command: >-
+            molecule --version &&
+            ansible --version &&
+            MOLECULE_DISTRO=${{ matrix.molecule_distro.distro }}
+            molecule test -s ${{ matrix.scenario }}
