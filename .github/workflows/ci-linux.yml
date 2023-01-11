@@ -5,13 +5,13 @@ on:
 
   push:
     paths:
-      - 'bash/install/**'
+      - 'molecule/bash**'
       - '.github/workflows/ci-linux.yml'
 
   pull_request_target:
     types: [ labeled ]
     paths:
-      - 'bash/install/**'
+      - 'molecule/bash**'
       - '.github/workflows/ci-linux.yml'
 
 jobs:
