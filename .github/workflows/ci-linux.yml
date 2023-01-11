@@ -58,6 +58,7 @@ jobs:
         with:
           python-version: '3.x'
           cache: 'pip'
+          cache-dependency-path: '.github/workflows/ci-linux.yml'
 
       - name: Install dependencies
         run: |
