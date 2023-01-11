@@ -8,6 +8,7 @@
       ansible.builtin.apt:
         name:
           - gpg-agent
+          - curl
         update_cache: true
       when: ansible_pkg_mgr == 'apt'
 
@@ -15,5 +16,4 @@
       ansible.builtin.package:
         name:
           - sudo
-          - curl
         state: present
