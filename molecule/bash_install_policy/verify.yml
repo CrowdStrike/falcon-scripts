@@ -1,0 +1,4 @@
+---
+# Run default verify playbook
+- name: Verify (Default)
+  ansible.builtin.import_playbook: ../bash_install/verify.yml

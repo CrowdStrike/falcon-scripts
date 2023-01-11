@@ -1,0 +1,35 @@
+---
+- name: Verify (Default)
+  hosts: all
+  gather_facts: false
+  become: true
+  pre_tasks:
+    - name: Set default sensor name and service
+      ansible.builtin.set_fact:
+        installed_sensor: falcon-sensor
+        sensor_service: falcon-sensor.service
+
+    - name: Get list of installed packages
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Collect status of falcon-sensor service
+      ansible.builtin.service_facts:
+
+    - name: Get CID
+      ansible.builtin.command: /opt/CrowdStrike/falconctl -g --cid
+      register: get_cid
+      changed_when: false
+
+  tasks:
+    - name: Verify Falcon Sensor is installed
+      ansible.builtin.assert:
+        that: installed_sensor in ansible_facts.packages
+
+    - name: Verify falcon-sensor service is active and running
+      ansible.builtin.assert:
+        that: ansible_facts.services[sensor_service].state == 'running'
+
+    - name: Verify CID
+      ansible.builtin.assert:
+        that: "'cid=' in get_cid.stdout"

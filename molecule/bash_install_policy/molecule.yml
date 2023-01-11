@@ -1,0 +1,31 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: ${MOLECULE_DISTRO:-centos7}
+    image: "geerlingguy/docker-${MOLECULE_DISTRO:-centos7}-ansible:latest"
+    pre_build_image: true
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      stdout_callback: yaml
+verifier:
+  name: ansible
+scenario:
+  test_sequence:
+    - dependency
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - side_effect
+    - verify
+    - destroy
