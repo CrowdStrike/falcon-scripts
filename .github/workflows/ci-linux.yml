@@ -1,18 +1,19 @@
-name: "Test bash installation script"
+name: "Integration Tests: Linux"
 on:
   schedule:
     - cron: '0 6 * * *'
+
   push:
     paths:
-      - 'roles/falcon_install/**'
-      - 'molecule/falcon_install/**'
-      - '.github/workflows/falcon_install.yml'
+      - 'bash/install/**'
+      - '.github/workflows/ci-linux.yml'
+
   pull_request_target:
     types: [ labeled ]
     paths:
-      - 'roles/falcon_install/**'
-      - 'molecule/falcon_install/**'
-      - '.github/workflows/falcon_install.yml'
+      - 'bash/install/**'
+      - '.github/workflows/ci-linux.yml'
+
 jobs:
   molecule:
     if: |
