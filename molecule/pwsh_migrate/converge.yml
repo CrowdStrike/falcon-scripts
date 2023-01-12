@@ -1,0 +1,13 @@
+---
+- name: Converge
+  hosts: all
+  tasks:
+    - name: Run Migrate Script
+      ansible.builtin.script: |
+        ../../powershell/migrate/migrate.ps1 `
+        -NewFalconClientId "{{ lookup('env', 'FALCON_CLIENT_ID') }}" `
+        -NewFalconClientSecret "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}" `
+        -OldFalconClientId "{{ lookup('env', 'FALCON_CLIENT_ID') }}" `
+        -OldFalconClientSecret "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}" `
+        -NewFalconCloud "us-2" `
+        -OldFalconCloud "us-2" `
