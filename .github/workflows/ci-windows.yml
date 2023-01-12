@@ -1,21 +1,20 @@
-name: "Integration Tests: Linux"
+name: "Integration Tests: Windows"
 on:
   schedule:
     - cron: '0 6 * * *'
 
   push:
     paths:
-      - 'molecule/bash**'
-      - 'bash/install/**'
-      - '.github/workflows/ci-linux.yml'
+      - 'molecule/pwsh**'
+      - 'powershell/install/**'
+      - '.github/workflows/ci-windows.yml'
 
   pull_request_target:
     types: [ labeled ]
     paths:
-      - 'molecule/bash**'
-      - 'bash/install/**'
-      - '.github/workflows/ci-linux.yml'
-
+      - 'molecule/pwsh**'
+      - 'powershell/install/**'
+      - '.github/workflows/ci-windows.yml'
 jobs:
   molecule:
     if: |
@@ -23,25 +22,22 @@ jobs:
       github.event_name == 'schedule' ||
       (github.event_name == 'pull_request_target' &&
       github.event.label.name == 'ok-to-test')
-    runs-on: ubuntu-20.04
+    runs-on: macos-12
     env:
       PY_COLORS: 1
       ANSIBLE_FORCE_COLOR: 1
       FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
       FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
+      FALCON_CID: ${{ secrets.FALCON_CID }}
+      FALCON_PROV_TOKEN: ${{ secrets.FALCON_PROV_TOKEN }}
+      OBJC_DISABLE_INITIALIZE_FORK_SAFETY: YES
     strategy:
       fail-fast: false
       matrix:
         molecule_distro:
-          - { "distro":"centos7" }
-          - { "distro":"rockylinux8" }
-          - { "distro":"rockylinux9" }
-          - { "distro":"ubuntu2004" }
+          - { "distro":"WindowsServer2019" }
         scenario:
-          - bash_install
-          - bash_install_decrement
-          - bash_install_only
-          - bash_install_policy
+          - pwsh_install_policy
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -53,23 +49,29 @@ jobs:
           ref: ${{github.event.pull_request.head.sha}}
         if: github.event_name == 'pull_request_target'
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.x'
           cache: 'pip'
-          cache-dependency-path: '.github/workflows/ci-linux.yml'
+          cache-dependency-path: '.github/workflows/ci-windows.yml'
 
       - name: Install dependencies
         run: |
-          sudo apt install apt-transport-https ca-certificates curl software-properties-common
           python -m pip install --upgrade pip
-          pip install molecule[docker,lint] ansible yamllint ansible-lint
+          pip install molecule[lint] ansible yamllint ansible-lint python-vagrant molecule-vagrant "pywinrm>=0.3.0"
+      
+      - name: Cache Vagrant boxes
+        uses: actions/cache@v3
+        with:
+          path: ~/.vagrant.d/boxes
+          key: ${{ runner.os }}-vagrant-${{ hashFiles('./molecule/win_falcon_install/molecule.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-vagrant-
 
       - name: Run integration tests
         uses: nick-fields/retry@v2
         with:
-          timeout_minutes: 6
+          timeout_minutes: 25
           max_attempts: 3
           retry_on: error
           command: >-
