@@ -21,7 +21,7 @@ Optional Flags:
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
 
     -n, --node                          download node sensor instead of container sensor
-    -k, --kubernetes-protection-agent   download kubernetes protection agent instead of container sensor
+    -k, --kubernetes-protection-agent   download kubernetes protection agent instead of falcon sensor
     --runtime                           use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                  print registry credentials to stdout to copy/paste into container tools.
     --list-tags                         list all tags available for the selected sensor
@@ -123,7 +123,7 @@ case "$1" in
     ;;
     -k|--kubernetes-protection-agent)
     if [ -n "${1}" ]; then
-        GETKPA=true
+        GET_KPA=true
     fi
     ;;
     -h|--help)
@@ -231,7 +231,7 @@ if [ ! "$LISTTAGS" ] ; then
 fi
 
 
-if [ "$GETKPA" ] ; then
+if [ "$GET_KPA" ] ; then
     REGISTRY_TOKEN_API_ENDPOINT="https://$(cs_cloud)/kubernetes-protection/entities/integration/agent/v1?cluster_name=clustername&is_self_managed_cluster=true"
     REGISTRY_NAMESPACE=kubernetes_protection
     REGISTRY_IMAGE_NAME=kpagent
@@ -251,7 +251,7 @@ else
     REGISTRY_TOKEN_JSON_KEY=token
 fi
 
-REGISTRY_PASSWORD=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L "$REGISTRY_TOKEN_API_ENDPOINT" -H @- | if [ "$GETKPA" ]; then awk '/dockerAPIToken:/ {print $2}' ; else json_value "token" ; fi | sed 's/ *$//g' | sed 's/^ *//g')
+REGISTRY_PASSWORD=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L "$REGISTRY_TOKEN_API_ENDPOINT" -H @- | if [ "$GET_KPA" ]; then awk '/dockerAPIToken:/ {print $2}' ; else json_value "token" ; fi | sed 's/ *$//g' | sed 's/^ *//g')
 
 #Set container login
 (echo "$REGISTRY_PASSWORD" | "$CONTAINER_TOOL" login --username "$REGISTRY_USERNAME_PREFIX-$cs_falcon_cid" "$cs_registry" --password-stdin >/dev/null 2>&1) || ERROR=true
