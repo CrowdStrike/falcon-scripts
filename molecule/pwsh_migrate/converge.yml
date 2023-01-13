@@ -11,3 +11,4 @@
         -OldFalconClientSecret "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}" `
         -NewFalconCloud "us-2" `
         -OldFalconCloud "us-2" `
+        -SkipTags $true

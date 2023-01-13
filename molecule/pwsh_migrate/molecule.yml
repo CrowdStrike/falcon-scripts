@@ -9,8 +9,8 @@ platforms:
   - name: falcon
     box: "jborean93/${MOLECULE_DISTRO:-WindowsServer2019}"
     box_version: 1.0.0
-    memory: 4096
-    cpus: 2
+    memory: 8192
+    cpus: 3
 provisioner:
   name: ansible
   config_options:
