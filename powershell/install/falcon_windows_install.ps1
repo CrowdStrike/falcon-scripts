@@ -63,15 +63,12 @@ param(
     [string] $FalconCloud = 'https://api.crowdstrike.com',
 
     [Parameter(Position = 2)]
-    [ValidatePattern('\w{32}')]
     [string] $FalconClientId,
 
     [Parameter(Position = 3)]
-    [ValidatePattern('\w{40}')]
     [string] $FalconClientSecret,
 
     [Parameter(Position = 4)]
-    [ValidatePattern('\w{32}')]
     [string] $MemberCid,
 
     [Parameter(Position = 5)]
@@ -208,7 +205,12 @@ begin {
         "$(@($Content + $Source) -join ' '): $Message" >> $LogPath
 
         if ([string]::IsNullOrEmpty($Source)) {
-            Write-Output $Message.replace($FalconClientId, '***')
+            if ($FalconClientId.Length -gt 0) {
+                Write-Output $Message.replace($FalconClientId, '***')
+            }
+            else {
+                Write-Output $Message
+            }
         }
     }
     if (!$SensorUpdatePolicyName) {
@@ -445,10 +447,14 @@ process {
 
     if ($process.ExitCode -eq 1244) {
         $Message = "Exit code 1244: Falcon was unable to communicate with the CrowdStrike cloud. Please check your installation token and try again."
+        Write-FalconLog 'InstallerProcess' $Message
+        throw $Message
     }
     elseif ($process.ExitCode -ne 0) {
         errOut = $process.StandardError.ReadToEnd()
         $Message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
+        Write-FalconLog 'InstallerProcess' $Message
+        throw $Message
     }
     else {
         $Message = "Falcon installer exited with code $($process.ExitCode)"

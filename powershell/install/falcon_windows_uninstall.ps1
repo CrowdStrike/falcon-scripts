@@ -105,7 +105,12 @@ begin {
         "$(@($Content + $Source) -join ' '): $Message" >> $LogPath
 
         if ([string]::IsNullOrEmpty($Source)) {
-            Write-Output $Message.replace($FalconClientId, '***')
+            if ($FalconClientId.Length -gt 0) {
+                Write-Output $Message.replace($FalconClientId, '***')
+            }
+            else {
+                Write-Output $Message
+            }
         }
     }
 
