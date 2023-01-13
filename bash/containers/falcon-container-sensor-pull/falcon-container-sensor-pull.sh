@@ -20,10 +20,11 @@ Optional Flags:
     -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
 
-    -n, --node          download node sensor instead of container sensor
-    --runtime           use a different container runtime [docker, podman, skopeo]. Default is docker.
-    --dump-credentials  print registry credentials to stdout to copy/paste into container tools.
-    --list-tags         list all tags available for the selected sensor
+    -n, --node                          download node sensor instead of container sensor
+    -k, --kubernetes-protection-agent   download kubernetes protection agent instead of container sensor
+    --runtime                           use a different container runtime [docker, podman, skopeo]. Default is docker.
+    --dump-credentials                  print registry credentials to stdout to copy/paste into container tools.
+    --list-tags                         list all tags available for the selected sensor
 
 Help Options:
     -h, --help display this help message"
@@ -117,7 +118,12 @@ case "$1" in
     ;;
     -n|--node)
     if [ -n "${1}" ]; then
-        SENSORTYPE="falcon-sensor"
+        GET_NODE_SENSOR=true
+    fi
+    ;;
+    -k|--kubernetes-protection-agent)
+    if [ -n "${1}" ]; then
+        GETKPA=true
     fi
     ;;
     -h|--help)
@@ -150,11 +156,6 @@ fi
 FALCON_CID=$(echo "${FALCON_CID}" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]')
 SENSOR_VERSION=$(echo "$SENSOR_VERSION" | tr '[:upper:]' '[:lower:]')
 COPY=$(echo "$COPY" | tr '[:upper:]' '[:lower:]')
-
-#Check if user wants to download DaemonSet Node Sensor
-if [ -z "$SENSORTYPE" ]; then
-    SENSORTYPE="falcon-container"
-fi
 
 #Check all mandatory variables set
 VARIABLES="FALCON_CLIENT_ID FALCON_CLIENT_SECRET"
@@ -205,12 +206,12 @@ if [ "x${FALCON_CLOUD}" != "x${region_hint}" ] && [ "${region_hint}" != "" ]; th
     FALCON_CLOUD="${region_hint}"
 fi
 
-registry_opts=$(
+REGISTRY_NAMESPACE_CLOUD=$(
     # Account for govcloud api mismatch
     if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
-        echo "$SENSORTYPE/govcloud"
+        echo govcloud/release
     else
-        echo "$SENSORTYPE/$FALCON_CLOUD"
+        echo $FALCON_CLOUD/release
     fi
 )
 
@@ -228,12 +229,33 @@ if [ ! "$LISTTAGS" ] ; then
     echo "Falcon Region:   $(cs_cloud)"
     echo "Falcon Registry: ${cs_registry}"
 fi
-#Set Docker token using the BEARER token captured earlier
-ART_PASSWORD=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L \
-"https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" -H @- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+
+
+if [ "$GETKPA" ] ; then
+    REGISTRY_TOKEN_API_ENDPOINT="https://$(cs_cloud)/kubernetes-protection/entities/integration/agent/v1?cluster_name=clustername&is_self_managed_cluster=true"
+    REGISTRY_NAMESPACE=kubernetes_protection
+    REGISTRY_IMAGE_NAME=kpagent
+    REGISTRY_USERNAME_PREFIX=kp
+    REGISTRY_TOKEN_JSON_KEY=dockerAPIToken
+elif [ "$GET_NODE_SENSOR" ] ; then
+    REGISTRY_TOKEN_API_ENDPOINT="https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1"
+    REGISTRY_NAMESPACE=falcon-sensor/$REGISTRY_NAMESPACE_CLOUD
+    REGISTRY_IMAGE_NAME=falcon-sensor
+    REGISTRY_USERNAME_PREFIX=fc
+    REGISTRY_TOKEN_JSON_KEY=token
+else
+    REGISTRY_TOKEN_API_ENDPOINT="https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1"
+    REGISTRY_NAMESPACE=falcon-container/$REGISTRY_NAMESPACE_CLOUD
+    REGISTRY_IMAGE_NAME=falcon-sensor
+    REGISTRY_USERNAME_PREFIX=fc
+    REGISTRY_TOKEN_JSON_KEY=token
+fi
+
+REGISTRY_PASSWORD=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L "$REGISTRY_TOKEN_API_ENDPOINT" -H @- | if [ "$GETKPA" ]; then awk '/dockerAPIToken:/ {print $2}' ; else json_value "token" ; fi | sed 's/ *$//g' | sed 's/^ *//g')
 
 #Set container login
-(echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin >/dev/null 2>&1) || ERROR=true
+(echo "$REGISTRY_PASSWORD" | "$CONTAINER_TOOL" login --username "$REGISTRY_USERNAME_PREFIX-$cs_falcon_cid" "$cs_registry" --password-stdin >/dev/null 2>&1) || ERROR=true
+
 if [ "${ERROR}" = true ]; then
     die "ERROR: ${CONTAINER_TOOL} login failed"
 fi
@@ -243,8 +265,8 @@ if [ "$LISTTAGS" ] ; then
         *podman)
         die "Please use docker runtime to list tags" ;;
         *docker)
-        REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$registry_opts/release/falcon-sensor:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-        echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$registry_opts/release/falcon-sensor/tags/list" -H @- | sed "s/, /, \\n/g" ;;
+        REGISTRYBEARER=$(echo "-u $REGISTRY_USERNAME_PREFIX-$cs_falcon_cid:$REGISTRY_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=$REGISTRY_USERNAME_PREFIX-$cs_falcon_cid&scope=repository:$REGISTRY_NAMESPACE/$REGISTRY_IMAGE_NAME:pull&service=$cs_registry" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+        echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$REGISTRY_NAMESPACE/$REGISTRY_IMAGE_NAME/tags/list" -H @- | sed "s/, /, \\n/g" ;;
         *skopeo)
         die "Please use docker runtime to list tags" ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
@@ -255,33 +277,33 @@ fi
 #Get latest sensor version
 case "${CONTAINER_TOOL}" in
         *podman)
-        LATESTSENSOR=$($CONTAINER_TOOL image search --list-tags "$cs_registry/$registry_opts/release/falcon-sensor" | grep "$SENSOR_VERSION" | tail -1 | cut -d" " -f3);;
+        REGISTRY_IMAGE_TAG=$($CONTAINER_TOOL image search --list-tags "$cs_registry/$REGISTRY_NAMESPACE/$REGISTRY_IMAGE_NAME" | grep "$SENSOR_VERSION" | tail -1 | cut -d" " -f3);;
         *docker)
-        REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$registry_opts/release/falcon-sensor:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-        LATESTSENSOR=$(echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$registry_opts/release/falcon-sensor/tags/list" -H @- | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
+        REGISTRYBEARER=$(echo "-u $REGISTRY_USERNAME_PREFIX-$cs_falcon_cid:$REGISTRY_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=$REGISTRY_USERNAME_PREFIX-$cs_falcon_cid&scope=repository:$REGISTRY_NAMESPACE/$REGISTRY_IMAGE_NAME:pull&service=$cs_registry" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+        REGISTRY_IMAGE_TAG=$(echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$REGISTRY_NAMESPACE/$REGISTRY_IMAGE_NAME/tags/list" -H @- | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
         *skopeo)
-        LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$registry_opts/release/falcon-sensor" | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1) ;;
+        REGISTRY_IMAGE_TAG=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$REGISTRY_NAMESPACE/$REGISTRY_IMAGE_NAME" | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1) ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
 esac
 
 if [ "$CREDS" ] ; then
-    echo "CS Registry Username: fc-${cs_falcon_cid}"
-    echo "CS Registry Password: ${ART_PASSWORD}"
+    echo "CS Registry Username: $REGISTRY_USERNAME_PREFIX-${cs_falcon_cid}"
+    echo "CS Registry Password: ${REGISTRY_PASSWORD}"
     exit 0
 fi
 
 #Construct full image path
-FULLIMAGEPATH="$cs_registry/$registry_opts/release/falcon-sensor:${LATESTSENSOR}"
+FULLIMAGEPATH="$cs_registry/$REGISTRY_NAMESPACE/$REGISTRY_IMAGE_NAME:${REGISTRY_IMAGE_TAG}"
 
 if grep -qw "skopeo" "$CONTAINER_TOOL" ; then
-    "$CONTAINER_TOOL" copy "docker://$FULLIMAGEPATH" "docker://$COPY/falcon-sensor:$LATESTSENSOR"
+    "$CONTAINER_TOOL" copy "docker://$FULLIMAGEPATH" "docker://$COPY/$REGISTRY_IMAGE_NAME:$REGISTRY_IMAGE_TAG"
 else
     #Pull the container image locally
     "$CONTAINER_TOOL" pull "$FULLIMAGEPATH"
 
     # For those that don't want to use skopeo to copy
     if [ -n "$COPY" ]; then
-        "$CONTAINER_TOOL" tag "$FULLIMAGEPATH" "$COPY/falcon-sensor:$LATESTSENSOR"
-        "$CONTAINER_TOOL" push "$COPY/falcon-sensor:$LATESTSENSOR"
+        "$CONTAINER_TOOL" tag "$FULLIMAGEPATH" "$COPY/$REGISTRY_IMAGE_NAME:$REGISTRY_IMAGE_TAG"
+        "$CONTAINER_TOOL" push "$COPY/$REGISTRY_IMAGE_NAME:$REGISTRY_IMAGE_TAG"
     fi
 fi
