@@ -53,6 +53,7 @@ Branch or Tag of the install/uninstall scripts to use [default: 'v1.0.0']
 #Requires -Version 3.0
 
 [CmdletBinding()]
+[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions')] # Disable ShouldProcess warning
 param(
   [Parameter(Position = 1)]
   [ValidatePattern('\w{32}')]
@@ -76,7 +77,7 @@ param(
   [string] $OldFalconCloud = 'autodiscover',
   [Parameter(Position = 8)]
   [string] $OldMemberCid,
-  [Parameter(Position = 9)]
+  [Parameter(Position = 9 )]
   [string] $SensorUpdatePolicyName,
   [Parameter(Position = 10)]
   [string] $InstallParams,
@@ -103,7 +104,7 @@ param(
   [string] $ScriptVersion = 'v1.0.0'
 )
 
-function Write-Log ($Message) {
+function Write-MigrateLog ($Message) {
   $logTimeStamp = @(Get-Date -Format 'yyyy-MM-dd hh:MM:ss')
 
   "$($logTimeStamp): $Message" | Out-File -FilePath $LogPath -Append -Encoding utf8
@@ -111,75 +112,61 @@ function Write-Log ($Message) {
 
 function Invoke-SetupEnvironment ($Version, $FalconInstallScriptPath, $FalconUninstallScriptPath) {
   if (!(Test-Path $FalconInstallScriptPath)) {
-    Write-Log "falcon_windows_install.ps1 not found, downloading github version: ${Version}"
+    Write-MigrateLog "falcon_windows_install.ps1 not found, downloading github version: ${Version}"
     Invoke-WebRequest -Uri "https://raw.githubusercontent.com/CrowdStrike/falcon-scripts/${Version}/powershell/install/falcon_windows_install.ps1" -OutFile $FalconInstallScriptPath
   }
 
   if (!(Test-Path $FalconUninstallScriptPath)) {
-    Write-Log "falcon_windows_uninstall.ps1 not found, downloading github version: ${Version}"
+    Write-MigrateLog "falcon_windows_uninstall.ps1 not found, downloading github version: ${Version}"
     Invoke-WebRequest -Uri "https://raw.githubusercontent.com/CrowdStrike/falcon-scripts/${Version}/powershell/install/falcon_windows_uninstall.ps1" -OutFile $FalconUninstallScriptPath
   }
 }
 
 # Uninstall Falcon Sensor
-function Invoke-FalconUninstall {
-  $uninstallArgs = @{
-    'FalconCloud'        = $OldFalconCloud
-    'FalconClientId'     = $OldFalconClientId
-    'FalconClientSecret' = $OldFalconClientSecret
-    'MemberCid'          = $OldMemberCid
-    'MaintenanceToken'   = $MaintenanceToken
-    'UninstallParams'    = $UninstallParams
-    'UninstallTool'      = $UninstallTool
-    'LogPath'            = $LogPath
-  }
-  $argsList = @()
+function Invoke-FalconUninstall ($UninstallArgs, $RemoveHost) {
+  try {
 
-  foreach ($key in $uninstallArgs.Keys) {
-    if (![string]::IsNullOrEmpty($uninstallArgs[$key])) {
-      $argsList += "-$key $($uninstallArgs[$key])"
+    $argsList = @()
+
+    foreach ($key in $UninstallArgs.Keys) {
+      if (![string]::IsNullOrEmpty($UninstallArgs[$key])) {
+        $argsList += "-$key $($UninstallArgs[$key])"
+      }
+    }
+
+    if ($RemoveHost) {
+      $argsList += '-RemoveHost'
+    }
+
+    Write-MigrateLog 'Uninstalling Falcon Sensor...'
+    $process = Start-Process -FilePath powershell.exe -ArgumentList "-file `"$falconUninstallScriptPath`" $argsList" -Wait -NoNewWindow -PassThru
+
+    if ($process.ExitCode -ne 0) {
+      Write-MigrateLog "Uninstall failed with exit code: $($process.ExitCode). Check $LogPath for more details."
+      exit $process.ExitCode
     }
   }
-
-  if ($RemoveHost) {
-    $argsList += '-RemoveHost'
-  }
-
-  Write-Log 'Uninstalling Falcon Sensor...'
-  $process = Start-Process -FilePath powershell.exe -ArgumentList "-file `"$falconUninstallScriptPath`" $argsList" -Wait -NoNewWindow -PassThru
-
-  if ($process.ExitCode -ne 0) {
-    Write-Log "Uninstall failed with exit code: $($process.ExitCode). Check $LogPath for more details."
-    exit $process.ExitCode
+  catch {
+    $message = "Error uninstalling Falcon Sensor: $($_.Exception.Message)"
+    throw $message
   }
 }
 
 # Install Falcon Sensor
-function Invoke-FalconInstall {
+function Invoke-FalconInstall ($InstallArgs) {
   try {
-    $installArgs = @{
-      'FalconClientId'         = $NewFalconClientId
-      'FalconClientSecret'     = $NewFalconClientSecret
-      'MemberCid'              = $NewMemberCid
-      'InstallParams'          = $InstallParams
-      'LogPath'                = $LogPath
-      'ProvToken'              = $ProvToken
-      'ProvWaitTime'           = $ProvWaitTime
-      'Tags'                   = $sensorGroupingTags
-      'SensorUpdatePolicyName' = $SensorUpdatePolicyName
-    }
     $argsList = @()
-    foreach ($key in $installArgs.Keys) {
-      if (![string]::IsNullOrEmpty($installArgs[$key])) {
-        $argsList += "-$key $($installArgs[$key])"
+    foreach ($key in $InstallArgs.Keys) {
+      if (![string]::IsNullOrEmpty($InstallArgs[$key])) {
+        $argsList += "-$key $($InstallArgs[$key])"
       }
     }
 
-    Write-Log 'Installing Falcon Sensor...'
+    Write-MigrateLog 'Installing Falcon Sensor...'
     $process = Start-Process -FilePath powershell.exe -ArgumentList "-file `"$falconInstallScriptPath`" $argsList" -Wait -NoNewWindow -Verbose -PassThru
 
     if ($process.ExitCode -ne 0) {
-      Write-Log "Installer process exited with code $($process.ExitCode). Check $LogPath for more details."
+      Write-MigrateLog "Installer process exited with code $($process.ExitCode). Check $LogPath for more details."
       exit $process.ExitCode
     }
   }
@@ -311,7 +298,7 @@ function Set-Tag ([string] $Aid, [array] $Tags, [string] $BaseUrl, $Headers) {
 # Gets sensor and falcon tags
 function Get-Tag ([string] $Aid, [string] $BaseUrl, $Headers) {
   try {
-    Write-Log "Getting tags for host with AID: ${aid}"
+    Write-MigrateLog "Getting tags for host with AID: ${aid}"
     $url = "${BaseUrl}/devices/entities/devices/v2?ids=${aid}"
 
 
@@ -499,26 +486,51 @@ $sensorGroupingTags = "$sensorGroupingTags,$Tags"
 Write-Log "Sensor tags: $sensorGroupingTags"
 Write-Log "Falcon tags: $falconGroupingTags"
 
-Invoke-FalconUninstall
-Invoke-FalconInstall
+
+#Define install and uninstall parameters in script scope to prevent: PSReviewUnusedParameter
+$uninstallArgs = @{
+  'FalconCloud'        = $OldFalconCloud
+  'FalconClientId'     = $OldFalconClientId
+  'FalconClientSecret' = $OldFalconClientSecret
+  'MemberCid'          = $OldMemberCid
+  'MaintenanceToken'   = $MaintenanceToken
+  'UninstallParams'    = $UninstallParams
+  'UninstallTool'      = $UninstallTool
+  'LogPath'            = $LogPath
+}
+
+$installArgs = @{
+  'FalconClientId'         = $NewFalconClientId
+  'FalconClientSecret'     = $NewFalconClientSecret
+  'MemberCid'              = $NewMemberCid
+  'InstallParams'          = $InstallParams
+  'LogPath'                = $LogPath
+  'ProvToken'              = $ProvToken
+  'ProvWaitTime'           = $ProvWaitTime
+  'Tags'                   = $sensorGroupingTags
+  'SensorUpdatePolicyName' = $SensorUpdatePolicyName
+}
+
+Invoke-FalconUninstall -UninstallArgs $uninstallArgs -RemoveHost $RemoveHost
+Invoke-FalconInstall -InstallArgs $installArgs
 
 $timeout = Get-Date
 $timeout = $timeout.AddSeconds(120)
 $newAid = Get-AID
 
 while ($null -eq $newAid -and (Get-Date) -lt $timeout) {
-  Write-Log 'Waiting for new AID...'
+  Write-MigrateLog 'Waiting for new AID...'
   Start-Sleep -Seconds 5
   $newAid = Get-AID
 }
 
 if ($null -eq $newAid) {
   $message = 'Unable to retrieve new AID. Please check the logs for more information.'
-  Write-Log $message
+  Write-MigrateLog $message
   throw $message
 }
 else {
-  Write-Log 'Successfully retrieved new AID'
+  Write-MigrateLog 'Successfully retrieved new AID'
 }
 
 
@@ -537,29 +549,29 @@ if (!$SkipTags) {
         throw $errorMessage
       }
 
-      Write-Log 'Waiting for new AID to be registered...'
+      Write-MigrateLog 'Waiting for new AID to be registered...'
       Start-Sleep -Seconds 5
       $tagsMigratedm, $errorMessage = Set-Tag -Aid $newAid -Tags $falconGroupingTags -BaseUrl $newBaseUrl -Headers $newCloudHeaders
     }
 
     if ($tagsMigrated -eq $false) {
       $message = "Unable to set falcon sensor tags. Please check the logs for more information. Error: $errorMessage"
-      Write-Log $message
+      Write-MigrateLog $message
       throw $message
     }
     else {
-      Write-log 'Successfully set tags'
+      Write-MigrateLog 'Successfully set tags'
     }
   }
   else {
-    Write-log 'No tags to migrate...'
+    Write-MigrateLog 'No tags to migrate...'
   }
 }
 else {
-  Write-log 'SkipTags is set to true... skipping tag migration'
+  Write-MigrateLog 'SkipTags is set to true... skipping tag migration'
 }
 
-Write-Log 'Migration complete!'
+Write-MigrateLog 'Migration complete!'
 #Stop-Transcript
 
 # Debugging DELETE
