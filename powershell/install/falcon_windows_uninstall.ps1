@@ -21,11 +21,11 @@ Sensor uninstall tool, local installation cache or CS standalone uninstaller ['i
 .PARAMETER LogPath
 Script log location ['Windows\Temp\csfalcon_uninstall.log' if left undefined]
 .PARAMETER DeleteUninstaller
-Delete sensor uninstaller package when complete [default: $true]
+Delete sensor uninstaller package when complete [default: $false]
 .PARAMETER DeleteScript
-Delete script when complete [default: $true]
+Delete script when complete [default: $false]
 .PARAMETER RemoveHost
-Remove host from CrowdStrike Falcon [default: $false]
+Remove host from CrowdStrike Falcon
 .PARAMETER FalconCloud
 CrowdStrike Falcon OAuth2 API Hostname [default: autodiscover]
 .PARAMETER FalconClientId
@@ -62,13 +62,13 @@ param(
     [string] $LogPath,
 
     [Parameter(Position = 5)]
-    [bool] $DeleteUninstaller = $true,
+    [bool] $DeleteUninstaller = $false,
 
     [Parameter(Position = 6)]
-    [bool] $DeleteScript = $true,
+    [bool] $DeleteScript = $false,
 
     [Parameter(Position = 7)]
-    [bool] $RemoveHost = $false,
+    [switch] $RemoveHost,
 
     [Parameter(Position = 8)]
     [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1')]
@@ -102,7 +102,7 @@ begin {
             $Content += , "[$($Falcon.ResponseHeaders.Get('X-Cs-TraceId'))]"
         }
 
-        "$(@($Content + $Source) -join ' '): $Message" >> $LogPath
+        "$(@($Content + $Source) -join ' '): $Message" | Out-File -FilePath $LogPath -Append -Encoding utf8
 
         if ([string]::IsNullOrEmpty($Source)) {
             if ($FalconClientId.Length -gt 0) {

@@ -202,7 +202,7 @@ begin {
             $Content += , "[$($Falcon.ResponseHeaders.Get('X-Cs-TraceId'))]"
         }
 
-        "$(@($Content + $Source) -join ' '): $Message" >> $LogPath
+        "$(@($Content + $Source) -join ' '): $Message" | Out-File -FilePath $LogPath -Append -Encoding utf8
 
         if ([string]::IsNullOrEmpty($Source)) {
             if ($FalconClientId.Length -gt 0) {
