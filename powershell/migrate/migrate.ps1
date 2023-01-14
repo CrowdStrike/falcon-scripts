@@ -53,7 +53,6 @@ Branch or Tag of the install/uninstall scripts to use [default: 'v1.0.0']
 #Requires -Version 3.0
 
 [CmdletBinding()]
-[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'DeleteInstaller')]
 param(
   [Parameter(Position = 1)]
   [ValidatePattern('\w{32}')]
@@ -104,12 +103,7 @@ param(
   [string] $ScriptVersion = 'v1.0.0'
 )
 
-function Write-Log {
-  param(
-    [Parameter(ValueFromPipeline = $true)]
-    [string] $Message
-  )
-
+function Write-Log ($Message) {
   $logTimeStamp = @(Get-Date -Format 'yyyy-MM-dd hh:MM:ss')
 
   "$($logTimeStamp): $Message" | Out-File -FilePath $LogPath -Append -Encoding utf8
@@ -151,7 +145,7 @@ function Invoke-FalconUninstall {
     $argsList += '-RemoveHost'
   }
 
-  Write-Log "Uninstalling Falcon Sensor..."
+  Write-Log 'Uninstalling Falcon Sensor...'
   $process = Start-Process -FilePath powershell.exe -ArgumentList "-file `"$falconUninstallScriptPath`" $argsList" -Wait -NoNewWindow -PassThru
 
   if ($process.ExitCode -ne 0) {
@@ -164,14 +158,15 @@ function Invoke-FalconUninstall {
 function Invoke-FalconInstall {
   try {
     $installArgs = @{
-      'FalconClientId'     = $NewFalconClientId
-      'FalconClientSecret' = $NewFalconClientSecret
-      'MemberCid'          = $NewMemberCid
-      'InstallParams'      = $InstallParams
-      'LogPath'            = $LogPath
-      'ProvToken'          = $ProvToken
-      'ProvWaitTime'       = $ProvWaitTime
-      'Tags'               = $sensorGroupingTags
+      'FalconClientId'         = $NewFalconClientId
+      'FalconClientSecret'     = $NewFalconClientSecret
+      'MemberCid'              = $NewMemberCid
+      'InstallParams'          = $InstallParams
+      'LogPath'                = $LogPath
+      'ProvToken'              = $ProvToken
+      'ProvWaitTime'           = $ProvWaitTime
+      'Tags'                   = $sensorGroupingTags
+      'SensorUpdatePolicyName' = $SensorUpdatePolicyName
     }
     $argsList = @()
     foreach ($key in $installArgs.Keys) {
@@ -180,7 +175,7 @@ function Invoke-FalconInstall {
       }
     }
 
-    Write-Log "Installing Falcon Sensor..."
+    Write-Log 'Installing Falcon Sensor...'
     $process = Start-Process -FilePath powershell.exe -ArgumentList "-file `"$falconInstallScriptPath`" $argsList" -Wait -NoNewWindow -Verbose -PassThru
 
     if ($process.ExitCode -ne 0) {
@@ -197,15 +192,15 @@ function Invoke-FalconInstall {
 function Get-HeadersAndUrl([string] $FalconClientId, [string] $FalconClientSecret, [string] $MemberCid, [string] $FalconCloud) {
   $headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
   $baseUrl = Get-FalconCloud $FalconCloud
-  
+
   $body = @{}
-  $body["client_id"] = $FalconClientId
-  $body["client_secret"] = $FalconClientSecret
-  
+  $body['client_id'] = $FalconClientId
+  $body['client_secret'] = $FalconClientSecret
+
   if ($MemberCid) {
-    $body["&member_cid"] = $MemberCid
+    $body['&member_cid'] = $MemberCid
   }
-  
+
   $baseUrl, $headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
   $headers['Content-Type'] = 'application/json'
   return $baseUrl, $headers
@@ -221,7 +216,7 @@ function Test-FalconCredential ([string] $FalconClientId, [string] $FalconClient
 }
 
 function Format-FalconResponseError($errors) {
-  $message = ""
+  $message = ''
   foreach ($error in $errors) {
     $message += "`r`n`t $($error.message)"
   }
@@ -258,16 +253,16 @@ function Get-AID {
 }
 
 # Sets falcon tags
-function Set-Tags ([string] $Aid, [array] $Tags, [string] $BaseUrl, $Headers) {
+function Set-Tag ([string] $Aid, [array] $Tags, [string] $BaseUrl, $Headers) {
   try {
     $url = "${baseUrl}/devices/entities/devices/tags/v1"
-    $errorMessage = ""
+    $errorMessage = ''
     $tagsSet = $false
 
     $body = @{
-      "action"     = "append"
-      "device_ids" = @($aid)
-      "tags"       = $Tags
+      'action'     = 'append'
+      'device_ids' = @($aid)
+      'tags'       = $Tags
     }
     $body = ConvertTo-Json -InputObject $body
 
@@ -301,7 +296,7 @@ function Set-Tags ([string] $Aid, [array] $Tags, [string] $BaseUrl, $Headers) {
 
     if ($response.StatusCode -eq 403) {
       $scope = @{
-        "host" = @("Write")
+        'host' = @('Write')
       }
       $errorMessage = Format-403Error -url $url -scope $scope
     }
@@ -314,7 +309,7 @@ function Set-Tags ([string] $Aid, [array] $Tags, [string] $BaseUrl, $Headers) {
 }
 
 # Gets sensor and falcon tags
-function Get-Tags ([string] $Aid, [string] $BaseUrl, $Headers) {
+function Get-Tag ([string] $Aid, [string] $BaseUrl, $Headers) {
   try {
     Write-Log "Getting tags for host with AID: ${aid}"
     $url = "${BaseUrl}/devices/entities/devices/v2?ids=${aid}"
@@ -326,7 +321,7 @@ function Get-Tags ([string] $Aid, [string] $BaseUrl, $Headers) {
     $content = ConvertFrom-Json -InputObject $response.Content
 
     if ($content.errors) {
-      $message = "Error when calling getting tags on host: "
+      $message = 'Error when calling getting tags on host: '
       $message += Format-FalconResponseError -errors $content.errors
     }
 
@@ -350,7 +345,7 @@ function Get-Tags ([string] $Aid, [string] $BaseUrl, $Headers) {
 
     if ($response.StatusCode -eq 403) {
       $scope = @{
-        "host" = @("Read")
+        'host' = @('Read')
       }
       $message = Format-403Error -url $url -scope $scope
       throw $message
@@ -362,17 +357,17 @@ function Get-Tags ([string] $Aid, [string] $BaseUrl, $Headers) {
   }
 }
 
-function Split-Tags($tags) {
+function Split-Tag($tags) {
   $sensorGroupingTags = @()
   $falconGroupingTags = @()
 
   $tagsArray = $tags -split ' '
 
   foreach ($tag in $tagsArray) {
-    if ($tag -like "SensorGroupingTags/*") {
-      $sensorGroupingTags += $tag.Split("/")[1]
+    if ($tag -like 'SensorGroupingTags/*') {
+      $sensorGroupingTags += $tag.Split('/')[1]
     }
-    elseif ($tag -like "FalconGroupingTags/*") {
+    elseif ($tag -like 'FalconGroupingTags/*') {
       $falconGroupingTags += $tag
     }
   }
@@ -401,7 +396,7 @@ function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $Falco
     $content = ConvertFrom-Json -InputObject $response.Content
 
     if ([string]::IsNullOrEmpty($content.access_token)) {
-      $message = "Unable to authenticate to the CrowdStrike Falcon API. Please check your credentials and try again."
+      $message = 'Unable to authenticate to the CrowdStrike Falcon API. Please check your credentials and try again.'
       throw $message
     }
 
@@ -424,7 +419,7 @@ function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $Falco
           $region = $response.Headers.GetValues('X-Cs-Region')[0]
         }
         else {
-          $message = "Received a redirect but no X-Cs-Region header was provided. Unable to autodiscover the FalconCloud. Please set FalconCloud to the correct region."
+          $message = 'Received a redirect but no X-Cs-Region header was provided. Unable to autodiscover the FalconCloud. Please set FalconCloud to the correct region.'
           Write-FalconLog -Source 'Invoke-FalconAuth' -Message $message
           throw $message
         }
@@ -478,7 +473,7 @@ if (!(Test-FalconCredential $OldFalconClientId $OldFalconClientSecret)) {
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $falconInstallScriptPath = Join-Path $scriptPath 'falcon_windows_install.ps1'
 $falconUninstallScriptPath = Join-Path $scriptPath 'falcon_windows_uninstall.ps1'
-$sensorGroupingTags = ""
+$sensorGroupingTags = ''
 $falconGroupingTags = @()
 $oldAid = Get-AID
 
@@ -487,16 +482,16 @@ Invoke-SetupEnvironment -Version $ScriptVersion -FalconInstallScriptPath $falcon
 # Get current tags
 if (!$SkipTags) {
   if ($null -eq $oldAid) {
-    $message = "Unable to retrieve AID. Are you sure the sensor is installed? This script is meant to migrate an existing sensor."
+    $message = 'Unable to retrieve AID. Are you sure the sensor is installed? This script is meant to migrate an existing sensor.'
     Write-Log $message
     throw $message
   }
   $oldBaseUrl, $oldCloudHeaders = Get-HeadersAndUrl -FalconClientId $OldFalconClientId -FalconClientSecret $OldFalconClientSecret -FalconCloud $OldFalconCloud -MemberCid $OldMemberCid
   $newBaseUrl, $newCloudHeaders = Get-HeadersAndUrl -FalconClientId $NewFalconClientId -FalconClientSecret $NewFalconClientSecret -FalconCloud $NewFalconCloud -MemberCid $NewMemberCid
 
-  $apiTags = Get-Tags -Aid $oldAid -Headers $oldCloudHeaders -BaseUrl $oldBaseUrl
-  Write-Log "Successfully retrieved tags"
-  $sensorGroupingTags, $falconGroupingTags = Split-Tags -Tags $apiTags
+  $apiTags = Get-Tag -Aid $oldAid -Headers $oldCloudHeaders -BaseUrl $oldBaseUrl
+  Write-Log 'Successfully retrieved tags'
+  $sensorGroupingTags, $falconGroupingTags = Split-Tag -Tags $apiTags
 }
 
 $sensorGroupingTags = "$sensorGroupingTags,$Tags"
@@ -512,17 +507,18 @@ $timeout = $timeout.AddSeconds(120)
 $newAid = Get-AID
 
 while ($null -eq $newAid -and (Get-Date) -lt $timeout) {
-  Write-Log "Waiting for new AID..."
+  Write-Log 'Waiting for new AID...'
   Start-Sleep -Seconds 5
   $newAid = Get-AID
 }
 
 if ($null -eq $newAid) {
-  $message = "Unable to retrieve new AID. Please check the logs for more information."
+  $message = 'Unable to retrieve new AID. Please check the logs for more information.'
   Write-Log $message
   throw $message
-} else {
-  Write-Log "Successfully retrieved new AID"
+}
+else {
+  Write-Log 'Successfully retrieved new AID'
 }
 
 
@@ -531,9 +527,9 @@ if (!$SkipTags) {
   if ($falconGroupingTags.Count -gt 0) {
     $timeout = Get-Date
     $timeout = $timeout.AddSeconds(120)
-    $deviceNotFoundError = "Device not found."
+    $deviceNotFoundError = 'Device not found.'
 
-    $tagsMigrated, $errorMessage = Set-Tags -Aid $newAid -Tags $falconGroupingTags -BaseUrl $newBaseUrl -Headers $newCloudHeaders
+    $tagsMigrated, $errorMessage = Set-Tag -Aid $newAid -Tags $falconGroupingTags -BaseUrl $newBaseUrl -Headers $newCloudHeaders
 
     while ($tagsMigrated -eq $false -and (Get-Date) -lt $timeout) {
       # fail if error is not device not found
@@ -541,28 +537,29 @@ if (!$SkipTags) {
         throw $errorMessage
       }
 
-      Write-Log "Waiting for new AID to be registered..."
+      Write-Log 'Waiting for new AID to be registered...'
       Start-Sleep -Seconds 5
-      $tagsMigratedm, $errorMessage = Set-Tags -Aid $newAid -Tags $falconGroupingTags -BaseUrl $newBaseUrl -Headers $newCloudHeaders
+      $tagsMigratedm, $errorMessage = Set-Tag -Aid $newAid -Tags $falconGroupingTags -BaseUrl $newBaseUrl -Headers $newCloudHeaders
     }
 
     if ($tagsMigrated -eq $false) {
       $message = "Unable to set falcon sensor tags. Please check the logs for more information. Error: $errorMessage"
       Write-Log $message
       throw $message
-    } else {
-      Write-log "Successfully set tags"
+    }
+    else {
+      Write-log 'Successfully set tags'
     }
   }
   else {
-    Write-log "No tags to migrate..."
+    Write-log 'No tags to migrate...'
   }
 }
 else {
-  Write-log "SkipTags is set to true... skipping tag migration"
+  Write-log 'SkipTags is set to true... skipping tag migration'
 }
 
-Write-Log "Migration complete!"
+Write-Log 'Migration complete!'
 #Stop-Transcript
 
 # Debugging DELETE
