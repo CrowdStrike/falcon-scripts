@@ -231,7 +231,7 @@ fi
 #Set Docker token using the BEARER token captured earlier
 TOKEN_RESPONSE=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" -H @-)
 if echo "$TOKEN_RESPONSE" | grep -qw "errors"; then
-  die "While getting a Docker token using your Crowdstrike token: ${TOKEN_RESPONSE}"
+  die "Unable to obtain a Docker token using your Crowdstrike token: ${TOKEN_RESPONSE}"
 fi
 ART_PASSWORD=$(echo "${TOKEN_RESPONSE}" | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
 
