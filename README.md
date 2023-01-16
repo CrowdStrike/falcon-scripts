@@ -2,6 +2,9 @@
 
 This repository contains different types of scripts to facilitate the use of the CrowdStrike Falcon Sensor on different platforms.
 
+[![Integration Tests: Linux](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/ci-linux.yml)
+[![Integration Tests: Windows](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/ci-windows.yml)
+
 | Scripts | Description |
 |:-|:-|
 | [Bash](bash) | Bash scripts for interacting with the CrowdStrike Falcon Sensor for Linux |
