@@ -229,8 +229,11 @@ if [ ! "$LISTTAGS" ] ; then
     echo "Falcon Registry: ${cs_registry}"
 fi
 #Set Docker token using the BEARER token captured earlier
-ART_PASSWORD=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L \
-"https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" -H @- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+TOKEN_RESPONSE=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" -H @-)
+if echo "$TOKEN_RESPONSE" | grep -qw "errors"; then
+  die "Unable to obtain a Docker token using your Crowdstrike token: ${TOKEN_RESPONSE}"
+fi
+ART_PASSWORD=$(echo "${TOKEN_RESPONSE}" | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
 
 #Set container login
 (echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin >/dev/null 2>&1) || ERROR=true
