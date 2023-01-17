@@ -475,8 +475,6 @@ function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $Falco
   return $BaseUrl, $Headers
 }
 
-
-
 if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
     [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {
   $message = 'Unable to proceed without administrative privileges'
@@ -488,6 +486,8 @@ $winTemp = $winSystem -replace 'system32', 'Temp'
 if (!$LogPath) {
   $LogPath = Join-Path -Path $winTemp -ChildPath "MigrateFalcon_$(Get-Date -Format yyyy-MM-dd_HH-mm-ss).log"
 }
+
+csvRecoveryPath = Join-Path -Path $winTemp -ChildPath 'falcon_recovery.csv'
 
 if (!(Test-FalconCredential $NewFalconClientId $NewFalconClientSecret)) {
   $message = 'API Credentials for the new cloud are required'
@@ -617,6 +617,11 @@ if (!$SkipTags) {
 }
 else {
   Write-MigrateLog 'SkipTags is set to true... skipping tag migration'
+}
+
+if (Test-Path $csvRecoveryPath) {
+  Write-MigrateLog "Cleaning up Recovery CSV: $csvRecoveryPath"
+  Remove-Item -Path $csvRecoveryPath -Force
 }
 
 Write-MigrateLog 'Migration complete!'
