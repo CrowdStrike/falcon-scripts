@@ -107,6 +107,47 @@ param(
   [string] $ScriptVersion = 'v1.0.0'
 )
 
+function Compare-TagsDiff {
+  param (
+    [array] $Tags,
+    [array] $TagList
+  )
+  $tagsDiff = Compare-Object -ReferenceObject $Tags -DifferenceObject $TagList -IncludeEqual:$false | Select-Object -ExpandProperty InputObject
+  return $tagsDiff
+}
+
+function Write-RecoveryCsv {
+  param (
+    [array] $sensorGroupingTags,
+    [array] $falconGroupingTags,
+    [string] $oldAid,
+    [string] $writePath
+  )
+
+  $directory = Split-Path -Parent $writePath
+  if (!(Test-Path $directory)) {
+    New-Item -ItemType Directory -Path $directory | Out-Null
+  }
+
+  $data = @()
+  $dataRow = [PSCustomObject]@{
+    'OldAid'             = $oldAid
+    'SensorGroupingTags' = ($sensorGroupingTags -join ',')
+    'FalconGroupingTags' = ($falconGroupingTags -join ',')
+  }
+  $data += $dataRow
+  $data = $data | Select-Object * -ExcludeProperty PS*
+  $data | Export-Csv -Path $writePath -NoTypeInformation -Force
+
+  if (Test-Path $writePath) {
+    Write-MigrateLog "Recovery CSV file successfully created at $writePath"
+    return $true
+  }
+  Write-MigrateLog 'Error: Recovery CSV file could not be created'
+  return $false
+}
+
+
 function Write-MigrateLog ($Message) {
   $logTimeStamp = @(Get-Date -Format 'yyyy-MM-dd hh:MM:ss')
 
