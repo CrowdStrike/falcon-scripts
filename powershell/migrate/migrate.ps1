@@ -302,7 +302,7 @@ function Get-Tag ([string] $Aid, [string] $BaseUrl, $Headers) {
     $url = "${BaseUrl}/devices/entities/devices/v2?ids=${aid}"
 
 
-    Write-Log "Calling ${url}"
+    Write-MigrateLog "Calling ${url}"
     $Headers['Content-Type'] = 'application/json'
     $response = Invoke-WebRequest -Uri $url -UseBasicParsing -Method 'GET' -Headers $Headers -MaximumRedirection 0
     $content = ConvertFrom-Json -InputObject $response.Content
@@ -323,7 +323,7 @@ function Get-Tag ([string] $Aid, [string] $BaseUrl, $Headers) {
   catch {
     $response = $_.Exception.Response
 
-    Write-Log $_.Exception
+    Write-MigrateLog $_.Exception
 
     if (!$response) {
       $message = "Unhandled error occurred while grabbing tags from the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
@@ -447,13 +447,13 @@ if (!$LogPath) {
 
 if (!(Test-FalconCredential $NewFalconClientId $NewFalconClientSecret)) {
   $message = 'API Credentials for the new cloud are required'
-  Write-Log $message
+  Write-MigrateLog $message
   throw $message
 }
 
 if (!(Test-FalconCredential $OldFalconClientId $OldFalconClientSecret)) {
   $message = 'API Credentials for the old cloud are required'
-  Write-Log $message
+  Write-MigrateLog $message
   throw $message
 }
 
@@ -470,21 +470,21 @@ Invoke-SetupEnvironment -Version $ScriptVersion -FalconInstallScriptPath $falcon
 if (!$SkipTags) {
   if ($null -eq $oldAid) {
     $message = 'Unable to retrieve AID. Are you sure the sensor is installed? This script is meant to migrate an existing sensor.'
-    Write-Log $message
+    Write-MigrateLog $message
     throw $message
   }
   $oldBaseUrl, $oldCloudHeaders = Get-HeadersAndUrl -FalconClientId $OldFalconClientId -FalconClientSecret $OldFalconClientSecret -FalconCloud $OldFalconCloud -MemberCid $OldMemberCid
   $newBaseUrl, $newCloudHeaders = Get-HeadersAndUrl -FalconClientId $NewFalconClientId -FalconClientSecret $NewFalconClientSecret -FalconCloud $NewFalconCloud -MemberCid $NewMemberCid
 
   $apiTags = Get-Tag -Aid $oldAid -Headers $oldCloudHeaders -BaseUrl $oldBaseUrl
-  Write-Log 'Successfully retrieved tags'
+  Write-MigrateLog 'Successfully retrieved tags'
   $sensorGroupingTags, $falconGroupingTags = Split-Tag -Tags $apiTags
 }
 
 $sensorGroupingTags = "$sensorGroupingTags,$Tags"
 
-Write-Log "Sensor tags: $sensorGroupingTags"
-Write-Log "Falcon tags: $falconGroupingTags"
+Write-MigrateLog "Sensor tags: $sensorGroupingTags"
+Write-MigrateLog "Falcon tags: $falconGroupingTags"
 
 
 #Define install and uninstall parameters in script scope to prevent: PSReviewUnusedParameter
