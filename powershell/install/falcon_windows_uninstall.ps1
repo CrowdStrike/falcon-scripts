@@ -215,18 +215,6 @@ begin {
         return $aid
     }
 
-    switch ($UninstallTool) {
-        'installcache' { 
-            $UninstallerName = 'WindowsSensor*.exe'
-            $UninstallerPath = 'C:\ProgramData\Package Cache'
-            $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerPath -Recurse | ForEach-Object { $_.FullName } -ErrorAction SilentlyContinue
-        }
-        Default {
-            $UninstallerName = 'CsUninstallTool.exe'
-            $UninstallerPath = Join-Path -Path $PSScriptRoot -ChildPath $UninstallerName
-        }
-    }
-
     $WinSystem = [Environment]::GetFolderPath('System')
     $WinTemp = $WinSystem -replace 'system32', 'Temp'
     if (!$LogPath) {
@@ -334,7 +322,25 @@ process {
         break
     }
 
-    if (-not (Test-Path -Path $UninstallerPath)) {
+    $UninstallerPath = $null
+    switch ($UninstallTool) {
+        'installcache' {
+            $UninstallerName = 'WindowsSensor*.exe'
+            $UninstallerPathDir = 'C:\ProgramData\Package Cache'
+
+            if (Test-Path -Path $UninstallerPathDir) {
+                $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerPathDir -Recurse | ForEach-Object { $_.FullName } | sort -Descending | Select-Object -First 1
+            } else {
+                $UninstallerPath = $null
+            }
+        }
+        Default {
+            $UninstallerName = 'CsUninstallTool.exe'
+            $UninstallerPath = Join-Path -Path $PSScriptRoot -ChildPath $UninstallerName
+        }
+    }
+
+    if (!$UninstallerPath -or (-not (Test-Path -Path $UninstallerPath))) {
         $Message = "${UninstallerName} not found. Unable to uninstall without the cached uninstaller or the standalone uninstaller."
         Write-FalconLog 'CheckUninstaller' $Message
         Write-FalconLog $null $Message

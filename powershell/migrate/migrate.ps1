@@ -36,7 +36,9 @@ Provisioning token to use for sensor installation [default: $null]
 .PARAMETER ProvWaitTime
 Time to wait, in seconds, for sensor to provision [default: 1200]
 .PARAMETER Tags
-A comma-separated list of tags to apply to the host after sensor installation [default: $null]
+A comma-separated list of sensor grouping tags to apply to the host in addition to any pre-existing tags [default: $null]
+.PARAMETER FalconTags
+A comma-separated list of falcon grouping tags to apply to the host in addition to any pre-existing tags [default: $null]
 .PARAMETER MaintenanceToken
 Sensor uninstall maintenance token. If left undefined, the script will attempt to retrieve the token from the API assuming the FalconClientId|FalconClientSecret are defined.
 .PARAMETER UninstallParams
@@ -53,7 +55,6 @@ Branch or Tag of the install/uninstall scripts to use [default: 'v1.0.0']
 #Requires -Version 3.0
 
 [CmdletBinding()]
-[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions')] # Disable ShouldProcess warning
 param(
   [Parameter(Position = 1)]
   [ValidatePattern('\w{32}')]
@@ -90,17 +91,19 @@ param(
   [Parameter(Position = 14)]
   [string] $Tags = '',
   [Parameter(Position = 15)]
-  [string] $MaintenanceToken,
+  [string] $FalconTags = '',
   [Parameter(Position = 16)]
-  [switch] $RemoveHost,
+  [string] $MaintenanceToken,
   [Parameter(Position = 17)]
-  [string] $UninstallParams = $null,
+  [switch] $RemoveHost,
   [Parameter(Position = 18)]
+  [string] $UninstallParams = $null,
+  [Parameter(Position = 19)]
   [ValidateSet('installcache', 'standalone')]
   [string] $UninstallTool = 'installcache',
-  [Parameter(Position = 19)]
-  [switch] $SkipTags,
   [Parameter(Position = 20)]
+  [switch] $SkipTags,
+  [Parameter(Position = 21)]
   [string] $ScriptVersion = 'v1.0.0'
 )
 
@@ -464,12 +467,14 @@ $sensorGroupingTags = ''
 $falconGroupingTags = @()
 $oldAid = Get-AID
 
+# TODO: Write AID to file if exists
+
 Invoke-SetupEnvironment -Version $ScriptVersion -FalconInstallScriptPath $falconInstallScriptPath -FalconUninstallScriptPath $falconUninstallScriptPath
 
 # Get current tags
 if (!$SkipTags) {
   if ($null -eq $oldAid) {
-    $message = 'Unable to retrieve AID. Are you sure the sensor is installed? This script is meant to migrate an existing sensor.'
+    $message = "Unable to retrieve AID. Can't migrate tags without AID. Use -SkipTags to skip tag migration."
     Write-MigrateLog $message
     throw $message
   }
@@ -482,6 +487,8 @@ if (!$SkipTags) {
 }
 
 $sensorGroupingTags = "$sensorGroupingTags,$Tags"
+
+# TODO Write Tags to CSV
 
 Write-MigrateLog "Sensor tags: $sensorGroupingTags"
 Write-MigrateLog "Falcon tags: $falconGroupingTags"
