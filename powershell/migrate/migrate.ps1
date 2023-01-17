@@ -107,46 +107,85 @@ param(
   [string] $ScriptVersion = 'v1.0.0'
 )
 
-function Compare-TagsDiff {
-  param (
-    [array] $Tags,
-    [array] $TagList
-  )
-  $tagsDiff = Compare-Object -ReferenceObject $Tags -DifferenceObject $TagList -IncludeEqual:$false | Select-Object -ExpandProperty InputObject
-  return $tagsDiff
-}
-
 function Write-RecoveryCsv {
   param (
-    [array] $sensorGroupingTags,
-    [array] $falconGroupingTags,
-    [string] $oldAid,
-    [string] $csvRecoveryPath
+    [array] $SensorGroupingTags,
+    [array] $FalconGroupingTags,
+    [string] $OldAid,
+    [string] $Path
   )
 
-  $directory = Split-Path -Parent $csvRecoveryPath
+  $directory = Split-Path -Parent $Path
   if (!(Test-Path $directory)) {
     New-Item -ItemType Directory -Path $directory | Out-Null
   }
 
   $data = @()
   $dataRow = [PSCustomObject]@{
-    'OldAid'             = $oldAid
-    'SensorGroupingTags' = ($sensorGroupingTags -join ',')
-    'FalconGroupingTags' = ($falconGroupingTags -join ',')
+    'OldAid'             = $OldAid
+    'SensorGroupingTags' = ($SensorGroupingTags -join ',')
+    'FalconGroupingTags' = ($FalconGroupingTags -join ',')
   }
   $data += $dataRow
   $data = $data | Select-Object * -ExcludeProperty PS*
-  $data | Export-Csv -Path $csvRecoveryPath -NoTypeInformation -Force
+  $data | Export-Csv -Path $Path -NoTypeInformation -Force
 
-  if (Test-Path $csvRecoveryPath) {
-    Write-MigrateLog "Recovery CSV file successfully created at $csvRecoveryPath"
+  if (Test-Path $Path) {
+    Write-MigrateLog "Recovery CSV file successfully created at $Path"
     return $true
   }
   Write-MigrateLog 'Error: Recovery CSV file could not be created'
   return $false
 }
 
+function Read-RecoveryCsv {
+  param (
+    [string] $Path
+  )
+
+  if (!(Test-Path $Path)) {
+    Write-MigrateLog "Recovery CSV file not found at $Path"
+    throw "Recovery CSV does not exist at path $Path"
+  }
+
+  $data = Import-Csv -Path $Path
+  $data = $data | Select-Object * -ExcludeProperty PS*
+  $data = $data | ConvertTo-Json -Compress
+  $data = ConvertFrom-Json -InputObject $data
+
+  $data.SensorGroupingTags = (Format-TagArray -Tags $data.SensorGroupingTags)
+  $data.FalconGroupingTags = (Format-TagArray -Tags $data.FalconGroupingTags)
+
+  return $data
+}
+
+function Compare-TagsDiff {
+  param (
+    [array] $Tags,
+    [array] $TagList
+  )
+
+  if ($null -eq $TagList -or $TagList.Length -eq 0) {
+    return $Tags
+  }
+
+  $tagsDiff = $Tags | Where-Object { $TagList -notcontains $_ }
+  return $tagsDiff
+}
+
+
+function Format-TagArray {
+  param (
+    [string]$Tags,
+    [string]$Seperator = ','
+  )
+
+  if ($Tags -eq '') {
+    return @()
+  }
+
+  return $Tags -split $Seperator
+}
 
 function Write-MigrateLog ($Message) {
   $logTimeStamp = @(Get-Date -Format 'yyyy-MM-dd hh:MM:ss')
@@ -399,11 +438,9 @@ function Split-Tag($tags) {
       $sensorGroupingTags += $tag.Split('/')[1]
     }
     elseif ($tag -like 'FalconGroupingTags/*') {
-      $falconGroupingTags += $tag
+      $falconGroupingTags += $tag.Split('/')[1]
     }
   }
-
-  $sensorGroupingTags = $sensorGroupingTags -join ','
 
   return $sensorGroupingTags, $falconGroupingTags
 }
@@ -489,7 +526,7 @@ if (!$LogPath) {
   $LogPath = Join-Path -Path $winTemp -ChildPath "MigrateFalcon_$(Get-Date -Format yyyy-MM-dd_HH-mm-ss).log"
 }
 
-$csvRecoveryPath = Join-Path -Path $winTemp -ChildPath 'falcon_recovery.csv'
+$recoveryCsvPath = Join-Path -Path $winTemp -ChildPath 'falcon_recovery.csv'
 
 if (!(Test-FalconCredential $NewFalconClientId $NewFalconClientSecret)) {
   $message = 'API Credentials for the new cloud are required'
@@ -506,47 +543,48 @@ if (!(Test-FalconCredential $OldFalconClientId $OldFalconClientSecret)) {
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $falconInstallScriptPath = Join-Path $scriptPath 'falcon_windows_install.ps1'
 $falconUninstallScriptPath = Join-Path $scriptPath 'falcon_windows_uninstall.ps1'
-$sensorGroupingTags = ''
+$sensorGroupingTags = @()
 $falconGroupingTags = @()
 $oldAid = Get-AID
 
 Invoke-SetupEnvironment -Version $ScriptVersion -FalconInstallScriptPath $falconInstallScriptPath -FalconUninstallScriptPath $falconUninstallScriptPath
 
-# Get current tags
-if (!$SkipTags) {
-  if ($null -eq $oldAid) {
-    $message = "Unable to retrieve AID. Can't migrate tags without AID. Use -SkipTags to skip tag migration."
-    Write-MigrateLog $message
-    throw $message
-  }
-  $oldBaseUrl, $oldCloudHeaders = Get-HeadersAndUrl -FalconClientId $OldFalconClientId -FalconClientSecret $OldFalconClientSecret -FalconCloud $OldFalconCloud -MemberCid $OldMemberCid
-  $newBaseUrl, $newCloudHeaders = Get-HeadersAndUrl -FalconClientId $NewFalconClientId -FalconClientSecret $NewFalconClientSecret -FalconCloud $NewFalconCloud -MemberCid $NewMemberCid
+$recoveryMode = (Test-Path $recoveryCsvPath)
 
-  $apiTags = Get-Tag -Aid $oldAid -Headers $oldCloudHeaders -BaseUrl $oldBaseUrl
-  Write-MigrateLog 'Successfully retrieved tags'
-  $sensorGroupingTags, $falconGroupingTags = Split-Tag -Tags $apiTags
+if ($recoveryMode) {
+  $recoveryData = Read-RecoveryCsv -Path $recoveryCsvPath
+  $sensorGroupingTags = $recoveryData.SensorGroupingTags
+  $falconGroupingTags = $recoveryData.FalconGroupingTags
 }
-
-if ($Tags) {
-  $sensorGroupingTags += "$Tags"
-}
-
-if ($FalconTags) {
-  # For each tag, if 'FalconGroupingTags' is not present, add it
-  $FalconTags -split ',' | ForEach-Object {
-    if ($_.Contains('FalconGroupingTags/')) {
-      $falconGroupingTags += $_
+else {
+  # Get current tags
+  if (!$SkipTags) {
+    if ($null -eq $oldAid) {
+      $message = "Unable to retrieve AID. Can't migrate tags without AID. Use -SkipTags to skip tag migration."
+      Write-MigrateLog $message
+      throw $message
     }
-    else {
-      $falconGroupingTags += "FalconGroupingTags/$_"
-    }
+    $oldBaseUrl, $oldCloudHeaders = Get-HeadersAndUrl -FalconClientId $OldFalconClientId -FalconClientSecret $OldFalconClientSecret -FalconCloud $OldFalconCloud -MemberCid $OldMemberCid
+    $newBaseUrl, $newCloudHeaders = Get-HeadersAndUrl -FalconClientId $NewFalconClientId -FalconClientSecret $NewFalconClientSecret -FalconCloud $NewFalconCloud -MemberCid $NewMemberCid
+
+    $apiTags = Get-Tag -Aid $oldAid -Headers $oldCloudHeaders -BaseUrl $oldBaseUrl
+    Write-MigrateLog 'Successfully retrieved tags'
+    $sensorGroupingTags, $falconGroupingTags = Split-Tag -Tags $apiTags
   }
+
 }
+
+$sensorGroupingTagsDiff = Compare-TagsDiff -Tags $Tags -TagList $sensorGroupingTags
+$falconGroupingTagsDiff = Compare-TagsDiff -Tags $FalconTags -TagList $falconGroupingTags
+
+$sensorGroupingTags += $sensorGroupingTagsDiff
+$falconGroupingTags += $falconGroupingTagsDiff
 
 Write-MigrateLog "Sensor tags: $sensorGroupingTags"
 Write-MigrateLog "Falcon tags: $falconGroupingTags"
-# Write values to Write-RecoveryCsv
-Write-RecoveryCsv -sensorGroupingTags $sensorGroupingTags -falconGroupingTags $falconGroupingTags -oldAid $oldAid -csvRecoveryPath $csvRecoveryPath
+
+Write-MigrateLog 'Creating recovery csv to keep track tags...'
+Write-RecoveryCsv -SensorGroupingTags $sensorGroupingTags -FalconGroupingTags $falconGroupingTags -OldAid $oldAid -Path $recoveryCsvPath
 
 #Define install and uninstall parameters in script scope to prevent: PSReviewUnusedParameter
 $uninstallArgs = @{
@@ -568,7 +606,7 @@ $installArgs = @{
   'LogPath'                = $LogPath
   'ProvToken'              = $ProvToken
   'ProvWaitTime'           = $ProvWaitTime
-  'Tags'                   = $sensorGroupingTags
+  'Tags'                   = ($sensorGroupingTags -join ',')
   'SensorUpdatePolicyName' = $SensorUpdatePolicyName
 }
 
@@ -600,8 +638,13 @@ if (!$SkipTags) {
     $timeout = Get-Date
     $timeout = $timeout.AddSeconds(120)
     $deviceNotFoundError = 'Device not found.'
+    $groupingTags = @()
 
-    $tagsMigrated, $errorMessage = Set-Tag -Aid $newAid -Tags $falconGroupingTags -BaseUrl $newBaseUrl -Headers $newCloudHeaders
+    foreach ($tag in $falconGroupingTags) {
+      $groupingTags += "FalconGroupingTags/$tag"
+    }
+
+    $tagsMigrated, $errorMessage = Set-Tag -Aid $newAid -Tags $groupingTags -BaseUrl $newBaseUrl -Headers $newCloudHeaders
 
     while ($tagsMigrated -eq $false -and (Get-Date) -lt $timeout) {
       # fail if error is not device not found
@@ -611,7 +654,7 @@ if (!$SkipTags) {
 
       Write-MigrateLog 'Waiting for new AID to be registered...'
       Start-Sleep -Seconds 5
-      $tagsMigratedm, $errorMessage = Set-Tag -Aid $newAid -Tags $falconGroupingTags -BaseUrl $newBaseUrl -Headers $newCloudHeaders
+      $tagsMigratedm, $errorMessage = Set-Tag -Aid $newAid -Tags $groupingTags -BaseUrl $newBaseUrl -Headers $newCloudHeaders
     }
 
     if ($tagsMigrated -eq $false) {
@@ -631,9 +674,9 @@ else {
   Write-MigrateLog 'SkipTags is set to true... skipping tag migration'
 }
 
-if (Test-Path $csvRecoveryPath) {
-  Write-MigrateLog "Cleaning up Recovery CSV: $csvRecoveryPath"
-  Remove-Item -Path $csvRecoveryPath -Force
+if (Test-Path $recoveryCsvPath) {
+  Write-MigrateLog "Cleaning up Recovery CSV: $recoveryCsvPath"
+  Remove-Item -Path $recoveryCsvPath -Force
 }
 
 Write-MigrateLog 'Migration complete!'
