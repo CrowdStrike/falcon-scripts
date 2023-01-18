@@ -165,6 +165,8 @@ function Compare-TagsDiff {
     [array] $TagList
   )
 
+  $Tags = $Tags -split ','
+
   if ($null -eq $TagList -or $TagList.Length -eq 0) {
     return $Tags
   }
