@@ -121,10 +121,10 @@ function Write-RecoveryCsv {
     [array] $sensorGroupingTags,
     [array] $falconGroupingTags,
     [string] $oldAid,
-    [string] $writePath
+    [string] $csvRecoveryPath
   )
 
-  $directory = Split-Path -Parent $writePath
+  $directory = Split-Path -Parent $csvRecoveryPath
   if (!(Test-Path $directory)) {
     New-Item -ItemType Directory -Path $directory | Out-Null
   }
@@ -137,10 +137,10 @@ function Write-RecoveryCsv {
   }
   $data += $dataRow
   $data = $data | Select-Object * -ExcludeProperty PS*
-  $data | Export-Csv -Path $writePath -NoTypeInformation -Force
+  $data | Export-Csv -Path $csvRecoveryPath -NoTypeInformation -Force
 
-  if (Test-Path $writePath) {
-    Write-MigrateLog "Recovery CSV file successfully created at $writePath"
+  if (Test-Path $csvRecoveryPath) {
+    Write-MigrateLog "Recovery CSV file successfully created at $csvRecoveryPath"
     return $true
   }
   Write-MigrateLog 'Error: Recovery CSV file could not be created'
@@ -475,6 +475,8 @@ function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $Falco
   return $BaseUrl, $Headers
 }
 
+### Start of Migration Script ###
+
 if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
     [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {
   $message = 'Unable to proceed without administrative privileges'
@@ -487,7 +489,7 @@ if (!$LogPath) {
   $LogPath = Join-Path -Path $winTemp -ChildPath "MigrateFalcon_$(Get-Date -Format yyyy-MM-dd_HH-mm-ss).log"
 }
 
-csvRecoveryPath = Join-Path -Path $winTemp -ChildPath 'falcon_recovery.csv'
+$csvRecoveryPath = Join-Path -Path $winTemp -ChildPath 'falcon_recovery.csv'
 
 if (!(Test-FalconCredential $NewFalconClientId $NewFalconClientSecret)) {
   $message = 'API Credentials for the new cloud are required'
@@ -508,8 +510,6 @@ $sensorGroupingTags = ''
 $falconGroupingTags = @()
 $oldAid = Get-AID
 
-# TODO: Write AID to file if exists
-
 Invoke-SetupEnvironment -Version $ScriptVersion -FalconInstallScriptPath $falconInstallScriptPath -FalconUninstallScriptPath $falconUninstallScriptPath
 
 # Get current tags
@@ -527,13 +527,26 @@ if (!$SkipTags) {
   $sensorGroupingTags, $falconGroupingTags = Split-Tag -Tags $apiTags
 }
 
-$sensorGroupingTags = "$sensorGroupingTags,$Tags"
+if ($Tags) {
+  $sensorGroupingTags += "$Tags"
+}
 
-# TODO Write Tags to CSV
+if ($FalconTags) {
+  # For each tag, if 'FalconGroupingTags' is not present, add it
+  $FalconTags -split ',' | ForEach-Object {
+    if ($_.Contains('FalconGroupingTags/')) {
+      $falconGroupingTags += $_
+    }
+    else {
+      $falconGroupingTags += "FalconGroupingTags/$_"
+    }
+  }
+}
 
 Write-MigrateLog "Sensor tags: $sensorGroupingTags"
 Write-MigrateLog "Falcon tags: $falconGroupingTags"
-
+# Write values to Write-RecoveryCsv
+Write-RecoveryCsv -sensorGroupingTags $sensorGroupingTags -falconGroupingTags $falconGroupingTags -oldAid $oldAid -csvRecoveryPath $csvRecoveryPath
 
 #Define install and uninstall parameters in script scope to prevent: PSReviewUnusedParameter
 $uninstallArgs = @{
@@ -580,7 +593,6 @@ if ($null -eq $newAid) {
 else {
   Write-MigrateLog 'Successfully retrieved new AID'
 }
-
 
 # Set falcon sensor tags
 if (!$SkipTags) {
