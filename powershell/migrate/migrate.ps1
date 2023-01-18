@@ -132,10 +132,10 @@ function Write-RecoveryCsv {
 
   if (Test-Path $Path) {
     Write-MigrateLog "Recovery CSV file successfully created at $Path"
-    return $true
   }
-  Write-MigrateLog 'Error: Recovery CSV file could not be created'
-  return $false
+  else {
+    Write-MigrateLog 'Error: Recovery CSV file could not be created'
+  }
 }
 
 function Read-RecoveryCsv {
@@ -158,6 +158,7 @@ function Read-RecoveryCsv {
 
   return $data
 }
+
 
 function Compare-TagsDiff {
   param (
@@ -337,7 +338,6 @@ function Set-Tag ([string] $Aid, [array] $Tags, [string] $BaseUrl, $Headers) {
       'tags'       = $Tags
     }
     $body = ConvertTo-Json -InputObject $body
-
     $Headers['Content-Type'] = 'application/json'
     $response = Invoke-WebRequest -Uri $url -UseBasicParsing -Method 'PATCH' -Body $body -Headers $Headers -MaximumRedirection 0
     $content = ConvertFrom-Json -InputObject $response.Content
@@ -554,9 +554,11 @@ Invoke-SetupEnvironment -Version $ScriptVersion -FalconInstallScriptPath $falcon
 $recoveryMode = (Test-Path $recoveryCsvPath)
 
 if ($recoveryMode) {
+  Write-MigrateLog 'Recovery mode detected. Attempting to recover from previous migration attempt.'
   $recoveryData = Read-RecoveryCsv -Path $recoveryCsvPath
   $sensorGroupingTags = $recoveryData.SensorGroupingTags
   $falconGroupingTags = $recoveryData.FalconGroupingTags
+  $oldAid = $recoveryData.OldAid
 }
 else {
   # Get current tags
@@ -567,7 +569,6 @@ else {
       throw $message
     }
     $oldBaseUrl, $oldCloudHeaders = Get-HeadersAndUrl -FalconClientId $OldFalconClientId -FalconClientSecret $OldFalconClientSecret -FalconCloud $OldFalconCloud -MemberCid $OldMemberCid
-    $newBaseUrl, $newCloudHeaders = Get-HeadersAndUrl -FalconClientId $NewFalconClientId -FalconClientSecret $NewFalconClientSecret -FalconCloud $NewFalconCloud -MemberCid $NewMemberCid
 
     $apiTags = Get-Tag -Aid $oldAid -Headers $oldCloudHeaders -BaseUrl $oldBaseUrl
     Write-MigrateLog 'Successfully retrieved tags'
@@ -575,7 +576,6 @@ else {
   }
 
 }
-
 $sensorGroupingTagsDiff = Compare-TagsDiff -Tags $Tags -TagList $sensorGroupingTags
 $falconGroupingTagsDiff = Compare-TagsDiff -Tags $FalconTags -TagList $falconGroupingTags
 
@@ -637,6 +637,7 @@ else {
 # Set falcon sensor tags
 if (!$SkipTags) {
   if ($falconGroupingTags.Count -gt 0) {
+    $newBaseUrl, $newCloudHeaders = Get-HeadersAndUrl -FalconClientId $NewFalconClientId -FalconClientSecret $NewFalconClientSecret -FalconCloud $NewFalconCloud -MemberCid $NewMemberCid
     $timeout = Get-Date
     $timeout = $timeout.AddSeconds(120)
     $deviceNotFoundError = 'Device not found.'
@@ -656,7 +657,7 @@ if (!$SkipTags) {
 
       Write-MigrateLog 'Waiting for new AID to be registered...'
       Start-Sleep -Seconds 5
-      $tagsMigratedm, $errorMessage = Set-Tag -Aid $newAid -Tags $groupingTags -BaseUrl $newBaseUrl -Headers $newCloudHeaders
+      $tagsMigrated, $errorMessage = Set-Tag -Aid $newAid -Tags $groupingTags -BaseUrl $newBaseUrl -Headers $newCloudHeaders
     }
 
     if ($tagsMigrated -eq $false) {
@@ -675,7 +676,6 @@ if (!$SkipTags) {
 else {
   Write-MigrateLog 'SkipTags is set to true... skipping tag migration'
 }
-
 if (Test-Path $recoveryCsvPath) {
   Write-MigrateLog "Cleaning up Recovery CSV: $recoveryCsvPath"
   Remove-Item -Path $recoveryCsvPath -Force
