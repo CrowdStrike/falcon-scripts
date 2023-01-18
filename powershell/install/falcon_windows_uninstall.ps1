@@ -329,7 +329,7 @@ process {
             $UninstallerPathDir = 'C:\ProgramData\Package Cache'
 
             if (Test-Path -Path $UninstallerPathDir) {
-                $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerPathDir -Recurse | ForEach-Object { $_.FullName } | sort -Descending | Select-Object -First 1
+                $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerPathDir -Recurse | ForEach-Object { $_.FullName } | Sort-Object -Descending | Select-Object -First 1
             } else {
                 $UninstallerPath = $null
             }

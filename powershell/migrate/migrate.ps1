@@ -326,6 +326,7 @@ function Get-AID {
 }
 
 # Sets falcon tags
+#psbinding
 function Set-Tag ([string] $Aid, [array] $Tags, [string] $BaseUrl, $Headers) {
   try {
     $url = "${baseUrl}/devices/entities/devices/tags/v1"
