@@ -26,6 +26,7 @@ provisioner:
         ansible_winrm_transport: ntlm
         ansible_winrm_server_cert_validation: ignore
         ansible_port: 55986
+        remote_script_dest: C:\Temp\migrate
 scenario:
   test_sequence:
     - dependency

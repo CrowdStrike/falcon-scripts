@@ -9,3 +9,7 @@
     - name: Verify Falcon Sensor is installed and running
       ansible.builtin.assert:
         that: "'RUNNING' in win_status.stdout"
+
+# TODO: Create task to verify Tags
+# Sensor Tags should be: falcon,install,molecule
+# Grouping Tags should be: FalconGroupingTags/molecule
