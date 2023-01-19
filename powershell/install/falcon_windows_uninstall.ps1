@@ -21,9 +21,9 @@ Sensor uninstall tool, local installation cache or CS standalone uninstaller ['i
 .PARAMETER LogPath
 Script log location ['Windows\Temp\csfalcon_uninstall.log' if left undefined]
 .PARAMETER DeleteUninstaller
-Delete sensor uninstaller package when complete [default: $false]
+Delete sensor uninstaller package when complete [default: $true]
 .PARAMETER DeleteScript
-Delete script when complete [default: $false]
+Delete script when complete [default: $true]
 .PARAMETER RemoveHost
 Remove host from CrowdStrike Falcon
 .PARAMETER FalconCloud
@@ -62,10 +62,10 @@ param(
     [string] $LogPath,
 
     [Parameter(Position = 5)]
-    [bool] $DeleteUninstaller = $false,
+    [bool] $DeleteUninstaller = $true,
 
     [Parameter(Position = 6)]
-    [bool] $DeleteScript = $false,
+    [bool] $DeleteScript = $true,
 
     [Parameter(Position = 7)]
     [switch] $RemoveHost,
