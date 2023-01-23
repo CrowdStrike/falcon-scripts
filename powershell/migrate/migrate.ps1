@@ -197,14 +197,16 @@ function Write-MigrateLog ($Message) {
 }
 
 function Invoke-SetupEnvironment ($Version, $FalconInstallScriptPath, $FalconUninstallScriptPath) {
+  $Version = 'migration'
   if (!(Test-Path $FalconInstallScriptPath)) {
     Write-MigrateLog "falcon_windows_install.ps1 not found, downloading github version: ${Version}"
-    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/CrowdStrike/falcon-scripts/${Version}/powershell/install/falcon_windows_install.ps1" -OutFile $FalconInstallScriptPath
+    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/ffalor/falcon-scripts/${Version}/powershell/install/falcon_windows_install.ps1" -OutFile $FalconInstallScriptPath
+    https://github.com/ffalor/falcon-scripts/tree/migration
   }
 
   if (!(Test-Path $FalconUninstallScriptPath)) {
     Write-MigrateLog "falcon_windows_uninstall.ps1 not found, downloading github version: ${Version}"
-    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/CrowdStrike/falcon-scripts/${Version}/powershell/install/falcon_windows_uninstall.ps1" -OutFile $FalconUninstallScriptPath
+    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/ffalor/falcon-scripts/${Version}/powershell/install/falcon_windows_uninstall.ps1" -OutFile $FalconUninstallScriptPath
   }
 }
 
