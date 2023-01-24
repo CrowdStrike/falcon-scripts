@@ -9,7 +9,7 @@ Falcon and Sensor tags are migrated to the new installation.
 CrowdStrike Falcon OAuth2 API Client Id for the new Cloud [Required]
 .PARAMETER NewFalconClientSecret
 CrowdStrike Falcon OAuth2 API Client Secret for the new Cloud [Required]
-.PARAMETER OldNewFalconClientId
+.PARAMETER OldFalconClientId
 CrowdStrike Falcon OAuth2 API Client Id for the old cloud [Required]
 .PARAMETER OldFalconClientSecret
 CrowdStrike Falcon OAuth2 API Client Secret for the old cloud [Required]
@@ -201,7 +201,6 @@ function Invoke-SetupEnvironment ($Version, $FalconInstallScriptPath, $FalconUni
   if (!(Test-Path $FalconInstallScriptPath)) {
     Write-MigrateLog "falcon_windows_install.ps1 not found, downloading github version: ${Version}"
     Invoke-WebRequest -Uri "https://raw.githubusercontent.com/ffalor/falcon-scripts/${Version}/powershell/install/falcon_windows_install.ps1" -OutFile $FalconInstallScriptPath
-    https://github.com/ffalor/falcon-scripts/tree/migration
   }
 
   if (!(Test-Path $FalconUninstallScriptPath)) {
