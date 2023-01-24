@@ -587,7 +587,7 @@ $falconGroupingTags += $falconGroupingTagsDiff
 Write-MigrateLog "Sensor tags: $sensorGroupingTags"
 Write-MigrateLog "Falcon tags: $falconGroupingTags"
 
-Write-MigrateLog 'Creating recovery csv to keep track tags...'
+Write-MigrateLog 'Creating recovery csv to keep track of tags...'
 Write-RecoveryCsv -SensorGroupingTags $sensorGroupingTags -FalconGroupingTags $falconGroupingTags -OldAid $oldAid -Path $recoveryCsvPath
 
 #Define install and uninstall parameters in script scope to prevent: PSReviewUnusedParameter
