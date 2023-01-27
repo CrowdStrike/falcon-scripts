@@ -235,7 +235,7 @@ process {
             throw $Message
         }
 
-        if (not (Test-Path -Path $UninstallerPath)) {
+        if (-not (Test-Path -Path $UninstallerPath)) {
             $Message = "${UninstallerName} not found."
             Write-FalconLog 'CheckUninstaller' $Message
             throw $Message
