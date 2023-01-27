@@ -25,7 +25,7 @@ Delete sensor uninstaller package when complete [default: $true]
 .PARAMETER DeleteScript
 Delete script when complete [default: $true]
 .PARAMETER RemoveHost
-Remove host from CrowdStrike Falcon [default: $false]
+Remove host from CrowdStrike Falcon
 .PARAMETER FalconCloud
 CrowdStrike Falcon OAuth2 API Hostname [default: autodiscover]
 .PARAMETER FalconClientId
@@ -68,7 +68,7 @@ param(
     [bool] $DeleteScript = $true,
 
     [Parameter(Position = 7)]
-    [bool] $RemoveHost = $false,
+    [switch] $RemoveHost,
 
     [Parameter(Position = 8)]
     [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1')]
@@ -102,7 +102,7 @@ begin {
             $Content += , "[$($Falcon.ResponseHeaders.Get('X-Cs-TraceId'))]"
         }
 
-        "$(@($Content + $Source) -join ' '): $Message" >> $LogPath
+        "$(@($Content + $Source) -join ' '): $Message" | Out-File -FilePath $LogPath -Append -Encoding utf8
 
         if ([string]::IsNullOrEmpty($Source)) {
             if ($FalconClientId.Length -gt 0) {
@@ -133,7 +133,7 @@ begin {
             $content = ConvertFrom-Json -InputObject $response.Content
 
             if ([string]::IsNullOrEmpty($content.access_token)) {
-                $Message = "Unable to authenticate to the CrowdStrike Falcon API. Please check your credentials and try again."
+                $Message = 'Unable to authenticate to the CrowdStrike Falcon API. Please check your credentials and try again.'
                 throw $Message
             }
 
@@ -156,7 +156,7 @@ begin {
                         $region = $response.Headers.GetValues('X-Cs-Region')[0]
                     }
                     else {
-                        $Message = "Received a redirect but no X-Cs-Region header was provided. Unable to autodiscover the FalconCloud. Please set FalconCloud to the correct region."
+                        $Message = 'Received a redirect but no X-Cs-Region header was provided. Unable to autodiscover the FalconCloud. Please set FalconCloud to the correct region.'
                         Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
                         throw $Message
                     }
@@ -205,7 +205,7 @@ begin {
             }
         }
         if (!$aid) {
-            $Message = "AID not found in registry. This could be due to the agent not being installed or being partially installed."
+            $Message = 'AID not found in registry. This could be due to the agent not being installed or being partially installed.'
         }
         else {
             $Message = "Found AID: $aid"
@@ -213,17 +213,6 @@ begin {
 
         Write-FalconLog 'AID' $Message
         return $aid
-    }
-
-    if ($UninstallTool -match "installcache") {
-        $UninstallerName = 'WindowsSensor*.exe'
-        $UninstallerCachePath = "C:\ProgramData\Package Cache"
-        $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerCachePath -Recurse | ForEach-Object { $_.FullName }
-    }
-
-    if ($UninstallTool -match "standalone") {
-        $UninstallerName = 'CsUninstallTool.exe'
-        $UninstallerPath = Join-Path -Path $PSScriptRoot -ChildPath $UninstallerName
     }
 
     $WinSystem = [Environment]::GetFolderPath('System')
@@ -241,7 +230,7 @@ begin {
     }
 
     function Format-FalconResponseError($errors) {
-        $Message = ""
+        $Message = ''
         foreach ($error in $errors) {
             $Message += "`r`n`t $($error.message)"
         }
@@ -252,20 +241,21 @@ begin {
     # an action of $hide will hide the host, anything else will unhide the host
     # should only be called to hide/unhide a host that is already in the console
     function Invoke-HostVisibility ([string] $action) {
-        if ($action -eq "hide") {
-            $action = "hide_host"
-        } else {
-            $action = "unhide_host"
+        if ($action -eq 'hide') {
+            $action = 'hide_host'
+        }
+        else {
+            $action = 'unhide_host'
         }
 
         if (!$aid) {
             $Message = "AID not found on machine. Unable to ${action} host without AID, this may be due to the sensor not being installed or being partially installed."
-            Write-FalconLog "HostVisibilityError" $Message
+            Write-FalconLog 'HostVisibilityError' $Message
             throw $Message
         }
 
         $Body = @{
-            "ids" = @($aid)
+            'ids' = @($aid)
         }
 
         $bodyJson = $Body | ConvertTo-Json
@@ -279,7 +269,7 @@ begin {
             if ($content.errors) {
                 $Message = "Error when calling ${action} on host: "
                 $Message += Format-FalconResponseError -errors $content.errors
-                Write-FalconLog "HostVisibilityError" $Message
+                Write-FalconLog 'HostVisibilityError' $Message
                 throw $Message
             }
             else {
@@ -292,21 +282,21 @@ begin {
 
             if (!$response) {
                 $Message = "Unhandled error occurred while performing action '${action}' on host from the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
-                Write-FalconLog "HostVisibilityError" $Message
+                Write-FalconLog 'HostVisibilityError' $Message
                 throw $Message
             }
 
             if ($response.StatusCode -eq 409) {
                 $Message = "Received a $($response.StatusCode) response from ${url} Error: $($response.StatusDescription)"
-                Write-FalconLog "HostVisibilityError" $Message
-                Write-FalconLog $null "Host already removed from CrowdStrike Falcon"
+                Write-FalconLog 'HostVisibilityError' $Message
+                Write-FalconLog $null 'Host already removed from CrowdStrike Falcon'
             }
             elseif ($response.StatusCode -eq 403) {
                 $scope = @{
-                    "host" = @("Write")
+                    'host' = @('Write')
                 }
                 $Message = Format-403Error -url $url -scope $scope
-                Write-FalconLog "HostVisibilityError" $Message
+                Write-FalconLog 'HostVisibilityError' $Message
                 throw $Message
             }
             else {
@@ -329,10 +319,28 @@ process {
         $Message = "'CSFalconService' service not found, already uninstalled"
         Write-FalconLog 'CheckService' $Message
         Write-FalconLog $null $Message
-        break;
+        break
     }
 
-    if (-not (Test-Path -Path $UninstallerPath)) {
+    $UninstallerPath = $null
+    switch ($UninstallTool) {
+        'installcache' {
+            $UninstallerName = 'WindowsSensor*.exe'
+            $UninstallerPathDir = 'C:\ProgramData\Package Cache'
+
+            if (Test-Path -Path $UninstallerPathDir) {
+                $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerPathDir -Recurse | ForEach-Object { $_.FullName } | Sort-Object -Descending | Select-Object -First 1
+            } else {
+                $UninstallerPath = $null
+            }
+        }
+        Default {
+            $UninstallerName = 'CsUninstallTool.exe'
+            $UninstallerPath = Join-Path -Path $PSScriptRoot -ChildPath $UninstallerName
+        }
+    }
+
+    if (!$UninstallerPath -or (-not (Test-Path -Path $UninstallerPath))) {
         $Message = "${UninstallerName} not found. Unable to uninstall without the cached uninstaller or the standalone uninstaller."
         Write-FalconLog 'CheckUninstaller' $Message
         Write-FalconLog $null $Message
@@ -359,11 +367,11 @@ process {
 
 
         $Body = @{}
-        $Body["client_id"] = $FalconClientId
-        $Body["client_secret"] = $FalconClientSecret
+        $Body['client_id'] = $FalconClientId
+        $Body['client_secret'] = $FalconClientSecret
 
         if ($MemberCid) {
-            $Body["&member_cid"] = $MemberCid
+            $Body['&member_cid'] = $MemberCid
         }
 
         $BaseUrl, $Headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
@@ -371,7 +379,7 @@ process {
     }
 
     if ($RemoveHost) {
-        Invoke-HostVisibility -action "hide"
+        Invoke-HostVisibility -action 'hide'
     }
 
     if ($MaintenanceToken) {
@@ -390,16 +398,16 @@ process {
             $bodyJson = $Body | ConvertTo-Json
 
             try {
-                $url = "policy/combined/reveal-uninstall-token/v1"
+                $url = 'policy/combined/reveal-uninstall-token/v1'
 
                 $Headers['Content-Type'] = 'application/json'
                 $response = Invoke-WebRequest -Uri "$($baseUrl)/$($url)" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
                 $content = ConvertFrom-Json -InputObject $response.Content
 
                 if ($content.errors) {
-                    $Message = "Failed to retrieve maintenance token: "
+                    $Message = 'Failed to retrieve maintenance token: '
                     $Message += Format-FalconResponseError -errors $content.errors
-                    Write-FalconLog "GetTokenError" $Message
+                    Write-FalconLog 'GetTokenError' $Message
                     throw $Message
                 }
                 else {
@@ -412,23 +420,23 @@ process {
 
                 if (!$response) {
                     $Message = "Unhandled error occurred while retrieving maintenance token from the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
-                    Write-FalconLog "GetTokenError" $Message
+                    Write-FalconLog 'GetTokenError' $Message
                     throw $Message
                 }
 
                 if ($response.StatusCode -eq 403) {
                     $scope = @{
-                        'Sensor update policies' = @("Write")
+                        'Sensor update policies' = @('Write')
                     }
 
                     $Message = Format-403Error -url $url -scope $scope
 
-                    Write-FalconLog "GetTokenError" $Message
+                    Write-FalconLog 'GetTokenError' $Message
                     throw $Message
                 }
                 else {
                     $Message = "Received a $($response.StatusCode) response from $($baseUrl)$($url) Error: $($response.StatusDescription)"
-                    Write-FalconLog "GetTokenError" $Message
+                    Write-FalconLog 'GetTokenError' $Message
                     throw $Message
                 }
             }
@@ -449,12 +457,12 @@ process {
         else {
             $Message = "Uninstaller returned exit code $($UninstallerProcess.ExitCode)"
         }
-        Write-FalconLog "UninstallError" $Message
+        Write-FalconLog 'UninstallError' $Message
         Write-FalconLog $null $Message
 
         if ($RemoveHost) {
-            Write-FalconLog $null "Uninstall failed, attempting to restore host visibility..."
-            Invoke-HostVisibility -action "show"
+            Write-FalconLog $null 'Uninstall failed, attempting to restore host visibility...'
+            Invoke-HostVisibility -action 'show'
         }
         throw $Message
     }
@@ -462,19 +470,19 @@ process {
     $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
     if ($AgentService -and $AgentService.Status -eq 'Running') {
         $Message = 'Service uninstall failed...'
-        Write-FalconLog "ServiceError" $Message
+        Write-FalconLog 'ServiceError' $Message
         throw $Message
     }
 
     if (Test-Path -Path HKLM:\System\Crowdstrike) {
         $Message = 'Registry key removal failed...'
-        Write-FalconLog "RegistryError" $Message
+        Write-FalconLog 'RegistryError' $Message
         throw $Message
     }
 
     if (Test-Path -Path"${env:SYSTEMROOT}\System32\drivers\CrowdStrike") {
         $Message = 'Driver removal failed...'
-        Write-FalconLog "DriverError" $Message
+        Write-FalconLog 'DriverError' $Message
         throw $Message
     }
 

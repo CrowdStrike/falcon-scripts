@@ -202,7 +202,7 @@ begin {
             $Content += , "[$($Falcon.ResponseHeaders.Get('X-Cs-TraceId'))]"
         }
 
-        "$(@($Content + $Source) -join ' '): $Message" >> $LogPath
+        "$(@($Content + $Source) -join ' '): $Message" | Out-File -FilePath $LogPath -Append -Encoding utf8
 
         if ([string]::IsNullOrEmpty($Source)) {
             if ($FalconClientId.Length -gt 0) {
@@ -235,7 +235,7 @@ process {
             throw $Message
         }
 
-        if (not (Test-Path -Path $UninstallerPath)) {
+        if (-not (Test-Path -Path $UninstallerPath)) {
             $Message = "${UninstallerName} not found."
             Write-FalconLog 'CheckUninstaller' $Message
             throw $Message
