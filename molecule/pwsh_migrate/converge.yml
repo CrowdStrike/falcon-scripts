@@ -3,9 +3,12 @@
   hosts: all
   gather_facts: false
   tasks:
+    # - name: Test running the CsSensorSettings command
+    #   ansible.windows.win_command: '"C:\Program Files\CrowdStrike\CsSensorSettings" --version'
+
     - name: Run Migrate Script
-      ansible.windows.win_shell: >
-        {{ remote_script_dest }}\migrate.ps1
+      ansible.builtin.script: >
+        ../../powershell/migrate/migrate_single.ps1
         -NewFalconClientId "{{ lookup('env', 'FALCON_CLIENT_ID') }}"
         -NewFalconClientSecret "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
         -OldFalconClientId "{{ lookup('env', 'FALCON_CLIENT_ID') }}" `
@@ -13,7 +16,6 @@
         -NewFalconCloud "us-2"
         -OldFalconCloud "us-2"
         -ProvToken "{{ lookup('env', 'FALCON_PROV_TOKEN') }}"
-        -Tags "molecule"
-        -FalconTags "molecule"
-      args:
-        chdir: "{{ remote_script_dest }}"
+        -RemoveHost
+        -Tags "migrate1,migrate2"
+        -FalconTags "tag1,tag2"
