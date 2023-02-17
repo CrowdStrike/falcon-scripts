@@ -3,9 +3,6 @@
   hosts: all
   gather_facts: false
   tasks:
-    # - name: Test running the CsSensorSettings command
-    #   ansible.windows.win_command: '"C:\Program Files\CrowdStrike\CsSensorSettings" --version'
-
     - name: Run Migrate Script
       ansible.builtin.script: >
         ../../powershell/migrate/migrate_single.ps1
