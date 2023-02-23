@@ -39,7 +39,7 @@ PS>.\falcon_windows_uninstall.ps1 -MaintenanceToken <string>
 
 Uninstall the Falcon sensor with the provided MaintenanceToken.
 .EXAMPLE
-PS>.\falcon_windows_uninstall.ps1 -FalconClientId <string> -FalconClientSecret <string> -RemoveHost $true
+PS>.\falcon_windows_uninstall.ps1 -FalconClientId <string> -FalconClientSecret <string> -RemoveHost
 
 Use the Falcon API to retrieve the maintenance token and remove the host from the Falcon console
 after uninstalling.
