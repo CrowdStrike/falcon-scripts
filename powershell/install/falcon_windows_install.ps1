@@ -19,6 +19,8 @@ CrowdStrike Falcon OAuth2 API Hostname ['https://api.crowdstrike.com' if left un
 CrowdStrike Falcon OAuth2 API Client Id [Required]
 .PARAMETER FalconClientSecret
 CrowdStrike Falcon OAuth2 API Client Secret [Required]
+.PARAMETER FalconCid
+Manually specify CrowdStrike Customer ID (CID) [default: $null]
 .PARAMETER MemberCid
 Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID.
 .PARAMETER SensorUpdatePolicyName
@@ -96,7 +98,11 @@ param(
     [int] $ProvWaitTime = 1200,
 
     [Parameter(Position = 13)]
-    [string] $Tags
+    [string] $Tags,
+
+    [Parameter(Position = 14)]
+    [ValidatePattern('\w{32}-\w{2}')]
+    [string] $FalconCid
 )
 begin {
     if ($PSVersionTable.PSVersion -lt '3.0')
@@ -339,16 +345,24 @@ process {
         throw $Message
     }
 
-    $Response = Invoke-FalconGet '/sensors/queries/installers/ccid/v1'
-    if ($Response -match $Patterns.ccid) {
-        $Ccid = [regex]::Matches($Response, $Patterns.ccid)[0].Groups['ccid'].Value
-        Write-FalconLog 'GetCcid' 'Retrieved CCID'
-        $InstallParams += " CID=$Ccid"
-    }
-    else {
-        $Message = 'Failed to retrieve CCID'
+    # If FalconCid is not provided, get it from the API
+    if (!$FalconCid) {
+        $Response = Invoke-FalconGet '/sensors/queries/installers/ccid/v1'
+        if ($Response -match $Patterns.ccid) {
+            $Ccid = [regex]::Matches($Response, $Patterns.ccid)[0].Groups['ccid'].Value
+            $Message = "Retrieved CCID: $Ccid"
+            Write-FalconLog 'GetCcid' $Message
+            $InstallParams += " CID=$Ccid"
+        }
+        else {
+            $Message = 'Failed to retrieve CCID'
+            Write-FalconLog 'GetCcid' $Message
+            throw $Message
+        }
+    } else {
+        $Message = "Using provided CCID: $FalconCid"
         Write-FalconLog 'GetCcid' $Message
-        throw $Message
+        $InstallParams += " CID=$FalconCid"
     }
 
     $Response = Invoke-FalconGet ("/policy/combined/sensor-update/v2?filter=platform_name:" +
