@@ -297,9 +297,9 @@ process {
         Exit 0
     }
     elseif (Get-Service | Where-Object { $_.Name -eq 'CSFalconService' }) {
-        $Message = "'CSFalconService' running"
+        $Message = "'CSFalconService' running. Falcon sensor is already installed."
         Write-FalconLog 'CheckService' $Message
-        throw $Message
+        exit 0
     }
     else {
         if (!$FalconClientId) {
