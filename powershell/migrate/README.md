@@ -91,7 +91,7 @@ Opt in/out of migrating tags. Tags passed to the Tags flag will still be added.
 
 A simple migration from US-1 to US-2 including sensor tags and falcon tags:
 
-```terminal
+```pwsh
 .\falcon_windows_migrate.ps1 `
     -NewFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
     -NewFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
@@ -103,9 +103,9 @@ A simple migration from US-1 to US-2 including sensor tags and falcon tags:
 
 ### Example 2
 
-Migrate from US-1 to EU-1, remove the old host from the UI, and add a new sensor tag:
+Migrate from US-1 to EU-1, remove the old host from the UI and add a new sensor tag:
 
-```terminal
+```pwsh
 .\falcon_windows_migrate.ps1 `
     -NewFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
     -NewFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
@@ -114,14 +114,14 @@ Migrate from US-1 to EU-1, remove the old host from the UI, and add a new sensor
     -NewFalconCloud "eu-1" `
     -OldFalconCloud "us-1" `
     -RemoveHost `
-    -Tags "NewTag"
+    -Tags "NewTag,NewTag2"
 ```
 
 ### Example 3
 
 Migrate from US-2 to EU-1, use a provisioning token and add a new falcon tag to the sensor:
 
-```terminal
+```pwsh
 .\falcon_windows_migrate.ps1 `
     -NewFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
     -NewFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
@@ -137,7 +137,7 @@ Migrate from US-2 to EU-1, use a provisioning token and add a new falcon tag to 
 
 Migrate from one CID to another within the same cloud:
 
-```terminal
+```pwsh
 .\falcon_windows_migrate.ps1 `
     -NewFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
     -NewFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
