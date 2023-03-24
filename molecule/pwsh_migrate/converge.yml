@@ -5,7 +5,7 @@
   tasks:
     - name: Run Migrate Script
       ansible.builtin.script: >
-        ../../powershell/migrate/migrate.ps1
+        ../../powershell/migrate/falcon_windows_migrate.ps1
         -NewFalconClientId "{{ lookup('env', 'FALCON_CLIENT_ID') }}"
         -NewFalconClientSecret "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
         -OldFalconClientId "{{ lookup('env', 'FALCON_CLIENT_ID') }}" `
