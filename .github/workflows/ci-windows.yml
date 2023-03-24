@@ -39,6 +39,7 @@ jobs:
         scenario:
           - pwsh_install_policy
           - pwsh_install_ccid
+          - pwsh_migrate
     steps:
       - name: Check out code
         uses: actions/checkout@v3
