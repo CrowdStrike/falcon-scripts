@@ -17,6 +17,8 @@ CrowdStrike Falcon OAuth2 API Client Secret for the old cloud [Required]
 CrowdStrike Falcon OAuth2 API Hostname for the new cloud [default: 'autodiscover']
 .PARAMETER OldFalconCloud
 CrowdStrike Falcon OAuth2 API Hostname for the old cloud [default: 'autodiscover']
+.PARAMETER NewFalconCid
+Manually specify CrowdStrike Customer ID (CID) for the new cloud [default: $null]
 .PARAMETER NewMemberCid
 Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID for the new cloud.
 .PARAMETER OldMemberCid
@@ -50,7 +52,7 @@ Sensor uninstall tool, local installation cache or CS standalone uninstaller ['i
 .PARAMETER RemoveHost
 Remove host from CrowdStrike Falcon
 .PARAMETER SkipTags
-Opt in/out of migrating tags. Tags passed to the Tags flag will still be added.P
+Opt in/out of migrating tags. Tags passed to the Tags flag will still be added.
 #>
 #Requires -Version 3.0
 
@@ -108,7 +110,10 @@ param(
     [Parameter(Position = 22)]
     [bool] $DeleteInstaller = $true,
     [Parameter(Position = 23)]
-    [bool] $DeleteScript = $false
+    [bool] $DeleteScript = $false,
+    [Parameter(Position = 24)]
+    [ValidatePattern('\w{32}-\w{2}')]
+    [string] $NewFalconCid
 )
 
 
@@ -413,7 +418,7 @@ function Invoke-FalconInstall ([string] $InstallParams, [string] $Tags, [bool] $
 
         # Main install logic
         if (Get-Service | Where-Object { $_.Name -eq 'CSFalconService' }) {
-            $Message = "'CSFalconService' already running"
+            $Message = "'CSFalconService' running. Falcon sensor is already installed."
             Write-MigrateLog $Message
             Write-Output $Message
             break
@@ -436,16 +441,24 @@ function Invoke-FalconInstall ([string] $InstallParams, [string] $Tags, [bool] $
             }
         }
 
-        $Response = Invoke-FalconGet '/sensors/queries/installers/ccid/v1'
-        if ($Response -match $Patterns.ccid) {
-            $Ccid = [regex]::Matches($Response, $Patterns.ccid)[0].Groups['ccid'].Value
-            Write-MigrateLog "Retrieved CCID: $Ccid"
-            $InstallParams += " CID=$Ccid"
-        }
-        else {
-            $Message = 'Failed to retrieve CCID'
+        # If NewFalconCid is not provided, get it from the API
+        if (!$NewFalconCid) {
+            $Response = Invoke-FalconGet '/sensors/queries/installers/ccid/v1'
+            if ($Response -match $Patterns.ccid) {
+                $Ccid = [regex]::Matches($Response, $Patterns.ccid)[0].Groups['ccid'].Value
+                $Message = "Retrieved CCID: $Ccid"
+                Write-MigrateLog $Message
+                $InstallParams += " CID=$Ccid"
+            }
+            else {
+                $Message = 'Failed to retrieve CCID'
+                Write-MigrateLog $Message
+                throw $Message
+            }
+        } else {
+            $Message = "Using provided CCID: $NewFalconCid"
             Write-MigrateLog $Message
-            throw $Message
+            $InstallParams += " CID=$NewFalconCid"
         }
 
         $Response = Invoke-FalconGet ("/policy/combined/sensor-update/v2?filter=platform_name:" +
