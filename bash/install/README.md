@@ -10,20 +10,15 @@ environment variable.
 API clients are granted one or more API scopes. Scopes allow access to specific CrowdStrike APIs and describe the actions that an API client can perform.
 
 Ensure the following API scopes are enabled:
-* **Sensor Download** [read]
-* **Sensor update policies** [read]
+
+- **Sensor Download** [read]
+- (optional) **Sensor update policies** [read]
+  > Use this scope when configuring the `FALCON_SENSOR_UPDATE_POLICY_NAME` environment variable.
 
 ## Configuration
 
-1. Get sensor download API credentials from the cloud where your account has been configured:
+**Export the required environment variables:**
 
-  - https://falcon.crowdstrike.com/support/api-clients-and-keys
-  - or https://falcon.us-2.crowdstrike.com/support/api-clients-and-keys
-  - or https://falcon.eu-1.crowdstrike.com/support/api-clients-and-keys
-
-Configure environment variables with your API credentials. Make sure that scope **Sensor Download** [read] is enabled.
-
-Export the required environment variables:
 ```bash
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
@@ -32,7 +27,8 @@ export FALCON_CLIENT_SECRET="YYYYYYYYY"
 The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET` are not provided AND the script is running on an AWS instance, the script will try to get API credentials from the SSM store of the region.
 
 Optional environment variables that can be exported:
-```bash
+
+```terminal
 FALCON_CID                        (default: auto)
 FALCON_CLOUD                      (default: us-1)
 FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
@@ -47,9 +43,8 @@ FALCON_BILLING                    (default: default) possible values: [default|m
 FALCON_BACKEND                    (default: auto)    possible values: [auto|bpf|kernel]
 FALCON_TRACE                      (default: none)    possible values: [none|err|warn|info|debug]
 ```
-The `FALCON_SENSOR_UPDATE_POLICY_NAME` variable requires to have additional API access. Make sure that scope **Sensor update policies** [read] is enabled.
 
-2. Run the script:
+**Run the script**:
 
 ```bash
 curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.0/bash/install/falcon-linux-install.sh | bash
@@ -66,7 +61,23 @@ Then, run the following command:
 ```bash
 ./falcon-linux-install.sh
 ```
+
 or
+
 ```bash
 bash falcon-linux-install.sh
+```
+
+## Troubleshooting
+
+To troubleshoot installation issues, run the script by using `bash -x`:
+
+```bash
+bash -x falcon-linux-install.sh
+```
+
+or
+
+```bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.0/bash/install/falcon-linux-install.sh | bash -x
 ```
