@@ -7,12 +7,13 @@ Powershell scripts to install/uninstall Falcon Sensor through the Falcon APIs on
 API clients are granted one or more API scopes. Scopes allow access to specific CrowdStrike APIs and describe the actions that an API client can perform.
 
 Ensure the following API scopes are enabled:
+
 - Install:
-  * **Sensor Download** [read]
-  * **Sensor update policies** [read]
+  - **Sensor Download** [read]
+  - **Sensor update policies** [read]
 - Uninstall:
-  * **Host** [write]
-  * **Sensor update policies** [write]
+  - **Host** [write]
+  - **Sensor update policies** [write]
 
 ## Configuration
 
@@ -29,7 +30,7 @@ to complete.
 Script options can be passed as parameters or defined in the param() block. Default values are listed in
 the parameter descriptions:
 
-```pwsh
+```terminal
 .PARAMETER FalconCloud
 CrowdStrike Falcon OAuth2 API Hostname ['https://api.crowdstrike.com' if left undefined]
 .PARAMETER FalconClientId
@@ -58,9 +59,18 @@ Time to wait, in seconds, for sensor to provision [default: 1200]
 A comma-separated list of tags to apply to the host after sensor installation [default: $null]
 ```
 
-Example:
+***Examples***:
+
+To download the script:
+
 ```pwsh
-PS>.\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string>
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.0/powershell/install/falcon_windows_install.ps1 -OutFile falcon_windows_install.ps1
+```
+
+Basic example that will install the sensor with the provided provisioning token
+
+```pwsh
+.\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string> -ProvToken <string>
 ```
 
 ### Uninstall
@@ -74,7 +84,7 @@ to complete.
 Script options can be passed as parameters or defined in the param() block. Default values are listed in
 the parameter descriptions:
 
-```pwsh
+```terminal
 .PARAMETER MaintenanceToken
 Sensor uninstall maintenance token. If left undefined, the script will attempt to retrieve the
 token from the API assuming the FalconClientId|FalconClientSecret are defined.
@@ -100,15 +110,23 @@ CrowdStrike Falcon OAuth2 API Client Secret [Required if RemoveHost is $true]
 Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID.
 ```
 
-Examples:
+***Examples***:
+
+To download the script:
+
+```pwsh
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.0/powershell/install/falcon_windows_uninstall.ps1 -OutFile falcon_windows_uninstall.ps1
+```
 
 Basic example that will uninstall the sensor with the provided maintenance token
+
 ```pwsh
-PS>.\falcon_windows_uninstall.ps1 -MaintenanceToken <string>
+.\falcon_windows_uninstall.ps1 -MaintenanceToken <string>
 ```
 
 An example using the Falcon API to retrieve the maintenance token and remove the host from the Falcon console
 after uninstalling.
+
 ```pwsh
-PS>.\falcon_windows_uninstall.ps1 -FalconClientId <string> -FalconClientSecret <string> -RemoveHost $true
+.\falcon_windows_uninstall.ps1 -FalconClientId <string> -FalconClientSecret <string> -RemoveHost $true
 ```

@@ -87,9 +87,17 @@ Remove host from CrowdStrike Falcon
 Opt in/out of migrating tags. Tags passed to the Tags flag will still be added.
 ```
 
+----------
+
+To download the script, run the following command:
+
+```pwsh
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.0/powershell/migrate/falcon_windows_migrate.ps1" -OutFile "falcon_windows_migrate.ps1"
+```
+
 ### Example 1
 
-A simple migration from US-1 to US-2 including sensor tags and falcon tags:
+A simple migration from US-1 to US-2 including existing sensor and falcon tags:
 
 ```pwsh
 .\falcon_windows_migrate.ps1 `
@@ -119,7 +127,7 @@ Migrate from US-1 to EU-1, remove the old host from the UI and add a new sensor 
 
 ### Example 3
 
-Migrate from US-2 to EU-1, use a provisioning token and add a new falcon tag to the sensor:
+Migrate from US-2 to EU-1, use a provisioning token and add a new falcon tag:
 
 ```pwsh
 .\falcon_windows_migrate.ps1 `
