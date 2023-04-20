@@ -19,6 +19,7 @@ Optional Flags:
     -r, --region <FALCON_REGION>      Falcon Cloud
     -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
+    -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
 
     -n, --node          download node sensor instead of container sensor
     --runtime           use a different container runtime [docker, podman, skopeo]. Default is docker.
@@ -99,6 +100,12 @@ case "$1" in
         shift
     fi
     ;;
+    -p|--platform)
+    if [ -n "${2:-}" ]; then
+        SENSOR_PLATFORM="${2}"
+        shift
+    fi
+    ;;
     --runtime)
     if [ -n "${2}" ]; then
         CONTAINER_TOOL="${2}"
@@ -149,6 +156,7 @@ if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
 fi
 FALCON_CID=$(echo "${FALCON_CID}" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]')
 SENSOR_VERSION=$(echo "$SENSOR_VERSION" | tr '[:upper:]' '[:lower:]')
+SENSOR_PLATFORM=$(echo "$SENSOR_PLATFORM" | tr '[:upper:]' '[:lower:]')
 COPY=$(echo "$COPY" | tr '[:upper:]' '[:lower:]')
 
 #Check if user wants to download DaemonSet Node Sensor
@@ -255,12 +263,12 @@ fi
 #Get latest sensor version
 case "${CONTAINER_TOOL}" in
         *podman)
-        LATESTSENSOR=$($CONTAINER_TOOL image search --list-tags "$cs_registry/$registry_opts/release/falcon-sensor" | grep "$SENSOR_VERSION" | tail -1 | cut -d" " -f3);;
+        LATESTSENSOR=$($CONTAINER_TOOL image search --list-tags --limit 100 "$cs_registry/$registry_opts/release/falcon-sensor" | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | tail -1 | cut -d" " -f3);;
         *docker)
         REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$registry_opts/release/falcon-sensor:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-        LATESTSENSOR=$(echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$registry_opts/release/falcon-sensor/tags/list" -H @- | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
+        LATESTSENSOR=$(echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$registry_opts/release/falcon-sensor/tags/list" -H @- | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
         *skopeo)
-        LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$registry_opts/release/falcon-sensor" | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1) ;;
+        LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$registry_opts/release/falcon-sensor" | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1) ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
 esac
 

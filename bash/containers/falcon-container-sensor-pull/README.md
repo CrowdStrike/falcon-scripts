@@ -23,6 +23,7 @@ Optional Flags:
     -r, --region <FALCON_REGION>      Falcon Cloud
     -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
+    -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
 
     -n, --node          download node sensor instead of container sensor
     --runtime           use a different container runtime [docker, podman, skopeo]. Default is docker.
@@ -65,8 +66,9 @@ Settings can be passed to the script through CLI Flags or environment variables:
 | `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)          | CrowdStrike Region                                                                       |
 | `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry to copy image e.g. myregistry.com/mynamespace to                                |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)          | Specify sensor version to retrieve from the registry                                     |
+| `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)          | Specify sensor platform to retrieve from the registry                                    |
 | `-n`, `--node`                                 | `$SENSORTYPE`           | `falcon-sensor` (Optional) | Flag to download Node Sensor, if not set script defaults to downloading container sensor |
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. Default is docker.           |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools.                 |
-| `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                 |
+| `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                                          |
 | `-h`, `--help`                                 | N/A                     | `None`                     | Display help message                                                                     |
