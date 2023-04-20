@@ -64,7 +64,7 @@ A comma-separated list of tags to apply to the host after sensor installation [d
 To download the script:
 
 ```pwsh
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.0/powershell/install/falcon_windows_install.ps1 -OutFile falcon_windows_install.ps1
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.1/powershell/install/falcon_windows_install.ps1 -OutFile falcon_windows_install.ps1
 ```
 
 Basic example that will install the sensor with the provided provisioning token
@@ -115,7 +115,7 @@ Member CID, used only in multi-CID ("Falcon Flight Control") configurations and 
 To download the script:
 
 ```pwsh
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.0/powershell/install/falcon_windows_uninstall.ps1 -OutFile falcon_windows_uninstall.ps1
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.1/powershell/install/falcon_windows_uninstall.ps1 -OutFile falcon_windows_uninstall.ps1
 ```
 
 Basic example that will uninstall the sensor with the provided maintenance token

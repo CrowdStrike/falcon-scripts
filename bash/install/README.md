@@ -47,7 +47,7 @@ FALCON_TRACE                      (default: none)    possible values: [none|err|
 **Run the script**:
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.0/bash/install/falcon-linux-install.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.1/bash/install/falcon-linux-install.sh | bash
 ```
 
 Alternatively, you can run the script by cloning the repo:
@@ -79,5 +79,5 @@ bash -x falcon-linux-install.sh
 or
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.0/bash/install/falcon-linux-install.sh | bash -x
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.1/bash/install/falcon-linux-install.sh | bash -x
 ```
