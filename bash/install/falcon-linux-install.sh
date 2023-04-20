@@ -274,7 +274,7 @@ os_install_package() {
     }
     # shellcheck disable=SC2221,SC2222
     case "${os_name}" in
-        Amazon|CentOS|Oracle|RHEL|Rocky|AlmaLinux|SLES)
+        Amazon|CentOS|Oracle|RHEL|Rocky|AlmaLinux|SLES|Fedora)
             rpm_install_package "$pkg"
             ;;
         Debian)
@@ -447,7 +447,7 @@ cs_uninstall=$(
 os_name=$(
     # returns either: Amazon, Ubuntu, CentOS, RHEL, or SLES
     # lsb_release is not always present
-    name=$(cat /etc/*release | grep ^NAME= | awk -F'=' '{ print $2 }' | sed "s/\"//g;s/Red Hat.*/RHEL/g;s/ Linux$//g;s/ GNU\/Linux$//g;s/Oracle.*/Oracle/g;s/Amazon.*/Amazon/g")
+    name=$(cat /etc/*release | grep ^NAME= | awk -F'=' '{ print $2 }' | sed "s/\"//g;s/Red Hat.*/RHEL/g;s/ Linux$//g;s/ GNU\/Linux$//g;s/Oracle.*/Oracle/g;s/Amazon.*/Amazon/;s/Fedora.*/Fedora/g")
     if [ -z "$name" ]; then
         if lsb_release -s -i | grep -q ^RedHat; then
             name="RHEL"
@@ -487,7 +487,7 @@ cs_os_name=$(
     case "${os_name}" in
         Amazon)
             echo "Amazon Linux";;
-        CentOS|Oracle|RHEL|Rocky|AlmaLinux)
+        CentOS|Oracle|RHEL|Rocky|AlmaLinux|Fedora)
             echo "*RHEL*";;
         Debian)
             echo "Debian";;
@@ -523,6 +523,8 @@ cs_os_version=$(
         echo "$version - arm64"
     elif [ "$os_name" = "Amazon" ] && [ "$version" -ge 2017 ] ; then
         echo "1"
+    elif [ "$os_name" = "Fedora" ] && [ "$version" -ge 36 ] ; then
+        echo "9"
     else
         echo "$version"
     fi
