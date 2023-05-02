@@ -276,9 +276,14 @@ fi
 ART_PASSWORD=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
 
 #Set container login
-(echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin >/dev/null 2>&1) || ERROR=true
-if [ "${ERROR}" = true ]; then
-    die "ERROR: ${CONTAINER_TOOL} login failed"
+error_message=$(echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin 2>&1 >/dev/null) || ERROR=true
+if [ "${ERROR}" = "true" ]; then
+    # Check to see if unknown flag error is thrown
+    if echo "$error_message" | grep -q "unknown flag: --password-stdin" && echo "${CONTAINER_TOOL}" | grep -q "docker"; then
+        echo "ERROR: ${CONTAINER_TOOL} login failed. Error message: ${error_message}"
+        die "Please upgrade your Docker version to 17.07 or higher"
+    fi
+    die "ERROR: ${CONTAINER_TOOL} login failed. Error message: ${error_message}"
 fi
 
 if [ "$LISTTAGS" ] ; then
