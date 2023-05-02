@@ -24,6 +24,7 @@ Optional:
     - FALCON_TRACE                      (default: none)    possible values: [none|err|warn|info|debug]
     - FALCON_UNINSTALL                  (default: false)
     - FALCON_INSTALL_ONLY               (default: false)
+    - ALLOW_LEGACY_CURL                 (default: false)
 EOF
 }
 
@@ -424,6 +425,19 @@ old_curl=$(
     # we convert curl's version string to a number by removing the dots and test to see if it's less than version 7.55.0
     test "$(curl --version | head -n 1 | awk '{ print $2 }' | tr -d '.')" -lt 7550 && echo 0 || echo 1
 )
+
+# Old curl print warning message
+if [ "$old_curl" -eq 0 ]; then
+    if [ "${ALLOW_LEGACY_CURL}" != "true" ]; then
+    echo """
+WARNING: Your version of curl does not support the ability to pass headers via stdin.
+For security considerations, we strongly recommend upgrading to curl 7.55.0 or newer.
+
+To bypass this warning, set the environment variable ALLOW_LEGACY_CURL=true
+"""
+    exit 1
+    fi
+fi
 
 curl_command() {
     # Dash does not support arrays, so we have to pass the args as separate arguments

@@ -21,10 +21,11 @@ Optional Flags:
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
 
-    -n, --node          download node sensor instead of container sensor
-    --runtime           use a different container runtime [docker, podman, skopeo]. Default is docker.
-    --dump-credentials  print registry credentials to stdout to copy/paste into container tools.
-    --list-tags         list all tags available for the selected sensor
+    -n, --node              download node sensor instead of container sensor
+    --runtime               use a different container runtime [docker, podman, skopeo]. Default is docker.
+    --dump-credentials      print registry credentials to stdout to copy/paste into container tools.
+    --list-tags             list all tags available for the selected sensor
+    --allow-legacy-curl     allow the script to run with an older version of curl
 
 Help Options:
     -h, --help display this help message"
@@ -122,6 +123,11 @@ case "$1" in
         LISTTAGS=true
     fi
     ;;
+    --allow-legacy-curl)
+    if [ -n "${1}" ]; then
+        ALLOW_LEGACY_CURL=true
+    fi
+    ;;
     -n|--node)
     if [ -n "${1}" ]; then
         SENSORTYPE="falcon-sensor"
@@ -149,6 +155,19 @@ old_curl=$(
     # we convert curl's version string to a number by removing the dots and test to see if it's less than version 7.55.0
     test "$(curl --version | head -n 1 | awk '{ print $2 }' | tr -d '.')" -lt 7550 && echo 0 || echo 1
 )
+
+# Old curl print warning message
+if [ "$old_curl" -eq 0 ]; then
+    if [ "${ALLOW_LEGACY_CURL}" != "true" ]; then
+    echo """
+WARNING: Your version of curl does not support the ability to pass headers via stdin.
+For security considerations, we strongly recommend upgrading to curl 7.55.0 or newer.
+
+To bypass this warning, set the optional flag --allow-legacy-curl
+"""
+    exit 1
+    fi
+fi
 
 curl_command() {
     # Dash does not support arrays, so we have to pass the args as separate arguments
