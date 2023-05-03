@@ -1,7 +1,16 @@
-# falcon-container-sensor-pull
-Bash script to pull latest Falcon Container or Node Kernel Mode DaemonSet Sensor from the CrowdStrike Container Registry to your local docker registry or remote registry with Skopeo
+# Falcon Container Sensor Pull Script
 
-## Prerequisite:
+This bash script pulls the latest **Falcon Container** or **Node Kernel Mode DaemonSet** sensor from the CrowdStrike container registry to your local Docker registry or remote registries.
+
+## Security Recommendations
+
+### Use cURL version 7.55.0 or newer
+
+We have identified a security concern related to cURL versions prior to 7.55, which required request headers to be set using the `-H` option, thus allowing potential secrets to be exposed via the command line. In newer versions of cURL, you can pass headers from stdin using the `@-` syntax, which addresses this security concern. Although our script offers compatibility with the older method through the use of the `--allow-legacy-curl` optional command line flag, we strongly urge you to upgrade cURL if your environment permits.
+
+To check your version of cURL, run the following command: `curl --version`
+
+## Prerequisites
 
 - Script requires the following commands to be installed:
   - `curl`
@@ -9,10 +18,10 @@ Bash script to pull latest Falcon Container or Node Kernel Mode DaemonSet Sensor
 - CrowdStrike API Client created with `Falcon Images Download (read)` AND `Sensor Download (read)` scope assigned.
 - If you are using docker, make sure that docker is running locally.
 
-## Usage:
+## Usage
 
-```
-usage: ./falcon-container-sensor-pull.sh
+```terminal
+usage: falcon-container-sensor-pull.sh
 
 Required Flags:
     -u, --client-id <FALCON_CLIENT_ID>             Falcon API OAUTH Client ID
@@ -25,38 +34,19 @@ Optional Flags:
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
 
-    -n, --node          download node sensor instead of container sensor
-    --runtime           use a different container runtime [docker, podman, skopeo]. Default is docker.
-    --dump-credentials  print registry credentials to stdout to copy/paste into container tools.
-    --list-tags         list all tags available for the selected sensor
+    -n, --node              download node sensor instead of container sensor
+    --runtime               use a different container runtime [docker, podman, skopeo]. Default is docker.
+    --dump-credentials      print registry credentials to stdout to copy/paste into container tools.
+    --list-tags             list all tags available for the selected sensor
+    --allow-legacy-curl     allow the script to run with an older version of curl
 
 Help Options:
     -h, --help display this help message
 ```
 
-Execute the script with the relevant input arguments.
+### Full list of variables available
 
-### Example usage to download DaemonSet Sensor
-
-#### Example using `autodiscover`:
-./falcon-container-sensor-pull.sh \
---client-id <ABCDEFG123456> \
---client-secret <ABCDEFG123456> \
---node
-
-#### Example without using `autodiscover`:
-
-```
-./falcon-container-sensor-pull.sh \
---cid <ABCDEFG123456> \
---client-id <ABCDEFG123456> \
---client-secret <ABCDEFG123456> \
---region us-2 \
---node
-```
-
-### Full list of variables available:
-Settings can be passed to the script through CLI Flags or environment variables:
+> **Settings can be passed to the script via CLI flags or environment variables:**
 
 | Flags                                          | Environment Variables   | Default                    | Description                                                                              |
 |:-----------------------------------------------|-------------------------|----------------------------|------------------------------------------------------------------------------------------|
@@ -71,4 +61,27 @@ Settings can be passed to the script through CLI Flags or environment variables:
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. Default is docker.           |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools.                 |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                                          |
+| `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)         | Allow the script to run with an older version of curl                                          |
 | `-h`, `--help`                                 | N/A                     | `None`                     | Display help message                                                                     |
+
+### Example usage to download DaemonSet sensor
+
+#### Example using `autodiscover`
+
+``` bash
+./falcon-container-sensor-pull.sh \
+--client-id <ABCDEFG123456> \
+--client-secret <ABCDEFG123456> \
+--node
+```
+
+#### Example without using `autodiscover`
+
+``` bash
+./falcon-container-sensor-pull.sh \
+--cid <ABCDEFG123456> \
+--client-id <ABCDEFG123456> \
+--client-secret <ABCDEFG123456> \
+--region us-2 \
+--node
+```

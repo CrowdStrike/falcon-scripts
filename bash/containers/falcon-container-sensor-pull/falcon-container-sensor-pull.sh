@@ -21,10 +21,11 @@ Optional Flags:
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
 
-    -n, --node          download node sensor instead of container sensor
-    --runtime           use a different container runtime [docker, podman, skopeo]. Default is docker.
-    --dump-credentials  print registry credentials to stdout to copy/paste into container tools.
-    --list-tags         list all tags available for the selected sensor
+    -n, --node              download node sensor instead of container sensor
+    --runtime               use a different container runtime [docker, podman, skopeo]. Default is docker.
+    --dump-credentials      print registry credentials to stdout to copy/paste into container tools.
+    --list-tags             list all tags available for the selected sensor
+    --allow-legacy-curl     allow the script to run with an older version of curl
 
 Help Options:
     -h, --help display this help message"
@@ -122,6 +123,11 @@ case "$1" in
         LISTTAGS=true
     fi
     ;;
+    --allow-legacy-curl)
+    if [ -n "${1}" ]; then
+        ALLOW_LEGACY_CURL=true
+    fi
+    ;;
     -n|--node)
     if [ -n "${1}" ]; then
         SENSORTYPE="falcon-sensor"
@@ -143,6 +149,36 @@ case "$1" in
 esac
 shift
 done
+
+# Check for old version of curl that doesn't support -H @-
+old_curl=$(
+    # we convert curl's version string to a number by removing the dots and test to see if it's less than version 7.55.0
+    test "$(curl --version | head -n 1 | awk '{ print $2 }' | tr -d '.')" -lt 7550 && echo 0 || echo 1
+)
+
+# Old curl print warning message
+if [ "$old_curl" -eq 0 ]; then
+    if [ "${ALLOW_LEGACY_CURL}" != "true" ]; then
+    echo """
+WARNING: Your version of curl does not support the ability to pass headers via stdin.
+For security considerations, we strongly recommend upgrading to curl 7.55.0 or newer.
+
+To bypass this warning, set the optional flag --allow-legacy-curl
+"""
+    exit 1
+    fi
+fi
+
+curl_command() {
+    # Dash does not support arrays, so we have to pass the args as separate arguments
+    local token="$1"
+    set -- "$@"
+    if [ "$old_curl" -eq 0 ]; then
+        curl -s -L -H "Authorization: Bearer ${token}" "$@"
+    else
+        echo "Authorization: Bearer ${token}" | curl -s -L -H @- "$@"
+    fi
+}
 
 # shellcheck disable=SC2086
 FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
@@ -226,7 +262,7 @@ cs_falcon_cid=$(
     if [ -n "$FALCON_CID" ]; then
         echo "$FALCON_CID" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]'
     else
-        cs_target_cid=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L "https://$(cs_cloud)/sensors/queries/installers/ccid/v1" -H @-)
+        cs_target_cid=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
         echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}' | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]'
     fi
 )
@@ -237,13 +273,17 @@ if [ ! "$LISTTAGS" ] ; then
     echo "Falcon Registry: ${cs_registry}"
 fi
 #Set Docker token using the BEARER token captured earlier
-ART_PASSWORD=$(echo "authorization: Bearer $cs_falcon_oauth_token" | curl -s -L \
-"https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" -H @- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+ART_PASSWORD=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
 
 #Set container login
-(echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin >/dev/null 2>&1) || ERROR=true
-if [ "${ERROR}" = true ]; then
-    die "ERROR: ${CONTAINER_TOOL} login failed"
+error_message=$(echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin 2>&1 >/dev/null) || ERROR=true
+if [ "${ERROR}" = "true" ]; then
+    # Check to see if unknown flag error is thrown
+    if echo "$error_message" | grep -q "unknown flag: --password-stdin" && echo "${CONTAINER_TOOL}" | grep -q "docker"; then
+        echo "ERROR: ${CONTAINER_TOOL} login failed. Error message: ${error_message}"
+        die "Please upgrade your Docker version to 17.07 or higher"
+    fi
+    die "ERROR: ${CONTAINER_TOOL} login failed. Error message: ${error_message}"
 fi
 
 if [ "$LISTTAGS" ] ; then
@@ -252,11 +292,11 @@ if [ "$LISTTAGS" ] ; then
         die "Please use docker runtime to list tags" ;;
         *docker)
         REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$registry_opts/release/falcon-sensor:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-        echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$registry_opts/release/falcon-sensor/tags/list" -H @- | sed "s/, /, \\n/g" ;;
+        curl_command "$REGISTRYBEARER" "https://$cs_registry/v2/$registry_opts/release/falcon-sensor/tags/list" | sed "s/, /, \\n/g" ;;
         *skopeo)
         die "Please use docker runtime to list tags" ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
-    esac    
+    esac
     exit 0
 fi
 
@@ -266,7 +306,7 @@ case "${CONTAINER_TOOL}" in
         LATESTSENSOR=$($CONTAINER_TOOL image search --list-tags --limit 100 "$cs_registry/$registry_opts/release/falcon-sensor" | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | tail -1 | cut -d" " -f3);;
         *docker)
         REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$registry_opts/release/falcon-sensor:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-        LATESTSENSOR=$(echo "authorization: Bearer $REGISTRYBEARER" | curl -s -L "https://$cs_registry/v2/$registry_opts/release/falcon-sensor/tags/list" -H @- | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
+        LATESTSENSOR=$(curl_command "$REGISTRYBEARER" "https://$cs_registry/v2/$registry_opts/release/falcon-sensor/tags/list" | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
         *skopeo)
         LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$registry_opts/release/falcon-sensor" | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1) ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
