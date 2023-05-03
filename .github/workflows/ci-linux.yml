@@ -29,6 +29,7 @@ jobs:
       ANSIBLE_FORCE_COLOR: 1
       FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
       FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
+      ALLOW_LEGACY_CURL: 'true'
     strategy:
       fail-fast: false
       matrix:
