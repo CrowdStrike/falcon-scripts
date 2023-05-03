@@ -7,11 +7,11 @@ environment variable.
 
 ## Security Recommendations
 
-### Use cURL to version 7.55.0 or newer
+### Use cURL version 7.55.0 or newer
 
-We have identified a security concern related to cURL versions prior to 7.55, which required request headers to be set using the `-H` option. In newer versions of cURL, you can pass headers from stdin using the `@-` syntax, which addresses this security concern. Although our script maintains compatibility with the older method to accommodate usage in older environments, we strongly recommend upgrading cURL if your environment permits.
+We have identified a security concern related to cURL versions prior to 7.55, which required request headers to be set using the `-H` option, thus allowing potential secrets to be exposed via the command line. In newer versions of cURL, you can pass headers from stdin using the `@-` syntax, which addresses this security concern. Although our script offers compatibility with the older method by allowing you to set the environment variable `ALLOW_LEGACY_CURL=true`, we strongly urge you to upgrade cURL if your environment permits.
 
-To check your cURL version, run the following command: `curl --version`
+To check your version of cURL, run the following command: `curl --version`
 
 ## Falcon API Permissions
 
@@ -50,6 +50,7 @@ FALCON_APP                        (default: unset)
 FALCON_BILLING                    (default: default) possible values: [default|metered]
 FALCON_BACKEND                    (default: auto)    possible values: [auto|bpf|kernel]
 FALCON_TRACE                      (default: none)    possible values: [none|err|warn|info|debug]
+ALLOW_LEGACY_CURL                 (default: false)
 ```
 
 **Run the script**:

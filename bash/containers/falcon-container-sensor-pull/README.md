@@ -4,11 +4,11 @@ This bash script pulls the latest **Falcon Container** or **Node Kernel Mode Dae
 
 ## Security Recommendations
 
-### Use cURL to version 7.55.0 or newer
+### Use cURL version 7.55.0 or newer
 
-We have identified a security concern related to cURL versions prior to 7.55, which required request headers to be set using the `-H` option. In newer versions of cURL, you can pass headers from stdin using the `@-` syntax, which addresses this security concern. Although our script maintains compatibility with the older method to accommodate usage in older environments, we strongly recommend upgrading cURL if your environment permits.
+We have identified a security concern related to cURL versions prior to 7.55, which required request headers to be set using the `-H` option, thus allowing potential secrets to be exposed via the command line. In newer versions of cURL, you can pass headers from stdin using the `@-` syntax, which addresses this security concern. Although our script offers compatibility with the older method through the use of the `--allow-legacy-curl` optional command line flag, we strongly urge you to upgrade cURL if your environment permits.
 
-To check your cURL version, run the following command: `curl --version`
+To check your version of cURL, run the following command: `curl --version`
 
 ## Prerequisites
 
@@ -20,8 +20,8 @@ To check your cURL version, run the following command: `curl --version`
 
 ## Usage
 
-``` bash
-usage: ./falcon-container-sensor-pull.sh
+```terminal
+usage: falcon-container-sensor-pull.sh
 
 Required Flags:
     -u, --client-id <FALCON_CLIENT_ID>             Falcon API OAUTH Client ID
@@ -34,16 +34,35 @@ Optional Flags:
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
 
-    -n, --node          download node sensor instead of container sensor
-    --runtime           use a different container runtime [docker, podman, skopeo]. Default is docker.
-    --dump-credentials  print registry credentials to stdout to copy/paste into container tools.
-    --list-tags         list all tags available for the selected sensor
+    -n, --node              download node sensor instead of container sensor
+    --runtime               use a different container runtime [docker, podman, skopeo]. Default is docker.
+    --dump-credentials      print registry credentials to stdout to copy/paste into container tools.
+    --list-tags             list all tags available for the selected sensor
+    --allow-legacy-curl     allow the script to run with an older version of curl
 
 Help Options:
     -h, --help display this help message
 ```
 
-Execute the script with the relevant input arguments.
+### Full list of variables available
+
+> **Settings can be passed to the script via CLI flags or environment variables:**
+
+| Flags                                          | Environment Variables   | Default                    | Description                                                                              |
+|:-----------------------------------------------|-------------------------|----------------------------|------------------------------------------------------------------------------------------|
+| `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID            | `None` (Optional)          | CrowdStrike Customer ID (CID)                                                            |
+| `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)          | CrowdStrike API Client ID                                                                |
+| `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)          | CrowdStrike API Client Secret                                                            |
+| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)          | CrowdStrike Region                                                                       |
+| `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry to copy image e.g. myregistry.com/mynamespace to                                |
+| `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)          | Specify sensor version to retrieve from the registry                                     |
+| `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)          | Specify sensor platform to retrieve from the registry                                    |
+| `-n`, `--node`                                 | `$SENSORTYPE`           | `falcon-sensor` (Optional) | Flag to download Node Sensor, if not set script defaults to downloading container sensor |
+| `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. Default is docker.           |
+| `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools.                 |
+| `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                                          |
+| `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)         | Allow the script to run with an older version of curl                                          |
+| `-h`, `--help`                                 | N/A                     | `None`                     | Display help message                                                                     |
 
 ### Example usage to download DaemonSet sensor
 
@@ -66,22 +85,3 @@ Execute the script with the relevant input arguments.
 --region us-2 \
 --node
 ```
-
-### Full list of variables available
-
-Settings can be passed to the script through CLI flags or environment variables:
-
-| Flags                                          | Environment Variables   | Default                    | Description                                                                              |
-|:-----------------------------------------------|-------------------------|----------------------------|------------------------------------------------------------------------------------------|
-| `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID            | `None` (Optional)          | CrowdStrike Customer ID (CID)                                                            |
-| `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)          | CrowdStrike API Client ID                                                                |
-| `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)          | CrowdStrike API Client Secret                                                            |
-| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)          | CrowdStrike Region                                                                       |
-| `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry to copy image e.g. myregistry.com/mynamespace to                                |
-| `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)          | Specify sensor version to retrieve from the registry                                     |
-| `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)          | Specify sensor platform to retrieve from the registry                                    |
-| `-n`, `--node`                                 | `$SENSORTYPE`           | `falcon-sensor` (Optional) | Flag to download Node Sensor, if not set script defaults to downloading container sensor |
-| `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. Default is docker.           |
-| `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools.                 |
-| `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                                          |
-| `-h`, `--help`                                 | N/A                     | `None`                     | Display help message                                                                     |
