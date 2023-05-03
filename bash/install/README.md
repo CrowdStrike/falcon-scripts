@@ -5,6 +5,14 @@ this script will install, register the sensor, and start the service. If you wou
 install the sensor without any additional configurations, configure the `FALCON_INSTALL_ONLY`
 environment variable.
 
+## Security Recommendations
+
+### Use cURL to version 7.55.0 or newer
+
+We have identified a security concern related to cURL versions prior to 7.55, which required request headers to be set using the `-H` option. In newer versions of cURL, you can pass headers from stdin using the `@-` syntax, which addresses this security concern. Although our script maintains compatibility with the older method to accommodate usage in older environments, we strongly recommend upgrading cURL if your environment permits.
+
+To check your cURL version, run the following command: `curl --version`
+
 ## Falcon API Permissions
 
 API clients are granted one or more API scopes. Scopes allow access to specific CrowdStrike APIs and describe the actions that an API client can perform.

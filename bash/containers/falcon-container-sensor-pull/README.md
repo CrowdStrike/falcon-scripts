@@ -1,7 +1,16 @@
-# falcon-container-sensor-pull
-Bash script to pull latest Falcon Container or Node Kernel Mode DaemonSet Sensor from the CrowdStrike Container Registry to your local docker registry or remote registry with Skopeo
+# Falcon Container Sensor Pull Script
 
-## Prerequisite:
+This bash script pulls the latest **Falcon Container** or **Node Kernel Mode DaemonSet** sensor from the CrowdStrike container registry to your local Docker registry or remote registries.
+
+## Security Recommendations
+
+### Use cURL to version 7.55.0 or newer
+
+We have identified a security concern related to cURL versions prior to 7.55, which required request headers to be set using the `-H` option. In newer versions of cURL, you can pass headers from stdin using the `@-` syntax, which addresses this security concern. Although our script maintains compatibility with the older method to accommodate usage in older environments, we strongly recommend upgrading cURL if your environment permits.
+
+To check your cURL version, run the following command: `curl --version`
+
+## Prerequisites
 
 - Script requires the following commands to be installed:
   - `curl`
@@ -9,9 +18,9 @@ Bash script to pull latest Falcon Container or Node Kernel Mode DaemonSet Sensor
 - CrowdStrike API Client created with `Falcon Images Download (read)` AND `Sensor Download (read)` scope assigned.
 - If you are using docker, make sure that docker is running locally.
 
-## Usage:
+## Usage
 
-```
+``` bash
 usage: ./falcon-container-sensor-pull.sh
 
 Required Flags:
@@ -36,17 +45,20 @@ Help Options:
 
 Execute the script with the relevant input arguments.
 
-### Example usage to download DaemonSet Sensor
+### Example usage to download DaemonSet sensor
 
-#### Example using `autodiscover`:
+#### Example using `autodiscover`
+
+``` bash
 ./falcon-container-sensor-pull.sh \
 --client-id <ABCDEFG123456> \
 --client-secret <ABCDEFG123456> \
 --node
-
-#### Example without using `autodiscover`:
-
 ```
+
+#### Example without using `autodiscover`
+
+``` bash
 ./falcon-container-sensor-pull.sh \
 --cid <ABCDEFG123456> \
 --client-id <ABCDEFG123456> \
@@ -55,8 +67,9 @@ Execute the script with the relevant input arguments.
 --node
 ```
 
-### Full list of variables available:
-Settings can be passed to the script through CLI Flags or environment variables:
+### Full list of variables available
+
+Settings can be passed to the script through CLI flags or environment variables:
 
 | Flags                                          | Environment Variables   | Default                    | Description                                                                              |
 |:-----------------------------------------------|-------------------------|----------------------------|------------------------------------------------------------------------------------------|
