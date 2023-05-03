@@ -6,6 +6,7 @@
   environment:
     FALCON_CLIENT_ID: "{{ lookup('env', 'FALCON_CLIENT_ID') }}"
     FALCON_CLIENT_SECRET: "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
+    ALLOW_LEGACY_CURL: "true"
   tasks:
     # Execute shell command
     - name: Install Falcon Sensor
