@@ -5,3 +5,4 @@
 *.swo
 *~
 *DS_Store
+.vagrant
