@@ -333,6 +333,8 @@ process {
 
     if ($MemberCid) {
         $ApiClient["&member_cid"] = $MemberCid
+        # If MemberCid is provided, override FalconCid
+        $FalconCid = $MemberCid
     }
 
     Invoke-FalconAuth $ApiClient
