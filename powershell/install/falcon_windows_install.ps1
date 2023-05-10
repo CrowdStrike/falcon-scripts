@@ -332,7 +332,7 @@ process {
     $ApiClient["client_secret"] = $FalconClientSecret
 
     if ($MemberCid) {
-        $ApiClient["&member_cid"] = $MemberCid
+        $ApiClient["member_cid"] = $MemberCid
     }
 
     Invoke-FalconAuth $ApiClient

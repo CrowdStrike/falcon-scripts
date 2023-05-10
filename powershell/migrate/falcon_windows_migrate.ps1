@@ -610,7 +610,7 @@ function Get-HeadersAndUrl([string] $FalconClientId, [string] $FalconClientSecre
     $body['client_secret'] = $FalconClientSecret
 
     if ($MemberCid) {
-        $body['&member_cid'] = $MemberCid
+        $body['member_cid'] = $MemberCid
     }
 
     $baseUrl, $headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
