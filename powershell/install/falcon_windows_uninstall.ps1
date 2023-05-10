@@ -371,7 +371,7 @@ process {
         $Body['client_secret'] = $FalconClientSecret
 
         if ($MemberCid) {
-            $Body['&member_cid'] = $MemberCid
+            $Body['member_cid'] = $MemberCid
         }
 
         $BaseUrl, $Headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud

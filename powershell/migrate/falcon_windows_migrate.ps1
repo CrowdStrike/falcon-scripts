@@ -610,7 +610,7 @@ function Get-HeadersAndUrl([string] $FalconClientId, [string] $FalconClientSecre
     $body['client_secret'] = $FalconClientSecret
 
     if ($MemberCid) {
-        $body['&member_cid'] = $MemberCid
+        $body['member_cid'] = $MemberCid
     }
 
     $baseUrl, $headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
@@ -1039,10 +1039,6 @@ Write-MigrateLog 'Creating recovery csv to keep track of tags...'
 Write-RecoveryCsv -SensorGroupingTags $sensorGroupingTags -FalconGroupingTags $falconGroupingTags -OldAid $oldAid -Path $recoveryCsvPath
 
 Invoke-FalconUninstall -UninstallParams $UninstallParams -RemoveHost $RemoveHost -DeleteUninstaller $DeleteUninstaller -MaintenanceToken $MaintenanceToken -UninstallTool $UninstallTool
-# If NewMemberCid is defined, set that as NewFalconCid
-if (![string]::IsNullOrWhiteSpace($NewMemberCid)) {
-    $NewFalconCid = $NewMemberCid
-}
 Invoke-FalconInstall -InstallParams $InstallParams -Tags ($SensorGroupingTags -join ',') -DeleteInstaller $DeleteInstaller -SensorUpdatePolicyName $SensorUpdatePolicyName -ProvToken $ProvToken -ProvWaitTime $ProvWaitTime -NewFalconCid $NewFalconCid
 
 $timeout = Get-Date
