@@ -92,7 +92,7 @@ Opt in/out of migrating tags. Tags passed to the Tags flag will still be added.
 To download the script, run the following command:
 
 ```pwsh
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.1/powershell/migrate/falcon_windows_migrate.ps1" -OutFile "falcon_windows_migrate.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.2/powershell/migrate/falcon_windows_migrate.ps1" -OutFile "falcon_windows_migrate.ps1"
 ```
 
 ### Example 1
