@@ -5,7 +5,7 @@ Download and install the CrowdStrike Falcon Sensor for Windows
 Uses the CrowdStrike Falcon APIs to check the sensor version assigned to a Windows Sensor Update policy,
 downloads that version, then installs it on the local machine. By default, once complete, the script
 deletes itself and the downloaded installer package. The individual steps and any related error messages
-are logged to 'Windows\Temp\csfalcon_install.log' unless otherwise specified.
+are logged to 'Windows\Temp\InstallFalcon.log' unless otherwise specified.
 
 Script options can be passed as parameters or defined in the param() block. Default values are listed in
 the parameter descriptions.
@@ -28,7 +28,7 @@ Sensor Update Policy name to check for assigned sensor version ['platform_defaul
 .PARAMETER InstallParams
 Sensor installation parameters, without your CID value ['/install /quiet /noreboot' if left undefined]
 .PARAMETER LogPath
-Script log location ['Windows\Temp\csfalcon_install.log' if left undefined]
+Script log location ['Windows\Temp\InstallFalcon.log' if left undefined]
 .PARAMETER DeleteInstaller
 Delete sensor installer package when complete [default: $true]
 .PARAMETER DeleteScript
@@ -465,7 +465,7 @@ process {
         throw $Message
     }
     elseif ($process.ExitCode -ne 0) {
-        errOut = $process.StandardError.ReadToEnd()
+        $errOut = $process.StandardError.ReadToEnd()
         $Message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
         Write-FalconLog 'InstallerProcess' $Message
         throw $Message
