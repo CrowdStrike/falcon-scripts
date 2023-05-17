@@ -564,7 +564,7 @@ function Invoke-FalconInstall ([string] $InstallParams, [string] $Tags, [bool] $
             throw $Message
         }
         elseif ($process.ExitCode -ne 0) {
-            errOut = $process.StandardError.ReadToEnd()
+            $errOut = $process.StandardError.ReadToEnd()
             $Message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
             Write-MigrateLog $Message
             throw $Message

@@ -22,7 +22,7 @@ Ensure the following API scopes are enabled:
 Uses the CrowdStrike Falcon APIs to check the sensor version assigned to a ***Windows Sensor Update policy***,
 downloads that version, then installs it on the local machine. By default, once complete, the script
 deletes itself and the downloaded installer package. The individual steps and any related error messages
-are logged to `'Windows\Temp\csfalcon_install.log'` unless otherwise specified.
+are logged to `'Windows\Temp\InstallFalcon.log'` unless otherwise specified.
 
 The script must be run as an administrator on the local machine in order for the Falcon Sensor installation
 to complete.
@@ -44,7 +44,7 @@ Sensor Update Policy name to check for assigned sensor version ['platform_defaul
 .PARAMETER InstallParams
 Sensor installation parameters, without your CID value ['/install /quiet /noreboot' if left undefined]
 .PARAMETER LogPath
-Script log location ['Windows\Temp\csfalcon_install.log' if left undefined]
+Script log location ['Windows\Temp\InstallFalcon.log' if left undefined]
 .PARAMETER DeleteInstaller
 Delete sensor installer package when complete [default: $true]
 .PARAMETER DeleteScript
