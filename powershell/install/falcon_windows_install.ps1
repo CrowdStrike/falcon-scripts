@@ -119,13 +119,11 @@ begin {
 
         "$(@($Content + $Source) -join ' '): $Message" | Out-File -FilePath $LogPath -Append -Encoding utf8
 
-        if ([string]::IsNullOrEmpty($Source)) {
-            if ($FalconClientId.Length -gt 0) {
-                Write-Output $Message.replace($FalconClientId, '***')
-            }
-            else {
-                Write-Output $Message
-            }
+        if ($FalconClientId.Length -gt 0) {
+            Write-Output $Message.replace($FalconClientId, '***')
+        }
+        else {
+            Write-Output $Message
         }
     }
 
@@ -148,8 +146,8 @@ begin {
             $content = ConvertFrom-Json -InputObject $response.Content
 
             if ([string]::IsNullOrEmpty($content.access_token)) {
-                $Message = 'Unable to authenticate to the CrowdStrike Falcon API. Please check your credentials and try again.'
-                throw $Message
+                $message = 'Unable to authenticate to the CrowdStrike Falcon API. Please check your credentials and try again.'
+                throw $message
             }
 
             $Headers.Add('Authorization', "bearer $($content.access_token)")
@@ -159,9 +157,9 @@ begin {
             $response = $_.Exception.Response
 
             if (!$response) {
-                $Message = "Unhandled error occurred while authenticating to the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
-                Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
-                throw $Message
+                $message = "Unhandled error occurred while authenticating to the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
+                Write-FalconLog -Source 'Invoke-FalconAuth' -Message $message
+                throw $message
             }
 
             if ($response.StatusCode -in @(301, 302, 303, 307, 308)) {
@@ -171,9 +169,9 @@ begin {
                         $region = $response.Headers.GetValues('X-Cs-Region')[0]
                     }
                     else {
-                        $Message = 'Received a redirect but no X-Cs-Region header was provided. Unable to autodiscover the FalconCloud. Please set FalconCloud to the correct region.'
-                        Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
-                        throw $Message
+                        $message = 'Received a redirect but no X-Cs-Region header was provided. Unable to autodiscover the FalconCloud. Please set FalconCloud to the correct region.'
+                        Write-FalconLog -Source 'Invoke-FalconAuth' -Message $message
+                        throw $message
                     }
 
                     $BaseUrl = Get-FalconCloud($region)
@@ -181,15 +179,15 @@ begin {
 
                 }
                 else {
-                    $Message = "Received a redirect. Please set FalconCloud to 'autodiscover' or the correct region."
-                    Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
-                    throw $Message
+                    $message = "Received a redirect. Please set FalconCloud to 'autodiscover' or the correct region."
+                    Write-FalconLog -Source 'Invoke-FalconAuth' -Message $message
+                    throw $message
                 }
             }
             else {
-                $Message = "Received a $($response.StatusCode) response from $($BaseUrl)oauth2/token. Please check your credentials and try again. Error: $($response.StatusDescription)"
-                Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
-                throw $Message
+                $message = "Received a $($response.StatusCode) response from $($BaseUrl)oauth2/token. Please check your credentials and try again. Error: $($response.StatusDescription)"
+                Write-FalconLog -Source 'Invoke-FalconAuth' -Message $message
+                throw $message
             }
         }
 
@@ -212,19 +210,19 @@ begin {
     }
 
     function Format-403Error([string] $url, [hashtable] $scope) {
-        $Message = "Insufficient permission error when calling $($url). Verify the following scopes are included in the API key:"
+        $message = "Insufficient permission error when calling $($url). Verify the following scopes are included in the API key:"
         foreach ($key in $scope.Keys) {
-            $Message += "`r`n`t '$($key)' with: $($scope[$key])"
+            $message += "`r`n`t '$($key)' with: $($scope[$key])"
         }
-        return $Message
+        return $message
     }
 
     function Format-FalconResponseError($errors) {
-        $Message = ''
+        $message = ''
         foreach ($error in $errors) {
-            $Message += "`r`n`t $($error.message)"
+            $message += "`r`n`t $($error.message)"
         }
-        return $Message
+        return $message
     }
 
     function Get-ResourceContent([string] $url, [string] $logKey, [hashtable] $scope, [string] $errorMessage) {
@@ -236,7 +234,7 @@ begin {
                 $message = "Error when getting content: "
                 $message += Format-FalconResponseError -errors $content.errors
                 Write-FalconLog $logKey $message
-                throw $Message
+                throw $message
             }
 
             if ($content.resources) {
@@ -265,7 +263,6 @@ begin {
             else {
                 $message = "Received a $($response.StatusCode) response from ${url}. Error: $($response.StatusDescription)"
                 Write-FalconLog $logKey $message
-                Write-Host $message
                 throw $message
             }
         }
@@ -293,9 +290,9 @@ begin {
         catch {
             $response = $_.Exception.Response
             if (!$response) {
-                $Message = "Unhandled error occurred. Error: $($_.Exception.Message)"
-                Write-FalconLog 'DownloadFile' $Message
-                throw $Message
+                $message = "Unhandled error occurred. Error: $($_.Exception.Message)"
+                Write-FalconLog 'DownloadFile' $message
+                throw $message
             }
             if ($response.StatusCode -eq 403) {
                 $scope = @{
@@ -306,9 +303,9 @@ begin {
                 throw $message
             }
             else {
-                $Message = "Received a $($response.StatusCode) response from ${url}. Error: $($response.StatusDescription)"
-                Write-FalconLog 'DownloadFile' $Message
-                throw $Message
+                $message = "Received a $($response.StatusCode) response from ${url}. Error: $($response.StatusDescription)"
+                Write-FalconLog 'DownloadFile' $message
+                throw $message
             }
         }
     }
@@ -323,13 +320,13 @@ begin {
 process {
     if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
             [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {
-        $Message = 'Unable to proceed without administrative privileges'
-        Write-FalconLog 'CheckAdmin' $Message
-        throw $Message
+        $message = 'Unable to proceed without administrative privileges'
+        Write-FalconLog 'CheckAdmin' $message
+        throw $message
     }
     elseif (Get-Service | Where-Object { $_.Name -eq 'CSFalconService' }) {
-        $Message = "'CSFalconService' running. Falcon sensor is already installed."
-        Write-FalconLog 'CheckService' $Message
+        $message = "'CSFalconService' running. Falcon sensor is already installed."
+        Write-FalconLog 'CheckService' $message
         exit 0
     }
     else {
@@ -339,15 +336,15 @@ process {
                 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
             }
             catch {
-                $Message = $_
-                Write-FalconLog 'TlsCheck' $Message
-                throw $Message
+                $message = $_
+                Write-FalconLog 'TlsCheck' $message
+                throw $message
             }
         }
         if (!($PSVersionTable.CLRVersion.ToString() -ge 3.5)) {
-            $Message = '.NET Framework 3.5 or newer is required'
-            Write-FalconLog 'NetCheck' $Message
-            throw $Message
+            $message = '.NET Framework 3.5 or newer is required'
+            Write-FalconLog 'NetCheck' $message
+            throw $message
         }
     }
 
@@ -368,13 +365,14 @@ process {
         $Headers['Content-Type'] = 'application/json'
     }
     else {
-        $Message = 'Unable to proceed without valid API credentials. Ensure you pass the required parameters or define them in the script.'
-        Write-FalconLog 'CheckCredentials' $Message
-        throw $Message
+        $message = 'Unable to proceed without valid API credentials. Ensure you pass the required parameters or define them in the script.'
+        Write-FalconLog 'CheckCredentials' $message
+        throw $message
     }
 
     # Get CCID from API if not provided
     if (!$FalconCid) {
+        Write-FalconLog 'GetCcid' 'No CCID provided. Attempting to retrieve from the CrowdStrike Falcon API.'
         $url = "${BaseUrl}/sensors/queries/installers/ccid/v1"
         $ccid_scope = @{
             'Sensor Download' = @('Read')
@@ -383,15 +381,18 @@ process {
 
         $message = "Retrieved CCID: $ccid"
         Write-FalconLog 'GetCcid' $message
-        Write-Host $message
         $InstallParams += " CID=$ccid"
     }
     else {
+        $message = "Using provided CCID: $FalconCid"
+        Write-FalconLog 'GetCcid' $message
         $InstallParams += " CID=$FalconCid"
     }
 
     # Get sensor version from policy
-    $filter = "platform_name:'Windows'+name:'$($SensorUpdatePolicyName.ToLower())'"
+    $message = "Retrieving sensor policy details for '$($SensorUpdatePolicyName)'"
+    Write-FalconLog 'GetPolicy' $message
+    $filter = "platform_name:'Windows'+name.raw:'$($SensorUpdatePolicyName.ToLower())'"
     $url = "${BaseUrl}/policy/combined/sensor-update/v2?filter=$([System.Web.HttpUtility]::UrlEncode($filter)))"
     $policy_scope = @{
         'Sensor update policies' = @('Read')
@@ -400,11 +401,20 @@ process {
     $policyId = $policyDetails.id
     $build = $policyDetails[0].settings.build
     $version = $policyDetails[0].settings.sensor_version
-    $message = "Retrieved policy details: Policy ID: $policyId, Build: $build, Version: $version"
-    Write-FalconLog 'GetPolicy' $Message
-    Write-Host $Message
+
+    # Make sure we got a version from the policy
+    if (!$version) {
+        $message = "Unable to retrieve sensor version from policy '$($SensorUpdatePolicyName)'. Please check the policy and try again."
+        Write-FalconLog 'GetPolicy' $message
+        throw $message
+    }
+
+    $message = "Retrieved sensor policy details: Policy ID: $policyId, Build: $build, Version: $version"
+    Write-FalconLog 'GetPolicy' $message
 
     # Get installer details based on policy version
+    $message = "Retrieving installer details for sensor version: '$($version)'"
+    Write-FalconLog 'GetInstaller' $message
     $encodedFilter = [System.Web.HttpUtility]::UrlEncode("platform:'windows'+version:'$($version)'")
     $url = "${BaseUrl}/sensors/combined/installers/v1?filter=${encodedFilter}"
     $installer_scope = @{
@@ -415,38 +425,37 @@ process {
     if ( $installerDetails.sha256 -and $installerDetails.name ) {
         $cloudHash = $installerDetails.sha256
         $cloudFile = $installerDetails.name
-        $message = "Matched installer '$cloudHash' ($cloudFile)"
-        Write-FalconLog 'GetInstaller' $Message
-        Write-Host $Message
+        $message = "Found installer '$cloudHash' ($cloudFile)"
+        Write-FalconLog 'GetInstaller' $message
     }
     else {
         $message = "Failed to retrieve installer details."
-        Write-FalconLog 'GetInstaller' $Message
-        throw $Message
+        Write-FalconLog 'GetInstaller' $message
+        throw $message
     }
 
     # Download the installer
     $localFile = Join-Path -Path $WinTemp -ChildPath $cloudFile
+    Write-FalconLog 'DownloadFile' "Downloading installer to: '$localFile'"
     $url = "${BaseUrl}/sensors/entities/download-installer/v1?id=$cloudHash"
     Invoke-FalconDownload -url $url -Outfile $localFile
 
     if (Test-Path $localFile) {
         $localHash = Get-InstallerHash -Path $localFile
-        $message = "Downloaded '$localFile' ($localHash)"
-        Write-FalconLog 'DownloadFile' $Message
-        Write-Host $Message
+        $message = "Successfull downloaded installer '$localFile' ($localHash)"
+        Write-FalconLog 'DownloadFile' $message
     }
     else {
         $message = "Failed to download installer."
-        Write-FalconLog 'DownloadFile' $Message
-        throw $Message
+        Write-FalconLog 'DownloadFile' $message
+        throw $message
     }
 
     # Compare the hashes prior to installation
     if ($cloudHash -ne $localHash) {
         $message = "Hash mismatch on download (Local: $localHash, Cloud: $cloudHash)"
-        Write-FalconLog 'CheckHash' $Message
-        throw $Message
+        Write-FalconLog 'CheckHash' $message
+        throw $message
     }
 
     # Additional parameters
@@ -461,28 +470,29 @@ process {
     $InstallParams += " ProvWaitTime=$ProvWaitTime"
 
     # Begin installation
+    Write-FalconLog 'StartProcess' "Starting installer with parameters '$InstallParams'"
     $process = (Start-Process -FilePath $LocalFile -ArgumentList $InstallParams -PassThru -ErrorAction SilentlyContinue)
     Write-FalconLog 'StartProcess' "Started '$LocalFile' ($($process.Id))"
-    Write-FalconLog $null "Waiting for the installer process to complete with PID ($($process.Id))"
+    Write-FalconLog 'StartProcess' "Waiting for the installer process to complete with PID ($($process.Id))"
     Wait-Process -Id $process.Id
-    Write-FalconLog $null "Installer process with PID ($($process.Id)) has completed"
+    Write-FalconLog 'StartProcess' "Installer process with PID ($($process.Id)) has completed"
 
     if ($process.ExitCode -eq 1244) {
-        $Message = "Exit code 1244: Falcon was unable to communicate with the CrowdStrike cloud. Please check your installation token and try again."
-        Write-FalconLog 'InstallerProcess' $Message
-        throw $Message
+        $message = "Exit code 1244: Falcon was unable to communicate with the CrowdStrike cloud. Please check your installation token and try again."
+        Write-FalconLog 'InstallerProcess' $message
+        throw $message
     }
     elseif ($process.ExitCode -ne 0) {
         $errOut = $process.StandardError.ReadToEnd()
-        $Message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
-        Write-FalconLog 'InstallerProcess' $Message
-        throw $Message
+        $message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
+        Write-FalconLog 'InstallerProcess' $message
+        throw $message
     }
     else {
-        $Message = "Falcon installer exited with code $($process.ExitCode)"
+        $message = "Falcon installer exited with code $($process.ExitCode)"
     }
 
-    Write-FalconLog $null $Message
+    Write-FalconLog 'StartProcess' $message
 
 
     @('DeleteInstaller', 'DeleteScript') | ForEach-Object {
