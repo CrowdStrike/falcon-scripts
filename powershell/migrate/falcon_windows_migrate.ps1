@@ -927,8 +927,6 @@ function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $Falco
         }
 
         $Headers.Add('Authorization', "bearer $($content.access_token)")
-        # Remove the User-Agent header to avoid sending it with every request
-        $Headers.Remove('User-Agent')
     }
     catch {
         # Handle redirects
