@@ -56,6 +56,7 @@ Updated 2021-10-22 to include 'sensor_version' property when matching policy to 
 
 [CmdletBinding()]
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'DeleteInstaller')]
+[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'DeleteScript')]
 param(
     [Parameter(Position = 1)]
     [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1')]
