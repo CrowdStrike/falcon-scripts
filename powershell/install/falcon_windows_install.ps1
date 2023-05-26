@@ -39,6 +39,8 @@ Provisioning token to use for sensor installation [default: $null]
 Time to wait, in seconds, for sensor to provision [default: 1200]
 .PARAMETER Tags
 A comma-separated list of tags to apply to the host after sensor installation [default: $null]
+.PARAMETER Verbose
+Enable verbose logging
 .EXAMPLE
 PS>.\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string>
 
@@ -111,7 +113,7 @@ begin {
         $PSScriptRoot
     }
 
-    function Write-FalconLog ([string] $Source, [string] $Message) {
+    function Write-FalconLog ([string] $Source, [string] $Message, [bool] $stdout = $true) {
         $Content = @(Get-Date -Format 'yyyy-MM-dd hh:MM:ss')
         if ($Source -notmatch '^(StartProcess|Delete(Installer|Script))$' -and
             $Falcon.ResponseHeaders.Keys -contains 'X-Cs-TraceId') {
@@ -120,12 +122,31 @@ begin {
 
         "$(@($Content + $Source) -join ' '): $Message" | Out-File -FilePath $LogPath -Append -Encoding utf8
 
-        if ($FalconClientId.Length -gt 0) {
-            Write-Output $Message.replace($FalconClientId, '***')
-        }
-        else {
+        if ($stdout) {
             Write-Output $Message
         }
+    }
+
+    function Write-VerboseLog ([psobject] $VerboseInput, [string] $PreMessage) {
+
+        # Determine if the input is a string or an object
+        if ($VerboseInput -is [string]) {
+            $message = $VerboseInput
+        }
+        else {
+            $message = $VerboseInput | ConvertTo-Json -Depth 10
+        }
+
+        # If an pre message is provided, add it to the beginning of the message
+        if ($PreMessage) {
+            $message = "$PreMessage`r`n$message"
+        }
+
+        # Write Verbose
+        Write-Verbose $message
+
+        # Write to log file, but not stdout
+        Write-FalconLog -Source 'VERBOSE' -Message $message -stdout $false
     }
 
     function Get-FalconCloud ([string] $xCsRegion) {
@@ -145,6 +166,7 @@ begin {
         try {
             $response = Invoke-WebRequest -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
             $content = ConvertFrom-Json -InputObject $response.Content
+            Write-VerboseLog -VerboseInput $content -PreMessage 'Invoke-FalconAuth - $content:'
 
             if ([string]::IsNullOrEmpty($content.access_token)) {
                 $message = 'Unable to authenticate to the CrowdStrike Falcon API. Please check your credentials and try again.'
@@ -155,6 +177,7 @@ begin {
         }
         catch {
             # Handle redirects
+            Write-Verbose "Invoke-FalconAuth - CAUGHT EXCEPTION - `$_.Exception.Message`r`n$($_.Exception.Message)"
             $response = $_.Exception.Response
 
             if (!$response) {
@@ -168,6 +191,7 @@ begin {
                 if ($FalconCloud -eq 'autodiscover') {
                     if ($response.Headers.Contains('X-Cs-Region')) {
                         $region = $response.Headers.GetValues('X-Cs-Region')[0]
+                        Write-Verbose "Received a redirect to $region. Setting FalconCloud to $region"
                     }
                     else {
                         $message = 'Received a redirect but no X-Cs-Region header was provided. Unable to autodiscover the FalconCloud. Please set FalconCloud to the correct region.'
@@ -230,6 +254,7 @@ begin {
         try {
             $response = Invoke-WebRequest -Uri $url -UseBasicParsing -Method 'GET' -Headers $Headers -MaximumRedirection 0
             $content = ConvertFrom-Json -InputObject $response.Content
+            Write-VerboseLog -VerboseInput $content -PreMessage 'Get-ResourceContent - $content:'
 
             if ($content.errors) {
                 $message = "Error when getting content: "
@@ -247,9 +272,8 @@ begin {
             }
         }
         catch {
+            Write-VerboseLog -VerboseInput $_.Exception -PreMessage 'Get-ResourceContent - CAUGHT EXCEPTION - $_.Exception:'
             $response = $_.Exception.Response
-
-            Write-FalconLog $_.Exception
 
             if (!$response) {
                 $message = "Unhandled error occurred. Error: $($_.Exception.Message)"
@@ -286,6 +310,7 @@ begin {
 
     function Invoke-FalconDownload ([string] $url, [string] $Outfile) {
         try {
+            $ProgressPreference = 'SilentlyContinue'
             $response = Invoke-WebRequest -Uri $url -UseBasicParsing -Method 'GET' -Headers $Headers -OutFile $Outfile
         }
         catch {
@@ -478,23 +503,26 @@ process {
     Wait-Process -Id $process.Id
     Write-FalconLog 'StartProcess' "Installer process with PID ($($process.Id)) has completed"
 
-    if ($process.ExitCode -eq 1244) {
-        $message = "Exit code 1244: Falcon was unable to communicate with the CrowdStrike cloud. Please check your installation token and try again."
-        Write-FalconLog 'InstallerProcess' $message
-        throw $message
-    }
-    elseif ($process.ExitCode -ne 0) {
-        $errOut = $process.StandardError.ReadToEnd()
-        $message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
-        Write-FalconLog 'InstallerProcess' $message
-        throw $message
+    # Check the exit code
+    if ($process.ExitCode -ne 0) {
+        if ($process.ExitCode -eq 1244) {
+            Write-VerboseLog -VerboseInput $process -PreMessage 'PROCESS EXIT CODE ERROR - $process:'
+            $message = "Exit code 1244: Falcon was unable to communicate with the CrowdStrike cloud. Please check your installation token and try again."
+            Write-FalconLog 'InstallerProcess' $message
+            throw $message
+        }
+        else {
+            Write-VerboseLog -VerboseInput $process -PreMessage 'PROCESS EXIT CODE ERROR - $process:'
+            $errOut = $process.StandardError.ReadToEnd()
+            $message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
+            Write-FalconLog 'InstallerProcess' $message
+            throw $message
+        }
     }
     else {
-        $message = "Falcon installer exited with code $($process.ExitCode)"
+        $message = "Falcon sensor installed successfully."
+        Write-FalconLog 'InstallerProcess' $message
     }
-
-    Write-FalconLog 'StartProcess' $message
-
 
     @('DeleteInstaller', 'DeleteScript') | ForEach-Object {
         if ((Get-Variable $_).Value -eq $true) {
