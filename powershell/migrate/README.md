@@ -85,6 +85,8 @@ Sensor uninstall tool, local installation cache or CS standalone uninstaller ['i
 Remove host from CrowdStrike Falcon
 .PARAMETER SkipTags
 Opt in/out of migrating tags. Tags passed to the Tags flag will still be added.
+.PARAMETER Verbose
+Enable verbose logging
 ```
 
 ----------
@@ -154,3 +156,46 @@ Migrate from one CID to another within the same cloud:
     -NewFalconCloud "eu-1" `
     -OldFalconCloud "eu-1" `
 ```
+
+## Troubleshooting
+
+To assist in troubleshooting the migration script, you can try the following:
+
+- Use the `-Verbose` parameter to enable verbose logging.
+
+  > Note: This will display additional logging in the console, as well as in the log file.
+
+  Example:
+
+    ```pwsh
+    .\falcon_windows_migrate.ps1 `
+        -Verbose `
+        -NewFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
+        -NewFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
+        -OldFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
+        -OldFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
+        -NewFalconCloud "us-2" `
+        -OldFalconCloud "us-1"
+    ```
+
+- For a more detailed approach, you can use `Set-PSDebug -Trace`. This cmdlet offers three trace levels (0-2):
+
+  - 0 : Turn script block logging off. (Equivalent to -Off)
+  - 1 : Turn script block logging on. (Equivalent to -On)
+  - 2 : Turn script block logging on and generate a trace of all commands in a script block and the arguments they were used with.
+    > Similar to the output of `set -x` in bash. Very noisy but contains a lot of useful information.
+
+  Example:
+
+    ```pwsh
+    Set-PSDebug -Trace 2
+    .\falcon_windows_migrate.ps1 `
+        -NewFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
+        -NewFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
+        -OldFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
+        -OldFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
+        -NewFalconCloud "us-2" `
+        -OldFalconCloud "us-1"
+    # To turn off tracing
+    Set-PSDebug -Trace 0
+    ```
