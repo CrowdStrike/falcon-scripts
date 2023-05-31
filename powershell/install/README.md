@@ -32,11 +32,13 @@ the parameter descriptions:
 
 ```terminal
 .PARAMETER FalconCloud
-CrowdStrike Falcon OAuth2 API Hostname ['https://api.crowdstrike.com' if left undefined]
+CrowdStrike Falcon OAuth2 API Hostname [default: autodiscover]
 .PARAMETER FalconClientId
 CrowdStrike Falcon OAuth2 API Client Id [Required]
 .PARAMETER FalconClientSecret
 CrowdStrike Falcon OAuth2 API Client Secret [Required]
+.PARAMETER FalconCid
+Manually specify CrowdStrike Customer ID (CID) [default: $null]
 .PARAMETER MemberCid
 Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID.
 .PARAMETER SensorUpdatePolicyName
@@ -49,14 +51,14 @@ Script log location ['Windows\Temp\InstallFalcon.log' if left undefined]
 Delete sensor installer package when complete [default: $true]
 .PARAMETER DeleteScript
 Delete script when complete [default: $false]
-.PARAMETER Uninstall
-Uninstall the sensor from the host [default: $false]
 .PARAMETER ProvToken
 Provisioning token to use for sensor installation [default: $null]
 .PARAMETER ProvWaitTime
 Time to wait, in seconds, for sensor to provision [default: 1200]
 .PARAMETER Tags
 A comma-separated list of tags to apply to the host after sensor installation [default: $null]
+.PARAMETER Verbose
+Enable verbose logging
 ```
 
 ***Examples***:
@@ -86,8 +88,7 @@ the parameter descriptions:
 
 ```terminal
 .PARAMETER MaintenanceToken
-Sensor uninstall maintenance token. If left undefined, the script will attempt to retrieve the
-token from the API assuming the FalconClientId|FalconClientSecret are defined.
+Sensor uninstall maintenance token. If left undefined, the script will attempt to retrieve the token from the API assuming the FalconClientId|FalconClientSecret are defined.
 .PARAMETER UninstallParams
 Sensor uninstall parameters ['/uninstall /quiet' if left undefined]
 .PARAMETER UninstallTool
@@ -97,9 +98,9 @@ Script log location ['Windows\Temp\csfalcon_uninstall.log' if left undefined]
 .PARAMETER DeleteUninstaller
 Delete sensor uninstaller package when complete [default: $true]
 .PARAMETER DeleteScript
-Delete script when complete [default: $true]
+Delete script when complete [default: $false]
 .PARAMETER RemoveHost
-Remove host from CrowdStrike Falcon [default: $false]
+Remove host from CrowdStrike Falcon
 .PARAMETER FalconCloud
 CrowdStrike Falcon OAuth2 API Hostname [default: autodiscover]
 .PARAMETER FalconClientId
@@ -108,6 +109,8 @@ CrowdStrike Falcon OAuth2 API Client Id [Required if RemoveHost is $true]
 CrowdStrike Falcon OAuth2 API Client Secret [Required if RemoveHost is $true]
 .PARAMETER MemberCid
 Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID.
+.PARAMETER Verbose
+Enable verbose logging
 ```
 
 ***Examples***:
@@ -130,3 +133,33 @@ after uninstalling.
 ```pwsh
 .\falcon_windows_uninstall.ps1 -FalconClientId <string> -FalconClientSecret <string> -RemoveHost $true
 ```
+
+## Troubleshooting
+
+To assist in troubleshooting the installation scripts, you can try the following:
+
+- Use the `-Verbose` parameter to enable verbose logging.
+
+  > Note: This will display additional logging in the console, as well as in the log file.
+
+  Example:
+
+    ```pwsh
+    .\falcon_windows_install.ps1 -Verbose -FalconClientId <string> -FalconClientSecret <string> -ProvToken <string>
+    ```
+
+- For a more detailed approach, you can use `Set-PSDebug -Trace`. This cmdlet offers three trace levels (0-2):
+
+  - 0 : Turn script block logging off. (Equivalent to -Off)
+  - 1 : Turn script block logging on. (Equivalent to -On)
+  - 2 : Turn script block logging on and generate a trace of all commands in a script block and the arguments they were used with.
+    > Similar to the output of `set -x` in bash. Very noisy but contains a lot of useful information.
+
+  Example:
+
+    ```pwsh
+    Set-PSDebug -Trace 2
+    .\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string> -ProvToken <string>
+    # To turn off tracing
+    Set-PSDebug -Trace 0
+    ```
