@@ -404,7 +404,7 @@ process {
 
     if ($RemoveHost) {
         # Remove host from CrowdStrike Falcon
-        Write-FalconLog 'RemoveHost' 'Removing host from CrowdStrike Falcon'
+        Write-FalconLog 'RemoveHost' 'Removing host from Falcon console'
         Invoke-HostVisibility -action 'hide'
     }
 
@@ -515,9 +515,6 @@ process {
         throw $Message
     }
 
-    $message = "Falcon Sensor successfully uninstalled."
-    Write-FalconLog 'Uninstaller' $message
-
     @('DeleteUninstaller', 'DeleteScript') | ForEach-Object {
         if ((Get-Variable $_).Value -eq $true) {
             $FilePath = if ($_ -eq 'DeleteUninstaller') {
@@ -537,6 +534,8 @@ process {
             }
         }
     }
+
+    Write-FalconLog 'Uninstaller' 'Falcon Sensor was successfully uninstalled.'
 }
 end {
     Write-FalconLog 'EndScript' 'Script completed.'

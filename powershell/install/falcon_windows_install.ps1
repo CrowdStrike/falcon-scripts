@@ -137,7 +137,7 @@ begin {
             $message = $VerboseInput | ConvertTo-Json -Depth 10
         }
 
-        # If an pre message is provided, add it to the beginning of the message
+        # If a pre message is provided, add it to the beginning of the message
         if ($PreMessage) {
             $message = "$PreMessage`r`n$message"
         }
@@ -451,7 +451,7 @@ process {
     if ( $installerDetails.sha256 -and $installerDetails.name ) {
         $cloudHash = $installerDetails.sha256
         $cloudFile = $installerDetails.name
-        $message = "Found installer '$cloudHash' ($cloudFile)"
+        $message = "Found installer: ($cloudFile) with sha256: '$cloudHash'"
         Write-FalconLog 'GetInstaller' $message
     }
     else {
@@ -496,7 +496,9 @@ process {
     $InstallParams += " ProvWaitTime=$ProvWaitTime"
 
     # Begin installation
-    Write-FalconLog 'StartProcess' "Starting installer with parameters '$InstallParams'"
+    Write-FalconLog 'Installer' 'Installing Falcon Sensor...'
+    Write-FalconLog 'StartProcess' "Starting installer with parameters: '$InstallParams'"
+
     $process = (Start-Process -FilePath $LocalFile -ArgumentList $InstallParams -PassThru -ErrorAction SilentlyContinue)
     Write-FalconLog 'StartProcess' "Started '$LocalFile' ($($process.Id))"
     Write-FalconLog 'StartProcess' "Waiting for the installer process to complete with PID ($($process.Id))"
@@ -505,23 +507,18 @@ process {
 
     # Check the exit code
     if ($process.ExitCode -ne 0) {
+        Write-VerboseLog -VerboseInput $process -PreMessage 'PROCESS EXIT CODE ERROR - $process:'
         if ($process.ExitCode -eq 1244) {
-            Write-VerboseLog -VerboseInput $process -PreMessage 'PROCESS EXIT CODE ERROR - $process:'
             $message = "Exit code 1244: Falcon was unable to communicate with the CrowdStrike cloud. Please check your installation token and try again."
             Write-FalconLog 'InstallerProcess' $message
             throw $message
         }
         else {
-            Write-VerboseLog -VerboseInput $process -PreMessage 'PROCESS EXIT CODE ERROR - $process:'
             $errOut = $process.StandardError.ReadToEnd()
             $message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
             Write-FalconLog 'InstallerProcess' $message
             throw $message
         }
-    }
-    else {
-        $message = "Falcon sensor installed successfully."
-        Write-FalconLog 'InstallerProcess' $message
     }
 
     @('DeleteInstaller', 'DeleteScript') | ForEach-Object {
@@ -541,7 +538,11 @@ process {
             }
         }
     }
+
+    Write-FalconLog 'InstallerProcess' 'Falcon sensor installed successfully.'
 }
 end {
-    Write-FalconLog $null "Script complete"
+    Write-FalconLog 'EndScript' 'Script completed.'
+    $message = "`r`nSee the full log contents at: '$($LogPath)'"
+    Write-Output $message
 }
