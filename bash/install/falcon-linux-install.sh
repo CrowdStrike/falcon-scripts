@@ -420,10 +420,28 @@ cs_cloud() {
     esac
 }
 
-# Check for old version of curl that doesn't support -H @-
+# Check if curl is greater or equal to 7.55
 old_curl=$(
-    # we convert curl's version string to a number by removing the dots and test to see if it's less than version 7.55.0
-    test "$(curl --version | head -n 1 | awk '{ print $2 }' | tr -d '.')" -lt 7550 && echo 0 || echo 1
+    version=$(curl --version | head -n 1 | awk '{ print $2 }')
+    # Convert version to array using '.' as separator
+    IFS='.' read -r -a version_parts <<< "$version"
+
+    # Compare major version
+    if (( ${version_parts[0]} < 7 )); then
+        echo 0
+        exit
+    fi
+
+    # If major version is equal, compare minor version
+    if (( ${version_parts[0]} == 8 )); then
+        if (( ${version_parts[1]} < 55 )); then
+            echo 0
+            exit
+        fi
+    fi
+
+    # If we reach here, the version is greater or equal to 7.55
+    echo 1
 )
 
 # Old curl print warning message
