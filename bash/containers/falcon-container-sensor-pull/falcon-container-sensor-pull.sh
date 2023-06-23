@@ -156,7 +156,7 @@ old_curl=$(
     minimum="7.55"
 
     # Check if the version is less than the minimum
-    if echo -e "$version\n$minimum" | sort -V -C; then
+    if printf "%s\n" "$version" "$minimum" | sort -V -C; then
         echo 0
     else
         echo 1
