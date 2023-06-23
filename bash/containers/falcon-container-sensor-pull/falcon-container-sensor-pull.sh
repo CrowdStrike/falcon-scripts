@@ -154,17 +154,18 @@ done
 old_curl=$(
     version=$(curl --version | head -n 1 | awk '{ print $2 }')
     # Convert version to array using '.' as separator
-    IFS='.' read -r -a version_parts <<< "$version"
+    major_version=$(echo "$version" | cut -d. -f1)
+    minor_version=$(echo "$version" | cut -d. -f2)
 
     # Compare major version
-    if (( ${version_parts[0]} < 7 )); then
+    if [ "$major_version" -lt 7 ]; then
         echo 0
         exit
     fi
 
     # If major version is equal, compare minor version
-    if (( ${version_parts[0]} == 8 )); then
-        if (( ${version_parts[1]} < 55 )); then
+    if [ "$major_version" -eq 7 ]; then
+        if [ "$minor_version" -lt 55 ]; then
             echo 0
             exit
         fi
