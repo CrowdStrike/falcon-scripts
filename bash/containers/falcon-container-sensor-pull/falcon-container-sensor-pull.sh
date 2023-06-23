@@ -153,26 +153,14 @@ done
 # Check if curl is greater or equal to 7.55
 old_curl=$(
     version=$(curl --version | head -n 1 | awk '{ print $2 }')
-    # Convert version to array using '.' as separator
-    major_version=$(echo "$version" | cut -d. -f1)
-    minor_version=$(echo "$version" | cut -d. -f2)
+    minimum="7.55"
 
-    # Compare major version
-    if [ "$major_version" -lt 7 ]; then
+    # Check if the version is less than the minimum
+    if echo -e "$version\n$minimum" | sort -V -C; then
         echo 0
-        exit
+    else
+        echo 1
     fi
-
-    # If major version is equal, compare minor version
-    if [ "$major_version" -eq 7 ]; then
-        if [ "$minor_version" -lt 55 ]; then
-            echo 0
-            exit
-        fi
-    fi
-
-    # If we reach here, the version is greater or equal to 7.55
-    echo 1
 )
 
 # Old curl print warning message
