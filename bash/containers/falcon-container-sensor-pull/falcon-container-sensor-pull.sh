@@ -150,10 +150,17 @@ esac
 shift
 done
 
-# Check for old version of curl that doesn't support -H @-
+# Check if curl is greater or equal to 7.55
 old_curl=$(
-    # we convert curl's version string to a number by removing the dots and test to see if it's less than version 7.55.0
-    test "$(curl --version | head -n 1 | awk '{ print $2 }' | tr -d '.')" -lt 7550 && echo 0 || echo 1
+    version=$(curl --version | head -n 1 | awk '{ print $2 }')
+    minimum="7.55"
+
+    # Check if the version is less than the minimum
+    if printf "%s\n" "$version" "$minimum" | sort -V -C; then
+        echo 0
+    else
+        echo 1
+    fi
 )
 
 # Old curl print warning message
