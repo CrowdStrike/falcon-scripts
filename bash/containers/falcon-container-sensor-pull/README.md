@@ -70,7 +70,7 @@ Help Options:
 
 #### Example using `autodiscover`
 
-``` bash
+```
 ./falcon-container-sensor-pull.sh \
 --client-id <ABCDEFG123456> \
 --client-secret <ABCDEFG123456> \
@@ -79,7 +79,7 @@ Help Options:
 
 #### Example without using `autodiscover`
 
-``` bash
+```
 ./falcon-container-sensor-pull.sh \
 --cid <ABCDEFG123456> \
 --client-id <ABCDEFG123456> \
