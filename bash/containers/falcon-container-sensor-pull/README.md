@@ -1,12 +1,12 @@
-# Falcon Container Sensor Pull Script
+# Falcon Container Sensor pull script
 
-This bash script pulls the latest **Falcon Container** or **Node Kernel Mode DaemonSet** sensor from the CrowdStrike container registry to your local Docker registry or remote registries.
+Use this bash script to pull the latest **Falcon Container** or **Node Kernel Mode DaemonSet** sensor from the CrowdStrike container registry and push it to your local Docker registry or remote registries.
 
-## Security Recommendations
+## Security recommendations
 
-### Use cURL version 7.55.0 or newer
+### Use cURL version 7.55.0 or later
 
-We have identified a security concern related to cURL versions prior to 7.55, which required request headers to be set using the `-H` option, thus allowing potential secrets to be exposed via the command line. In newer versions of cURL, you can pass headers from stdin using the `@-` syntax, which addresses this security concern. Although our script offers compatibility with the older method through the use of the `--allow-legacy-curl` optional command line flag, we strongly urge you to upgrade cURL if your environment permits.
+We've identified a security concern related to cURL versions 7.54.1 and earlier. In these versions, request headers were set using the `-H` option, which allowed potential secrets to be exposed via the command line. In newer versions of cURL, versions 7.55.0 and later, you can pass headers from stdin using the `@-` syntax, which addresses this security concern. **We recommend that you to upgrade cURL to version 7.55.0 or later**. If this is not possible, this script offers compatibility with the older method through the use of the `--allow-legacy-curl` optional command line flag.
 
 To check your version of cURL, run the following command: `curl --version`
 
@@ -15,8 +15,10 @@ To check your version of cURL, run the following command: `curl --version`
 - Script requires the following commands to be installed:
   - `curl`
   - `docker`, `podman`, or `skopeo`
-- CrowdStrike API Client created with `Falcon Images Download (read)` AND `Sensor Download (read)` scope assigned.
-- If you are using docker, make sure that docker is running locally.
+- CrowdStrike API Client created with these scopes:
+    - `Falcon Images Download (read)`
+    - `Sensor Download (read)`
+- If you are using Docker, make sure that Docker is running locally.
 
 ## Usage
 
@@ -46,29 +48,29 @@ Help Options:
 
 ### Full list of variables available
 
-> **Settings can be passed to the script via CLI flags or environment variables:**
+> **Note**: **Settings can be passed to the script via CLI flags or environment variables:**
 
 | Flags                                          | Environment Variables   | Default                    | Description                                                                              |
 |:-----------------------------------------------|-------------------------|----------------------------|------------------------------------------------------------------------------------------|
-| `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID            | `None` (Optional)          | CrowdStrike Customer ID (CID)                                                            |
+| `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID`           | `None` (Optional)          | CrowdStrike Customer ID (CID)                                                            |
 | `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)          | CrowdStrike API Client ID                                                                |
 | `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)          | CrowdStrike API Client Secret                                                            |
 | `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)          | CrowdStrike Region                                                                       |
-| `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry to copy image e.g. myregistry.com/mynamespace to                                |
+| `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`                               |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)          | Specify sensor version to retrieve from the registry                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)          | Specify sensor platform to retrieve from the registry                                    |
-| `-n`, `--node`                                 | `$SENSORTYPE`           | `falcon-sensor` (Optional) | Flag to download Node Sensor, if not set script defaults to downloading container sensor |
-| `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. Default is docker.           |
-| `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools.                 |
+| `-n`, `--node`                                 | `$SENSORTYPE`           | `falcon-sensor` (Optional) | Flag to download Node Sensor. **Default is Container Sensor**. |
+| `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.           |
+| `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools                 |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                                          |
-| `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)         | Allow the script to run with an older version of curl                                          |
+| `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)         | Allow the script to run with an older version of cURL                                          |
 | `-h`, `--help`                                 | N/A                     | `None`                     | Display help message                                                                     |
 
 ### Example usage to download DaemonSet sensor
 
 #### Example using `autodiscover`
 
-``` bash
+```
 ./falcon-container-sensor-pull.sh \
 --client-id <ABCDEFG123456> \
 --client-secret <ABCDEFG123456> \
@@ -77,7 +79,7 @@ Help Options:
 
 #### Example without using `autodiscover`
 
-``` bash
+```
 ./falcon-container-sensor-pull.sh \
 --cid <ABCDEFG123456> \
 --client-id <ABCDEFG123456> \
