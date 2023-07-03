@@ -94,7 +94,7 @@ Enable verbose logging
 To download the script, run the following command:
 
 ```pwsh
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.2/powershell/migrate/falcon_windows_migrate.ps1" -OutFile "falcon_windows_migrate.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.1.3/powershell/migrate/falcon_windows_migrate.ps1" -OutFile "falcon_windows_migrate.ps1"
 ```
 
 ### Example 1
