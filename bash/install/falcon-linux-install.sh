@@ -90,7 +90,8 @@ cs_sensor_register() {
         cs_falcon_args="$cs_falcon_args $cs_falconctl_opt_trace"
     fi
     # run the configuration command
-    /opt/CrowdStrike/falconctl -s -f "${cs_falcon_args}"
+    # shellcheck disable=SC2086
+    /opt/CrowdStrike/falconctl -s -f ${cs_falcon_args}
 }
 
 cs_sensor_is_running() {
