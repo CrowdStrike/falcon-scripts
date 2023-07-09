@@ -1,0 +1,16 @@
+---
+- name: Verify
+  hosts: all
+  become: yes
+  tasks:
+  - name: Get list of installed packages
+    ansible.builtin.package_facts:
+      manager: auto
+
+  - name: Set default sensor name
+    ansible.builtin.set_fact:
+      installed_sensor: falcon-sensor
+
+  - name: Verify Falcon Sensor is installed
+    ansible.builtin.assert:
+      that: installed_sensor in ansible_facts.packages
