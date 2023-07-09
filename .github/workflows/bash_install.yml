@@ -140,7 +140,7 @@ jobs:
           command: >-
             molecule --version &&
             ansible --version &&
-            molecule --debug test --destroy never -s ${{ matrix.collection_role }}"
+            molecule --debug test --destroy never -s ${{ matrix.collection_role }}
         continue-on-error: true
 
       - name: Ensure instances are destroyed
