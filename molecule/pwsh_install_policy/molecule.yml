@@ -25,6 +25,9 @@ platforms:
       ansible_winrm_server_cert_validation: ignore
 provisioner:
   name: ansible
+  config_options:
+    defaults:
+      stdout_callback: yaml
   playbooks:
     create: ../shared/playbooks/win_create.yml
     destroy: ../shared/playbooks/destroy.yml

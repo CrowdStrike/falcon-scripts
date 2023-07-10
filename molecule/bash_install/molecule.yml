@@ -17,6 +17,9 @@ platforms:
     boot_wait_seconds: ${MOLECULE_BOOT_WAIT_SECONDS:-60}
 provisioner:
   name: ansible
+  config_options:
+    defaults:
+      stdout_callback: yaml
   playbooks:
     create: ../shared/playbooks/create.yml
     destroy: ../shared/playbooks/destroy.yml
