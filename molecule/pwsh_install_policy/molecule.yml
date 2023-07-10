@@ -3,7 +3,7 @@ dependency:
   name: galaxy
 driver:
   name: ec2
-# The Default Platform is Windows Server 2022 | T2.Medium | us-west-2
+# The Default Platform is Windows Server 2022 | T3a.Medium | us-west-2
 platforms:
   - name: "${MOLECULE_INSTANCE_NAME:-default-pwsh-install-policy}"
     image_owner: "${MOLECULE_IMAGE_OWNER:-801119661308}"
