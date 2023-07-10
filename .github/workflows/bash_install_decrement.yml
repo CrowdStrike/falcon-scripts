@@ -1,4 +1,4 @@
-name: "Integration Tests: Linux"
+name: "CI: bash_install_decrement"
 on:
   schedule:
     - cron: '30 1 * * *'
