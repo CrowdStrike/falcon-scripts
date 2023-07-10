@@ -1,4 +1,4 @@
-name: "Integration Tests: Linux"
+name: "CI: bash_install_policy"
 on:
   schedule:
     - cron: '30 0 * * *'

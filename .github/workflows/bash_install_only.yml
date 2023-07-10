@@ -1,4 +1,4 @@
-name: "Integration Tests: Linux"
+name: "CI: bash_install_only"
 on:
   schedule:
     - cron: '0 1 * * *'
