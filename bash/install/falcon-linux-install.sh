@@ -195,8 +195,8 @@ cs_sensor_download() {
     fi
 
     existing_installers=$(
-        curl_command -G "https://$(cs_cloud)/sensors/combined/installers/v1" \
-             --data-urlencode "filter=os:\"$cs_os_name\"$cs_api_version_filter$cs_os_arch_filter"
+        curl_command -G "https://$(cs_cloud)/sensors/combined/installers/v1?sort=version|desc" \
+            --data-urlencode "filter=os:\"$cs_os_name\"+os_version:\"*$cs_os_version*\"$cs_api_version_filter$cs_os_arch_filter"
     )
 
     if echo "$existing_installers" | grep "authorization failed"; then
@@ -210,43 +210,13 @@ cs_sensor_download() {
         die "No sensor found for with OS Name: $cs_os_name"
     fi
 
-    INDEX=1
-    OLDER_VERSION="$cs_falcon_sensor_version_dec"
-    if [ -n "$cs_os_version" ]; then
-        found=0
-        IFS='
-'
-        for l in $(echo "$existing_installers" | json_value "os_version"); do
-            l=$(echo "$l" | sed 's/ *$//g' | sed 's/^ *//g')
-
-            if echo "$l" | grep -q '/'; then
-                # Sensor for Ubuntu has l="14/16/18/20"
-                for v in $(echo "$l" | tr '/' '\n'); do
-                    if [ "$v" = "$cs_os_version" ]; then
-                        l="$v"
-                        break
-                    fi
-                done
-            fi
-
-            if [ "$l" = "$cs_os_version" ]; then
-                found=1
-                if [ "$OLDER_VERSION" -eq 0 ] ; then
-                    break
-                fi
-                OLDER_VERSION=$((OLDER_VERSION-1))
-            fi
-            INDEX=$((INDEX+1))
-        done
-        if [ $found = 0 ]; then
-            die "Unable to locate matching sensor: $cs_os_name, version: $cs_os_version"
-        fi
-    fi
+    # Set the index accordingly (the json_value expects and index+1 value)
+    INDEX=$((cs_falcon_sensor_version_dec + 1))
 
     sha=$(echo "$existing_installers" | json_value "sha256" "$INDEX" \
               | sed 's/ *$//g' | sed 's/^ *//g')
     if [ -z "$sha" ]; then
-        die "Unable to identify a sensor installer matching: $cs_os_name, version: $cs_os_version"
+        die "Unable to identify a sensor installer matching: $cs_os_name, version: $cs_os_version, index: N-$cs_falcon_sensor_version_dec"
     fi
     file_type=$(echo "$existing_installers" | json_value "file_type" "$INDEX" | sed 's/ *$//g' | sed 's/^ *//g')
 
@@ -541,13 +511,13 @@ cs_os_arch_filter=$(
 
 cs_os_version=$(
     version=$(echo "$os_version" | awk -F'.' '{print $1}')
-    if [ "$cs_os_arch" = "aarch64" ] ; then
-        echo "$version - arm64"
-    elif [ "$os_name" = "Amazon" ] && [ "$version" -ge 2017 ] ; then
-        echo "1"
-    else
-        echo "$version"
+    # Check if we are using Amazon Linux 1
+    if [ "${os_name}" = "Amazon" ]; then
+        if [ "$version" != "2" ] && [ "$version" -le 2018 ]; then
+            version="1"
+        fi
     fi
+    echo "$version"
 )
 
 aws_instance=$(
