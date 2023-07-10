@@ -470,7 +470,7 @@ os_version=$(
         cat /etc/*release >&2
         die "Could not determine distribution version"
     fi
-    echo "$version" | awk -F'.' '{ print $1 }'
+    echo "$version"
 )
 
 cs_os_name=$(
@@ -510,17 +510,14 @@ cs_os_arch_filter=$(
 )
 
 cs_os_version=$(
-    if [[ "${os_name}" == "Amazon" ]]; then
-        # Check if we are not using Amazon Linux 1
-        if [[ "$os_version" == "2" || "$os_version" -gt "2018" ]]; then
-            echo "$os_version"
-        else
-            # Amazon Linux 1 (ie 2018.03, 2017.09, etc)
-            echo "1"
+    version=$(echo "$os_version" | awk -F'.' '{print $1}')
+    # Check if we are using Amazon Linux 1
+    if [ "${os_name}" = "Amazon" ]; then
+        if [ "$version" != "2" ] && [ "$version" -le 2018 ]; then
+            version="1"
         fi
-    else
-        echo "$os_version"
     fi
+    echo "$version"
 )
 
 aws_instance=$(
