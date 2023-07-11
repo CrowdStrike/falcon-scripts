@@ -1,9 +1,13 @@
 # Falcon Scripts
 
-This repository contains different types of scripts to facilitate the use of the CrowdStrike Falcon Sensor on different platforms.
+| Bash Integration Tests | PowerShell Integration Tests
+| --- | --- |
+| [![CI: bash_install](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/bash_install.yml/badge.svg)](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/bash_install.yml) | [![CI: pwsh_install_ccid](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/pwsh_install_ccid.yml/badge.svg)](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/pwsh_install_ccid.yml)
+| [![CI: bash_install_policy](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/bash_install_policy.yml/badge.svg)](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/bash_install_policy.yml) | [![CI: pwsh_install_policy](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/pwsh_install_policy.yml/badge.svg)](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/pwsh_install_policy.yml)
+| [![CI: bash_install_decrement](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/bash_install_decrement.yml/badge.svg)](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/bash_install_decrement.yml) | [![CI: pwsh_migrate](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/pwsh_migrate.yml/badge.svg)](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/pwsh_migrate.yml)
+| [![CI: bash_install_only](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/bash_install_only.yml/badge.svg)](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/bash_install_only.yml) |
 
-[![Integration Tests: Linux](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/ci-linux.yml)
-[![Integration Tests: Windows](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/CrowdStrike/falcon-scripts/actions/workflows/ci-windows.yml)
+This repository contains different types of scripts to facilitate the use of the CrowdStrike Falcon Sensor on different platforms.
 
 | Scripts | Description |
 |:-|:-|
