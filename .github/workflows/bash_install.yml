@@ -1,0 +1,168 @@
+name: "CI: bash_install"
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+  push:
+    paths:
+      - 'molecule/bash_install/**'
+      - 'bash/install/**'
+      - '.github/workflows/bash_install.yml'
+
+  pull_request_target:
+    types: [ labeled ]
+    paths:
+      - 'molecule/bash_install/**'
+      - 'bash/install/**'
+      - '.github/workflows/bash_install.yml'
+
+jobs:
+  molecule:
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'pull_request_target' &&
+      github.event.label.name == 'ok-to-test')
+    name: ${{ matrix.molecule.distro }}-${{ matrix.collection_role }}
+    runs-on: ubuntu-latest
+    env:
+      PY_COLORS: 1
+      ANSIBLE_FORCE_COLOR: 1
+      FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
+      FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
+      AWS_REGION: "us-west-1"
+      MOLECULE_VPC_SUBNET_ID: ${{ secrets.MOLECULE_VPC_SUBNET_ID }}
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        molecule:
+          - distro: ubuntu-20.04
+            image_owner: '099720109477'
+            image_arch: x86_64
+            image_name: ubuntu/images/hvm-ssd/ubuntu-focal-20.04*
+            instance_type: t2.micro
+          - distro: ubuntu-22.04
+            image_owner: '099720109477'
+            image_arch: x86_64
+            image_name: ubuntu/images/hvm-ssd/ubuntu-jammy-22.04*
+            instance_type: t2.micro
+          - distro: amazon-2023
+            image_owner: '137112412989'
+            image_arch: x86_64
+            image_name: al2023-ami-2023*
+            instance_type: t2.micro
+          - distro: amazon-2
+            image_owner: '137112412989'
+            image_arch: x86_64
+            image_name: amzn2-ami-hvm-2.0*gp2
+            instance_type: t2.micro
+          - distro: sles-15-sp4
+            image_owner: '013907871322'
+            image_arch: x86_64
+            image_name: suse-sles-15-sp4-v????????-hvm*
+            instance_type: t2.micro
+          - distro: centos-7
+            image_owner: '679593333241'
+            image_arch: x86_64
+            image_name: CentOS-7-*
+            instance_type: t2.micro
+          - distro: almalinux-8
+            image_owner: '679593333241'
+            image_arch: x86_64
+            image_name: AlmaLinux OS 8*
+            instance_type: t2.micro
+          - distro: rhel-9
+            image_owner: '309956199498'
+            image_arch: x86_64
+            image_name: RHEL-9.?.?_HVM-*
+            instance_type: t2.micro
+          - distro: rhel-9-arm
+            image_owner: '309956199498'
+            image_arch: arm64
+            image_name: RHEL-9.?.?_HVM-*
+            instance_type: t4g.micro
+          - distro: debian-11
+            image_owner: '136693071363'
+            image_arch: x86_64
+            image_name: debian-11-amd64-*
+            instance_type: t2.micro
+        collection_role:
+          - bash_install
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+        if: github.event_name != 'pull_request_target'
+
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{github.event.pull_request.head.sha}}
+        if: github.event_name == 'pull_request_target'
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          role-session-name: github-actions-molecule-ansible
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: '.github/workflows/bash_install.yml'
+
+      - name: Install dependencies
+        run: |
+          sudo apt install apt-transport-https ca-certificates curl software-properties-common libssl-dev
+          python -m pip install --upgrade pip
+          pip install molecule "molecule-plugins[ec2]" ansible ansible-core ansible-lint boto3 botocore
+
+      - name: Run role tests
+        id: molecule-role-test
+        uses: nick-fields/retry@v2
+        env:
+          MOLECULE_INSTANCE_NAME: ${{ matrix.molecule.distro }}-${{ matrix.collection_role }}
+          MOLECULE_IMAGE_OWNER: ${{ matrix.molecule.image_owner }}
+          MOLECULE_IMAGE_ARCH: ${{ matrix.molecule.image_arch }}
+          MOLECULE_IMAGE_NAME: '${{ matrix.molecule.image_name }}'
+          MOLECULE_INSTANCE_TYPE: ${{ matrix.molecule.instance_type }}
+          MOLECULE_REGION: ${{ env.AWS_REGION}}
+        with:
+          timeout_minutes: 15
+          max_attempts: 3
+          retry_on: error
+          command: >-
+            molecule --version &&
+            ansible --version &&
+            molecule --debug test --destroy never -s ${{ matrix.collection_role }}
+        continue-on-error: true
+
+      - name: Ensure instances are destroyed
+        uses: nick-fields/retry@v2
+        env:
+          MOLECULE_INSTANCE_NAME: ${{ matrix.molecule.distro }}-${{ matrix.collection_role }}
+          MOLECULE_IMAGE_OWNER: ${{ matrix.molecule.image_owner }}
+          MOLECULE_IMAGE_ARCH: ${{ matrix.molecule.image_arch }}
+          MOLECULE_IMAGE_NAME: '${{ matrix.molecule.image_name }}'
+          MOLECULE_INSTANCE_TYPE: ${{ matrix.molecule.instance_type }}
+          MOLECULE_REGION: ${{ env.AWS_REGION}}
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: >-
+            molecule --version &&
+            ansible --version &&
+            molecule --debug destroy -s ${{ matrix.collection_role }}
+
+      - name: Assert molecule tests passed
+        uses: nick-fields/assert-action@v1
+        with:
+          expected: success
+          actual: ${{ steps.molecule-role-test.outcome }}

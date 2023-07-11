@@ -16,3 +16,9 @@
         -RemoveHost
         -Tags "migrate1,migrate2"
         -FalconTags "tag1,tag2"
+    #   register: install_script
+
+    # # Print stdout
+    # - name: Task STDOUT
+    #   ansible.builtin.debug:
+    #     msg: "{{ install_script.stdout_lines }}"

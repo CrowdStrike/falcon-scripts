@@ -10,3 +10,9 @@
         -FalconClientSecret "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
         -FalconCid "{{ lookup('env', 'FALCON_CID') }}"
         -ProvToken "{{ lookup('env', 'FALCON_PROV_TOKEN') }}"
+    #   register: install_script
+
+    # # Print stdout
+    # - name: Task STDOUT
+    #   ansible.builtin.debug:
+    #     msg: "{{ install_script.stdout_lines }}"

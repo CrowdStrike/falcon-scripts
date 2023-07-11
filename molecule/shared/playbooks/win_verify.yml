@@ -1,0 +1,14 @@
+---
+# This is an example playbook to execute Ansible tests.
+
+- name: Verify
+  hosts: all
+  gather_facts: no
+  tasks:
+  - name: Check status of Falcon Sensor
+    ansible.windows.win_command: sc.exe query csagent
+    register: win_status
+
+  - name: Verify Falcon Sensor is installed and running
+    ansible.builtin.assert:
+      that: "'RUNNING' in win_status.stdout"
