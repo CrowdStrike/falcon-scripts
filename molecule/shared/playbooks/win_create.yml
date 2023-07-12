@@ -65,7 +65,7 @@
       user_data: |
         <powershell>
         # Download ConfigureRemotingForAnsible.ps1 and run it
-        Invoke-WebRequest -Uri https://raw.githubusercontent.com/ansible/ansible/devel/examples/scripts/ConfigureRemotingForAnsible.ps1 -OutFile ConfigureRemotingForAnsible.ps1
+        Invoke-WebRequest -Uri https://raw.githubusercontent.com/ansible/ansible-documentation/devel/examples/scripts/ConfigureRemotingForAnsible.ps1 -OutFile ConfigureRemotingForAnsible.ps1
         .\ConfigureRemotingForAnsible.ps1
         </powershell>
       image_filters: {}
