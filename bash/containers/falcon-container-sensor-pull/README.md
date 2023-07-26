@@ -1,6 +1,6 @@
 # Falcon Container Sensor pull script
 
-Use this bash script to pull the latest **Falcon Container** sensor, **Node Kernel Mode DaemonSet** sensor, or **Kubernetes Admission Controller** from the CrowdStrike container registry and push it to your local Docker registry or remote registries.
+Use this bash script to pull the latest **Falcon Container** sensor, **Node Kernel Mode DaemonSet** sensor, **Kubernetes Admission Controller** or **Kubernetes Protection Agent** from the CrowdStrike container registry and push it to your local Docker registry or remote registries.
 
 ## Security recommendations
 
@@ -62,6 +62,7 @@ Help Options:
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)          | Specify sensor platform to retrieve from the registry                                    |
 | `-n`, `--node`                                 | `$SENSORTYPE`           | `falcon-sensor` (Optional) | Flag to download Node Sensor. **Default is Container Sensor**. |
 | `--kubernetes-admission-controller`            | `$SENSORTYPE`           | `falcon-kac` (Optional)    | Flag to download Kubernetes Admission Controller. **Default is Container Sensor**. |
+| `--kubernetes-protection-agent`                | `$SENSORTYPE`           | `kpagent` (Optional)       | Flag to download Kubernetes Protection Agent. **Default is Container Sensor**. |
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.           |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools                 |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                                          |

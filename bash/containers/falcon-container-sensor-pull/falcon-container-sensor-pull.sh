@@ -1,7 +1,7 @@
 #!/bin/bash
 : <<'#DESCRIPTION#'
 File: falcon-container-sensor-pull.sh
-Description: Bash script to copy Falcon DaemonSet Sensor, Container Sensor or Kubernetes Admission Controller images from CrowdStrike Container Registry.
+Description: Bash script to copy Falcon DaemonSet Sensor, Container Sensor, Kubernetes Admission Controller or Kubernetes Protection Agent images from CrowdStrike Container Registry.
 #DESCRIPTION#
 
 set -e
@@ -23,6 +23,7 @@ Optional Flags:
 
     -n, --node                        download node sensor instead of container sensor
     --kubernetes-admission-controller download kubernetes admission controller instead of falcon sensor
+    --kubernetes-protection-agent     download kubernetes protection agent instead of falcon sensor
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
     --list-tags                       list all tags available for the selected sensor
@@ -137,6 +138,11 @@ case "$1" in
     --kubernetes-admission-controller)
     if [ -n "${1}" ]; then
         SENSORTYPE="falcon-kac"
+    fi
+    ;;
+    --kubernetes-protection-agent)
+    if [ -n "${1}" ]; then
+        SENSORTYPE="kpagent"
     fi
     ;;
     -h|--help)
@@ -287,16 +293,29 @@ if [ ! "$LISTTAGS" ] ; then
     echo "Falcon Registry: ${cs_registry}"
 fi
 
+ART_USERNAME="fc-$cs_falcon_cid"
 repository_name="release/falcon-sensor"
+
 if [ "${SENSORTYPE}" = "falcon-kac" ]; then
+    # overrides for KAC
     repository_name="release/falcon-kac"
+elif [ "${SENSORTYPE}" = "kpagent" ]; then
+    # overrides for KPA
+    ART_USERNAME="kp-$cs_falcon_cid"
+    repository_name="kpagent"
+    registry_opts="kubernetes_protection"
 fi
 
 #Set Docker token using the BEARER token captured earlier
-ART_PASSWORD=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+if [ "${SENSORTYPE}" = "kpagent" ]; then
+    docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/kubernetes-protection/entities/integration/agent/v1?cluster_name=clustername&is_self_managed_cluster=true" | awk '/dockerAPIToken:/ {print $2}')
+else
+    docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" | json_value "token")
+fi
+ART_PASSWORD=$(echo "$docker_api_token" | sed 's/ *$//g' | sed 's/^ *//g')
 
 #Set container login
-error_message=$(echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "fc-$cs_falcon_cid" "$cs_registry" --password-stdin 2>&1 >/dev/null) || ERROR=true
+error_message=$(echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "$ART_USERNAME" "$cs_registry" --password-stdin 2>&1 >/dev/null) || ERROR=true
 if [ "${ERROR}" = "true" ]; then
     # Check to see if unknown flag error is thrown
     if echo "$error_message" | grep -q "unknown flag: --password-stdin" && echo "${CONTAINER_TOOL}" | grep -q "docker"; then
@@ -311,7 +330,7 @@ if [ "$LISTTAGS" ] ; then
         *podman)
         die "Please use docker runtime to list tags" ;;
         *docker)
-        REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+        REGISTRYBEARER=$(echo "-u $ART_USERNAME:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
         curl_command "$REGISTRYBEARER" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list" | sed "s/, /, \\n/g" ;;
         *skopeo)
         die "Please use docker runtime to list tags" ;;
@@ -325,7 +344,7 @@ case "${CONTAINER_TOOL}" in
         *podman)
         LATESTSENSOR=$($CONTAINER_TOOL image search --list-tags --limit 100 "$cs_registry/$registry_opts/$repository_name" | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | tail -1 | cut -d" " -f3);;
         *docker)
-        REGISTRYBEARER=$(echo "-u fc-$cs_falcon_cid:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=fc-$cs_falcon_cid&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+        REGISTRYBEARER=$(echo "-u $ART_USERNAME:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
         LATESTSENSOR=$(curl_command "$REGISTRYBEARER" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list" | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
         *skopeo)
         LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$registry_opts/$repository_name" | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1) ;;
