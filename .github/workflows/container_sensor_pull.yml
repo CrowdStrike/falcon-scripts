@@ -1,0 +1,58 @@
+name: "CI: container_sensor_pull"
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+  push:
+    paths:
+      - 'bash/containers/falcon-container-sensor-pull/**'
+      - '.github/workflows/container_sensor_pull.yml'
+
+  pull_request_target:
+    types: [ labeled ]
+    paths:
+      - 'bash/containers/falcon-container-sensor-pull/**'
+      - '.github/workflows/container_sensor_pull.yml'
+
+jobs:
+  container_sensor_pull:
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'pull_request_target' &&
+      github.event.label.name == 'ok-to-test')
+    name: ${{ matrix.sensortype.type }}
+    runs-on: ubuntu-latest
+    env:
+      FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
+      FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        sensortype:
+          - type: falcon-container
+            cli_arg: ''
+          - type: falcon-sensor
+            cli_arg: '-n'
+          - type: falcon-kac
+            cli_arg: '--kubernetes-admission-controller'
+          - type: kpagent
+            cli_arg: '--kubernetes-protection-agent'
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+        if: github.event_name != 'pull_request_target'
+
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{github.event.pull_request.head.sha}}
+        if: github.event_name == 'pull_request_target'
+
+      - name: Run script to pull ${{ matrix.sensortype.type }} image
+        run: |
+          bash bash/containers/falcon-container-sensor-pull/falcon-container-sensor-pull.sh ${{ matrix.sensortype.cli_arg }}
