@@ -16,8 +16,8 @@ To check your version of cURL, run the following command: `curl --version`
   - `curl`
   - `docker`, `podman`, or `skopeo`
 - CrowdStrike API Client created with these scopes:
-    - `Falcon Images Download (read)`
-    - `Sensor Download (read)`
+  - `Falcon Images Download (read)`
+  - `Sensor Download (read)`
 - If you are using Docker, make sure that Docker is running locally.
 
 ## Usage
@@ -38,6 +38,7 @@ Optional Flags:
 
     -n, --node                        download node sensor instead of container sensor
     --kubernetes-admission-controller download kubernetes admission controller instead of falcon sensor
+    --kubernetes-protection-agent     download kubernetes protection agent instead of falcon sensor
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
     --list-tags                       list all tags available for the selected sensor
@@ -57,23 +58,23 @@ Help Options:
 | `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)          | CrowdStrike API Client ID                                                                |
 | `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)          | CrowdStrike API Client Secret                                                            |
 | `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)          | CrowdStrike Region                                                                       |
-| `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`                               |
+| `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`     |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)          | Specify sensor version to retrieve from the registry                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)          | Specify sensor platform to retrieve from the registry                                    |
-| `-n`, `--node`                                 | `$SENSORTYPE`           | `falcon-sensor` (Optional) | Flag to download Node Sensor. **Default is Container Sensor**. |
-| `--kubernetes-admission-controller`            | `$SENSORTYPE`           | `falcon-kac` (Optional)    | Flag to download Kubernetes Admission Controller. **Default is Container Sensor**. |
-| `--kubernetes-protection-agent`                | `$SENSORTYPE`           | `kpagent` (Optional)       | Flag to download Kubernetes Protection Agent. **Default is Container Sensor**. |
-| `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.           |
-| `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools                 |
+| `-n`, `--node`                                 | `$SENSORTYPE`           | `falcon-sensor` (Optional) | Flag to download Node Sensor. **Default is Container Sensor**.                           |
+| `--kubernetes-admission-controller`            | `$SENSORTYPE`           | `falcon-kac` (Optional)    | Flag to download Kubernetes Admission Controller. **Default is Container Sensor**.       |
+| `--kubernetes-protection-agent`                | `$SENSORTYPE`           | `kpagent` (Optional)       | Flag to download Kubernetes Protection Agent. **Default is Container Sensor**.           |
+| `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.       |
+| `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools                  |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                                          |
-| `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)         | Allow the script to run with an older version of cURL                                          |
+| `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)         | Allow the script to run with an older version of cURL                                    |
 | `-h`, `--help`                                 | N/A                     | `None`                     | Display help message                                                                     |
 
 ### Example usage to download DaemonSet sensor
 
 #### Example using `autodiscover`
 
-```
+```terminal
 ./falcon-container-sensor-pull.sh \
 --client-id <ABCDEFG123456> \
 --client-secret <ABCDEFG123456> \
@@ -82,7 +83,7 @@ Help Options:
 
 #### Example without using `autodiscover`
 
-```
+```terminal
 ./falcon-container-sensor-pull.sh \
 --cid <ABCDEFG123456> \
 --client-id <ABCDEFG123456> \
