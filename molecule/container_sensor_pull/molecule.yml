@@ -1,0 +1,35 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: ec2
+# The Default Platform is Ubunutu 20.04 LTS | T2.Micro | us-west-2
+platforms:
+  - name: "${MOLECULE_INSTANCE_NAME:-default-container-sensor-pull}"
+    image_owner: "${MOLECULE_IMAGE_OWNER:-099720109477}"
+    image_filters:
+      - architecture: "${MOLECULE_IMAGE_ARCH:-x86_64}"
+      - name: "${MOLECULE_IMAGE_NAME:-ubuntu/images/hvm-ssd/ubuntu-focal-20.04*}"
+    instance_type: "${MOLECULE_INSTANCE_TYPE:-t2.micro}"
+    region: "${MOLECULE_REGION:-us-west-2}"
+    vpc_subnet_id: "${MOLECULE_VPC_SUBNET_ID}"
+    security_group_restrict_cidr_ip: "${MOLECULE_SECURITY_GROUP_RESTRICT_CIDR_IP:-true}"
+    boot_wait_seconds: ${MOLECULE_BOOT_WAIT_SECONDS:-60}
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      stdout_callback: yaml
+  playbooks:
+    create: ../shared/playbooks/create.yml
+    destroy: ../shared/playbooks/destroy.yml
+verifier:
+  name: ansible
+scenario:
+  test_sequence:
+    - dependency
+    - syntax
+    - create
+    - prepare
+    - converge
+    - destroy

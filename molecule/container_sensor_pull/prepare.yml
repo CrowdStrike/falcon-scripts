@@ -1,0 +1,25 @@
+---
+- name: Prepare (Default)
+  hosts: all
+  become: true
+  tasks:
+    # Ubuntu specific
+    - name: Install apt dependencies
+      ansible.builtin.apt:
+        name:
+          - gpg-agent
+          - curl
+        update_cache: true
+      when: ansible_pkg_mgr == 'apt'
+
+    - name: Install dependencies
+      ansible.builtin.package:
+        name:
+          - sudo
+        state: present
+
+    - name: Install Docker w/ snap
+      ansible.builtin.command:
+        cmd: snap install docker
+        creates: /snap/bin/docker
+      when: ansible_pkg_mgr == 'apt'

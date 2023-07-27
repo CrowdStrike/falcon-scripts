@@ -1,16 +1,18 @@
 name: "CI: container_sensor_pull"
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 23 * * *'
 
   push:
     paths:
+      - 'molecule/container_sensor_pull/**'
       - 'bash/containers/falcon-container-sensor-pull/**'
       - '.github/workflows/container_sensor_pull.yml'
 
   pull_request_target:
     types: [ labeled ]
     paths:
+      - 'molecule/container_sensor_pull/**'
       - 'bash/containers/falcon-container-sensor-pull/**'
       - '.github/workflows/container_sensor_pull.yml'
 
@@ -24,8 +26,12 @@ jobs:
     name: ${{ matrix.sensortype.type }}
     runs-on: ubuntu-latest
     env:
+      PY_COLORS: 1
+      ANSIBLE_FORCE_COLOR: 1
       FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
       FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
+      AWS_REGION: "us-west-1"
+      MOLECULE_VPC_SUBNET_ID: ${{ secrets.MOLECULE_VPC_SUBNET_ID }}
     permissions:
       contents: read
       id-token: write
@@ -41,6 +47,8 @@ jobs:
             cli_arg: '--kubernetes-admission-controller'
           - type: kpagent
             cli_arg: '--kubernetes-protection-agent'
+        collection_role:
+          - container_sensor_pull
 
     steps:
       - name: Check out code
@@ -53,6 +61,58 @@ jobs:
           ref: ${{github.event.pull_request.head.sha}}
         if: github.event_name == 'pull_request_target'
 
-      - name: Run script to pull ${{ matrix.sensortype.type }} image
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
+          role-session-name: github-actions-molecule-ansible
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: '.github/workflows/container_sensor_pull.yml'
+
+      - name: Install dependencies
         run: |
-          bash bash/containers/falcon-container-sensor-pull/falcon-container-sensor-pull.sh ${{ matrix.sensortype.cli_arg }}
+          sudo apt install apt-transport-https ca-certificates curl software-properties-common libssl-dev
+          python -m pip install --upgrade pip
+          pip install molecule "molecule-plugins[ec2]" ansible ansible-core ansible-lint boto3 botocore
+
+      - name: Run role tests
+        id: molecule-role-test
+        uses: nick-fields/retry@v2
+        env:
+          MOLECULE_INSTANCE_NAME: ${{ matrix.sensortype.type }}-sensor-pull
+          MOLECULE_REGION: ${{ env.AWS_REGION}}
+        with:
+          timeout_minutes: 15
+          max_attempts: 3
+          retry_on: error
+          command: >-
+            molecule --version &&
+            ansible --version &&
+            molecule --debug test --destroy never -s ${{ matrix.collection_role }} -- -e "cli_arg=${{ matrix.sensortype.cli_arg }}"
+        continue-on-error: true
+
+      - name: Ensure instances are destroyed
+        uses: nick-fields/retry@v2
+        env:
+          MOLECULE_INSTANCE_NAME: ${{ matrix.sensortype.type }}-sensor-pull
+          MOLECULE_REGION: ${{ env.AWS_REGION}}
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: >-
+            molecule --version &&
+            ansible --version &&
+            molecule --debug destroy -s ${{ matrix.collection_role }}
+
+      - name: Assert molecule tests passed
+        uses: nick-fields/assert-action@v1
+        with:
+          expected: success
+          actual: ${{ steps.molecule-role-test.outcome }}

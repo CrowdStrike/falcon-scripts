@@ -1,0 +1,22 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: false
+  become: true
+  vars:
+    cli_arg: ""
+  environment:
+    FALCON_CLIENT_ID: "{{ lookup('env', 'FALCON_CLIENT_ID') }}"
+    FALCON_CLIENT_SECRET: "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
+    ALLOW_LEGACY_CURL: "true"
+  tasks:
+    # Execute shell command
+    - name: Pull container sensor
+      ansible.builtin.script:
+        cmd: ../../bash/containers/falcon-container-sensor-pull/falcon-container-sensor-pull.sh {{ cli_arg }}
+      register: container_pull
+
+    # Print stdout
+    - name: Task STDOUT
+      ansible.builtin.debug:
+        msg: "{{ container_pull.stdout_lines }}"
