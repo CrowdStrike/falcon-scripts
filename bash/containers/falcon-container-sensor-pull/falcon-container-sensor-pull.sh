@@ -294,14 +294,17 @@ if [ ! "$LISTTAGS" ] ; then
 fi
 
 ART_USERNAME="fc-$cs_falcon_cid"
+sensor_name="falcon-sensor"
 repository_name="release/falcon-sensor"
 
 if [ "${SENSORTYPE}" = "falcon-kac" ]; then
     # overrides for KAC
+    sensor_name="falcon-kac"
     repository_name="release/falcon-kac"
 elif [ "${SENSORTYPE}" = "kpagent" ]; then
     # overrides for KPA
     ART_USERNAME="kp-$cs_falcon_cid"
+    sensor_name="kpagent"
     repository_name="kpagent"
     registry_opts="kubernetes_protection"
 fi
@@ -368,7 +371,7 @@ else
 
     # For those that don't want to use skopeo to copy
     if [ -n "$COPY" ]; then
-        "$CONTAINER_TOOL" tag "$FULLIMAGEPATH" "$COPY/$repository_name:$LATESTSENSOR"
-        "$CONTAINER_TOOL" push "$COPY/$repository_name:$LATESTSENSOR"
+        "$CONTAINER_TOOL" tag "$FULLIMAGEPATH" "$COPY/$sensor_name:$LATESTSENSOR"
+        "$CONTAINER_TOOL" push "$COPY/$sensor_name:$LATESTSENSOR"
     fi
 fi
