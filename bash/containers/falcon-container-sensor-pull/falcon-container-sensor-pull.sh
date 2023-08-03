@@ -21,9 +21,7 @@ Optional Flags:
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
 
-    -n, --node                        download node sensor instead of container sensor
-    --kubernetes-admission-controller download kubernetes admission controller instead of falcon sensor
-    --kubernetes-protection-agent     download kubernetes protection agent instead of falcon sensor
+    -t, --type <SENSOR_TYPE>          specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|kpagent]
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
     --list-tags                       list all tags available for the selected sensor
@@ -130,19 +128,10 @@ case "$1" in
         ALLOW_LEGACY_CURL=true
     fi
     ;;
-    -n|--node)
-    if [ -n "${1}" ]; then
-        SENSORTYPE="falcon-sensor"
-    fi
-    ;;
-    --kubernetes-admission-controller)
-    if [ -n "${1}" ]; then
-        SENSORTYPE="falcon-kac"
-    fi
-    ;;
-    --kubernetes-protection-agent)
-    if [ -n "${1}" ]; then
-        SENSORTYPE="kpagent"
+    -t|--type)
+    if [ -n "${2}" ]; then
+        SENSOR_TYPE="${2}"
+        shift
     fi
     ;;
     -h|--help)
@@ -214,10 +203,22 @@ SENSOR_VERSION=$(echo "$SENSOR_VERSION" | tr '[:upper:]' '[:lower:]')
 SENSOR_PLATFORM=$(echo "$SENSOR_PLATFORM" | tr '[:upper:]' '[:lower:]')
 COPY=$(echo "$COPY" | tr '[:upper:]' '[:lower:]')
 
-#Check if user wants to download DaemonSet Node Sensor
-if [ -z "$SENSORTYPE" ]; then
-    SENSORTYPE="falcon-container"
+# Check if SENSORTYPE or SENSOR_TYPE env var is set
+# If not, default SENSOR_TYPE to falcon-container
+# *SENSORTYPE is deprecated and will be removed in a future release
+if [ -z "${SENSOR_TYPE}" ] && [ -z "${SENSORTYPE}" ]; then
+    SENSOR_TYPE="falcon-container"
+elif [ -z "${SENSOR_TYPE}" ] && [ -n "${SENSORTYPE}" ]; then
+    SENSOR_TYPE="${SENSORTYPE}"
 fi
+
+# Check if SENSOR_TYPE is set to a valid value
+case "${SENSOR_TYPE}" in
+    falcon-container|falcon-sensor|falcon-kac|kpagent) ;;
+    *) die """
+    Unrecognized sensor type: ${SENSOR_TYPE}
+    Valid values are [falcon-container|falcon-sensor|falcon-kac|kpagent]""";;
+esac
 
 #Check all mandatory variables set
 VARIABLES="FALCON_CLIENT_ID FALCON_CLIENT_SECRET"
@@ -272,9 +273,9 @@ fi
 registry_opts=$(
     # Account for govcloud api mismatch
     if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
-        echo "$SENSORTYPE/govcloud"
+        echo "$SENSOR_TYPE/govcloud"
     else
-        echo "$SENSORTYPE/$FALCON_CLOUD"
+        echo "$SENSOR_TYPE/$FALCON_CLOUD"
     fi
 )
 
@@ -297,11 +298,11 @@ ART_USERNAME="fc-$cs_falcon_cid"
 sensor_name="falcon-sensor"
 repository_name="release/falcon-sensor"
 
-if [ "${SENSORTYPE}" = "falcon-kac" ]; then
+if [ "${SENSOR_TYPE}" = "falcon-kac" ]; then
     # overrides for KAC
     sensor_name="falcon-kac"
     repository_name="release/falcon-kac"
-elif [ "${SENSORTYPE}" = "kpagent" ]; then
+elif [ "${SENSOR_TYPE}" = "kpagent" ]; then
     # overrides for KPA
     ART_USERNAME="kp-$cs_falcon_cid"
     sensor_name="kpagent"
@@ -310,7 +311,7 @@ elif [ "${SENSORTYPE}" = "kpagent" ]; then
 fi
 
 #Set Docker token using the BEARER token captured earlier
-if [ "${SENSORTYPE}" = "kpagent" ]; then
+if [ "${SENSOR_TYPE}" = "kpagent" ]; then
     docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/kubernetes-protection/entities/integration/agent/v1?cluster_name=clustername&is_self_managed_cluster=true" | awk '/dockerAPIToken:/ {print $2}')
 else
     docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" | json_value "token")

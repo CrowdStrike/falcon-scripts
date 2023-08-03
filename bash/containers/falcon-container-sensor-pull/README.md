@@ -36,9 +36,7 @@ Optional Flags:
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
 
-    -n, --node                        download node sensor instead of container sensor
-    --kubernetes-admission-controller download kubernetes admission controller instead of falcon sensor
-    --kubernetes-protection-agent     download kubernetes protection agent instead of falcon sensor
+    -t, --type <SENSOR_TYPE>          specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|kpagent]
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
     --list-tags                       list all tags available for the selected sensor
@@ -61,14 +59,25 @@ Help Options:
 | `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`     |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)          | Specify sensor version to retrieve from the registry                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)          | Specify sensor platform to retrieve from the registry                                    |
-| `-n`, `--node`                                 | `$SENSORTYPE`           | `falcon-sensor` (Optional) | Flag to download Node Sensor. **Default is Container Sensor**.                           |
-| `--kubernetes-admission-controller`            | `$SENSORTYPE`           | `falcon-kac` (Optional)    | Flag to download Kubernetes Admission Controller. **Default is Container Sensor**.       |
-| `--kubernetes-protection-agent`                | `$SENSORTYPE`           | `kpagent` (Optional)       | Flag to download Kubernetes Protection Agent. **Default is Container Sensor**.           |
+| `-t`, `--type <SENSORTYPE>`                    | `$SENSOR_TYPE`<sup>1</sup>           | `falcon-sensor` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-kac`, `kpagent`] ([see more details below](#sensor-types)) |
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.       |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools                  |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                                          |
 | `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)         | Allow the script to run with an older version of cURL                                    |
 | `-h`, `--help`                                 | N/A                     | `None`                     | Display help message                                                                     |
+
+> <sup>1</sup> For backwards compatibility, $SENSORTYPE can be used in place of $SENSOR_TYPE.
+
+### Sensor Types
+
+The following sensor types are available to download:
+
+| Sensor Image Name | Description |
+|:-------------|:------------|
+| `falcon-sensor` **(default)** | The Falcon sensor for Linux as a DaemonSet deployment |
+| `falcon-container` | The Falcon Container sensor for Linux |
+| `falcon-kac` | The Falcon Kubernetes Admission Controller |
+| `kpagent` | The Falcon Kubernetes Protection Agent |
 
 ### Example usage to download DaemonSet sensor
 
