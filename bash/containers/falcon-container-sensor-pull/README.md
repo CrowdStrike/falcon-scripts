@@ -2,9 +2,15 @@
 
 Use this bash script to pull the latest **Falcon Container** sensor, **Node Kernel Mode DaemonSet** sensor, **Kubernetes Admission Controller** or **Kubernetes Protection Agent** from the CrowdStrike container registry and push it to your local Docker registry or remote registries.
 
-> :warning: **Deprecation Warning**: Starting with version 2.0.0, the `SENSORTYPE` environment variable will be deprecated and replaced with `SENSOR_TYPE`. `SENSORTYPE` will still be supported for backwards compatibility, but will be removed in a future release. Please update your code to use `SENSOR_TYPE` to specify your sensor type.
->
-> :warning: **Breaking Changes**: The following command line options have been removed and are no longer supported: `-n`, `--node`, `--kubernetes-admission-controller`, and `--kubernetes-protection-agent`. To update your code, use the `-t, --type` option to specify your sensor type. For example, to download the Kubernetes Protection Agent, use `--type kpagent`.
+## Deprecation Warning :warning:
+
+1. **Environment Variable Deprecation** : The `SENSORTYPE` environment variable will be deprecated and replaced by `SENSOR_TYPE`. This update is intended to increase readability and maintain consistency in our environment variable naming convention.
+
+2. **Command Option Deprecation** : The command line options `-n, --node`, `--kubernetes-admission-controller`, and `--kubernetes-protection-agent` will be deprecated and replaced by a single option `-t, --type`. The new `-t, --type` option will allow you to specify the sensor type in a more straightforward and simplified manner.
+
+While these changes will be officially introduced in version 2.0.0, we will continue to support the deprecated environment variable and command options until that release. We strongly encourage you to adapt your usage to include the new `SENSOR_TYPE` environment variable and `-t, --type` command option to ensure a smooth transition when version 2.0.0 is released.
+
+Please refer to the updated usage instructions and examples in the [Usage](#usage) section of this README. Feel free to reach out with any questions or concerns.
 
 ## Security recommendations
 

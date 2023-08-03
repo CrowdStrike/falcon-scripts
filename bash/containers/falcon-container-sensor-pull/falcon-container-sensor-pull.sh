@@ -37,6 +37,11 @@ die() {
     exit 1
 }
 
+# todo: Remove in next major release
+deprecated() {
+    echo "WARNING: $* is deprecated and will be removed in a future release"
+}
+
 cs_container() {
     case "${CONTAINER_TOOL}" in
         skopeo)      echo "skopeo";;
@@ -128,6 +133,24 @@ case "$1" in
         ALLOW_LEGACY_CURL=true
     fi
     ;;
+    -n|--node)
+    if [ -n "${1}" ]; then
+        deprecated "-n|--node"
+        SENSOR_TYPE="falcon-sensor"
+    fi
+    ;;
+    --kubernetes-admission-controller)
+    if [ -n "${1}" ]; then
+        deprecated "--kubernetes-admission-controller"
+        SENSOR_TYPE="falcon-kac"
+    fi
+    ;;
+    --kubernetes-protection-agent)
+    if [ -n "${1}" ]; then
+        deprecated "--kubernetes-protection-agent"
+        SENSOR_TYPE="kpagent"
+    fi
+    ;;
     -t|--type)
     if [ -n "${2}" ]; then
         SENSOR_TYPE="${2}"
@@ -209,6 +232,7 @@ COPY=$(echo "$COPY" | tr '[:upper:]' '[:lower:]')
 if [ -z "${SENSOR_TYPE}" ] && [ -z "${SENSORTYPE}" ]; then
     SENSOR_TYPE="falcon-container"
 elif [ -z "${SENSOR_TYPE}" ] && [ -n "${SENSORTYPE}" ]; then
+    deprecated "SENSORTYPE"
     SENSOR_TYPE="${SENSORTYPE}"
 fi
 
