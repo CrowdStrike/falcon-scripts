@@ -352,7 +352,7 @@ case "${CONTAINER_TOOL}" in
 esac
 
 if [ "$CREDS" ] ; then
-    echo "CS Registry Username: fc-${cs_falcon_cid}"
+    echo "CS Registry Username: ${ART_USERNAME}"
     echo "CS Registry Password: ${ART_PASSWORD}"
     exit 0
 fi
