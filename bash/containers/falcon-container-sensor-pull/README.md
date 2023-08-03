@@ -2,6 +2,10 @@
 
 Use this bash script to pull the latest **Falcon Container** sensor, **Node Kernel Mode DaemonSet** sensor, **Kubernetes Admission Controller** or **Kubernetes Protection Agent** from the CrowdStrike container registry and push it to your local Docker registry or remote registries.
 
+> :warning: **Deprecation Warning**: Starting with version 2.0.0, the `SENSORTYPE` environment variable will be deprecated and replaced with `SENSOR_TYPE`. `SENSORTYPE` will still be supported for backwards compatibility, but will be removed in a future release. Please update your code to use `SENSOR_TYPE` to specify your sensor type.
+>
+> :warning: **Breaking Changes**: The following command line options have been removed and are no longer supported: `-n`, `--node`, `--kubernetes-admission-controller`, and `--kubernetes-protection-agent`. To update your code, use the `-t, --type` option to specify your sensor type. For example, to download the Kubernetes Protection Agent, use `--type kpagent`.
+
 ## Security recommendations
 
 ### Use cURL version 7.55.0 or later
@@ -55,18 +59,18 @@ Help Options:
 | `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID`           | `None` (Optional)          | CrowdStrike Customer ID (CID)                                                            |
 | `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)          | CrowdStrike API Client ID                                                                |
 | `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)          | CrowdStrike API Client Secret                                                            |
-| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)          | CrowdStrike Region                                                                       |
+| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)          | CrowdStrike Region. Will try to autodiscover if not specified.                                                                       |
 | `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`     |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)          | Specify sensor version to retrieve from the registry                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)          | Specify sensor platform to retrieve from the registry                                    |
-| `-t`, `--type <SENSORTYPE>`                    | `$SENSOR_TYPE`<sup>1</sup>           | `falcon-sensor` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-kac`, `kpagent`] ([see more details below](#sensor-types)) |
+| `-t`, `--type <SENSORTYPE>`                    | `$SENSOR_TYPE`<sup>1</sup>           | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-kac`, `kpagent`] ([see more details below](#sensor-types)) |
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.       |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools                  |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                                          |
 | `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)         | Allow the script to run with an older version of cURL                                    |
 | `-h`, `--help`                                 | N/A                     | `None`                     | Display help message                                                                     |
 
-> <sup>1</sup> For backwards compatibility, $SENSORTYPE can be used in place of $SENSOR_TYPE.
+> <sup>1</sup> For backwards compatibility, $SENSORTYPE can still be used in place of $SENSOR_TYPE.
 
 ### Sensor Types
 
@@ -74,29 +78,43 @@ The following sensor types are available to download:
 
 | Sensor Image Name | Description |
 |:-------------|:------------|
-| `falcon-sensor` **(default)** | The Falcon sensor for Linux as a DaemonSet deployment |
-| `falcon-container` | The Falcon Container sensor for Linux |
+| `falcon-sensor` | The Falcon sensor for Linux as a DaemonSet deployment |
+| `falcon-container` **(default)** | The Falcon Container sensor for Linux |
 | `falcon-kac` | The Falcon Kubernetes Admission Controller |
 | `kpagent` | The Falcon Kubernetes Protection Agent |
 
-### Example usage to download DaemonSet sensor
+### Examples
 
-#### Example using `autodiscover`
+#### Example downloading the Falcon Kubernetes Admission Controller
 
-```terminal
+The following example will attempt to autodiscover the region and download the latest version of the Falcon Kubernetes Admission Controller container image.
+
+```shell
 ./falcon-container-sensor-pull.sh \
---client-id <ABCDEFG123456> \
---client-secret <ABCDEFG123456> \
---node
+--type falcon-kac \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET>
 ```
 
-#### Example without using `autodiscover`
+#### Example downloading the Falcon Container sensor
 
-```terminal
+The following example will download the latest version of the Falcon Container sensor container image and copy it to another registry.
+
+```shell
 ./falcon-container-sensor-pull.sh \
---cid <ABCDEFG123456> \
---client-id <ABCDEFG123456> \
---client-secret <ABCDEFG123456> \
---region us-2 \
---node
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--region us-1 \
+--copy myregistry.com/mynamespace
+```
+
+#### Example dumping credentials
+
+The following example will dump the credentials to stdout to copy/paste into container tools.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--dump-credentials
 ```
