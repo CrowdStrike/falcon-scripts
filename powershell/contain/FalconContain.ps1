@@ -1,10 +1,10 @@
-﻿<# 
+<#
 .NAME
     Falcon® Contain
 #>
 
 if ([System.Environment]::OSVersion.Platform -ne 'Win32NT'){
-  Write-Host "Sorry, Falcon Contain is only intended for the Windows operating system."
+  Write-Output "Sorry, Falcon Contain is only intended for the Windows operating system."
   Exit
 }
 
@@ -16,6 +16,11 @@ $ConfigFile = 'FalconContain-Config.xml'
 # Contain/lift by AID will STILL be allowed for these hosts though.
 $AIDFile = 'ProtectedAIDs.txt'
 $DefaultAPIURL = 'api.crowdstrike.com'
+
+#Configure logging
+$LaunchDTS = (Get-Date).ToString("MMddyy-HHmmss")
+$LogPath = "FalconContain" + $LaunchDTS + ".log"
+Start-Transcript -Path $LogPath
 
 # Force TLS 1.2
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -71,7 +76,7 @@ $FormData = @{
   'client_id' = [pscredential]::new('user',$apiUserSS).GetNetworkCredential().Password
   'client_secret' = [pscredential]::new('user',$apiKeySS).GetNetworkCredential().Password
   }
-  
+
 $PostRequest = 'https://' + $APIURL + '/oauth2/token'
 $ValidToken = Invoke-RestMethod -Uri $PostRequest -Method 'Post' -Body $FormData -Headers $TokenRequestHeaders | Select-Object access_token
 $FormData = $null
@@ -80,7 +85,6 @@ $FormData = $null
 if ($ValidToken)
     {
       $AuthString = 'Bearer ' + $ValidToken.access_token
-  
       $DownloadRequestHeaders = @{
       'Content-Type' = 'application/json'
       'Authorization' = $AuthString
@@ -91,11 +95,14 @@ if ($ValidToken)
     }
 else # We were not able to establish a connection to the API, so bail out of this session.
     {
-    Write-Host
-    Write-Host "Connection to the CrowdStrike API failed.  Verify your API credentials, permission, and network access to the API endpoint."
+    Write-Output "****************************************************************"
+    Write-Output "Connection to the CrowdStrike API failed.  Verify your API credentials, permission, and network access to the API endpoint."
     exit
     }
 } # End QueryGroups
+
+Write-Output "****************************************************************"
+Write-Output "Fetching latest Falcon host groups..."
 
 $GroupList = QueryGroups # Call function to get and return an object with the current list of Falcon Host Groups
 
@@ -105,7 +112,7 @@ Add-Type -AssemblyName System.Windows.Forms
 #Form Window
 $Form                            = New-Object system.Windows.Forms.Form
 $Form.ClientSize                 = New-Object System.Drawing.Point(725,525)
-$Form.text                       = "Falcon Contain 1.1.4 July 7 2023"
+$Form.text                       = "Falcon Contain 1.1.5 August 7 2023"
 $Form.TopMost                    = $false
 
 #AID form entry field
@@ -294,20 +301,20 @@ $SpecifyContain1.Add_Click({ Hosts $HostQuery $HostQueryLimit "contain" })
 $SpecifyLiftContain2.Add_Click({ Groups $GroupSelect "lift_containment" })
 $SpecifyContain2.Add_Click({ Groups $GroupSelect "contain" })
 
-#region Logic 
+#region Logic
 
 function AIDs ($Payload,$HostAction) # This function BLINDLY takes the user's input and passes it to the API for AID contain/lift contain actions
 {
 if(!$Payload.text -Or ($Payload.text -Eq "Format: `"aid1`",`"aid2`",`"aid3`""))
-{
-Write-Host "+++***=== NO AIDs SPECIFIED.  CANCELLING ACTION ===***+++"
-return #NO AIDs ENTERED!
-}
+  {
+  Write-Output "+++***=== NO AIDs SPECIFIED.  CANCELLING ACTION ===***+++"
+  return #NO AIDs ENTERED!
+  }
 
 $CommandDetails = "==>ACTION:" + $HostAction + "  ON AIDs: " + $Payload.text
 
-Write-Host "****************************************************************"
-Write-Host $CommandDetails
+Write-Output "****************************************************************"
+Write-Output $CommandDetails
 
 $TokenRequestHeaders = @{
   'accept' = 'application/json'
@@ -318,7 +325,7 @@ $FormData = @{
   'client_id' = [pscredential]::new('user',$apiUserSS).GetNetworkCredential().Password
   'client_secret' = [pscredential]::new('user',$apiKeySS).GetNetworkCredential().Password
   }
-  
+
 $PostRequest = 'https://' + $APIURL + '/oauth2/token'
 $ValidToken = Invoke-RestMethod -Uri $PostRequest -Method 'Post' -Body $FormData -Headers $TokenRequestHeaders | Select-Object access_token
 $FormData = $null
@@ -327,7 +334,7 @@ $FormData = $null
 if ($ValidToken)
     {
       $AuthString = 'Bearer ' + $ValidToken.access_token
-  
+
       $DownloadRequestHeaders = @{
       'Content-Type' = 'application/json'
       'Authorization' = $AuthString
@@ -346,13 +353,13 @@ function Hosts ($Query,$QueryLimit,$HostAction) # This function verifies the que
 {
 if(!$Query.text -Or ($Query.text -Eq "Enter Query"))
 {
-Write-Host "+++***=== NO QUERY SPECIFIED.  CANCELLING ACTION ===***+++"
+Write-Output "+++***=== NO QUERY SPECIFIED.  CANCELLING ACTION ===***+++"
 return #NO QUERY ENTERED!
 }
 $CommandDetails = "==>ACTION:" + $HostAction + "  ON: " + $Query.text + " (MAX RECORDS: " + $QueryLimit.text + ")"
 
-Write-Host "*****************************************************************"
-Write-Host $CommandDetails
+Write-Output "*****************************************************************"
+Write-Output $CommandDetails
 
 $TokenRequestHeaders = @{
   'accept' = 'application/json'
@@ -363,7 +370,7 @@ $FormData = @{
   'client_id' = [pscredential]::new('user',$apiUserSS).GetNetworkCredential().Password
   'client_secret' = [pscredential]::new('user',$apiKeySS).GetNetworkCredential().Password
   }
-  
+
 $PostRequest = 'https://' + $APIURL + '/oauth2/token'
 $ValidToken = Invoke-RestMethod -Uri $PostRequest -Method 'Post' -Body $FormData -Headers $TokenRequestHeaders | Select-Object access_token
 $FormData = $null
@@ -372,7 +379,7 @@ $FormData = $null
 if ($ValidToken)
     {
       $AuthString = 'Bearer ' + $ValidToken.access_token
-  
+
       $DownloadRequestHeaders = @{
       'Content-Type' = 'application/json'
       'Authorization' = $AuthString
@@ -389,12 +396,12 @@ if ($ValidToken)
       }
     if(!$HostList)
     {
-    Write-Host "+++***=== NO VALID MATCHING RECORDS.  CANCELLING ACTION ===***+++"
+    Write-Output "+++***=== NO VALID MATCHING RECORDS.  CANCELLING ACTION ===***+++"
     return # No resulting records!
     }
     $HostList = $HostList.Substring(0,$HostList.Length-1)
     $AffectedMachines = "==>AFFECTED HOSTS: " + $HostList
-    Write-Host $AffectedMachines
+    Write-Output $AffectedMachines
     $RequestBody = '{
     "ids": ['+
     $HostList+'
@@ -409,14 +416,14 @@ function Groups ($Group,$HostAction) # This function takes the selected Host Gro
 {
 if(!$Group.text)
 {
-Write-Host "+++***=== NO GROUP SELECTED.  CANCELLING ACTION ===***+++"
+Write-Output "+++***=== NO GROUP SELECTED.  CANCELLING ACTION ===***+++"
 return #NO GROUP SELECTED!
 }
 
 $CommandDetails = "==>ACTION:" + $HostAction + "  ON GROUP: " + $Group.text
 
-Write-Host "****************************************************************"
-Write-Host $CommandDetails
+Write-Output "****************************************************************"
+Write-Output $CommandDetails
 
 $TokenRequestHeaders = @{
   'accept' = 'application/json'
@@ -427,7 +434,7 @@ $FormData = @{
   'client_id' = [pscredential]::new('user',$apiUserSS).GetNetworkCredential().Password
   'client_secret' = [pscredential]::new('user',$apiKeySS).GetNetworkCredential().Password
   }
-  
+
 $PostRequest = 'https://' + $APIURL + '/oauth2/token'
 $ValidToken = Invoke-RestMethod -Uri $PostRequest -Method 'Post' -Body $FormData -Headers $TokenRequestHeaders | Select-Object access_token
 $FormData = $null
@@ -436,7 +443,7 @@ $FormData = $null
 if ($ValidToken)
     {
       $AuthString = 'Bearer ' + $ValidToken.access_token
-  
+
       $DownloadRequestHeaders = @{
       'Content-Type' = 'application/json'
       'Authorization' = $AuthString
@@ -462,12 +469,12 @@ ForEach ($name in $GroupList.resources)
       }
     if(!$HostList1)
       {
-      Write-Host "+++***=== NO VALID MATCHING RECORDS.  CANCELLING ACTION ===***+++"
+      Write-Output "+++***=== NO VALID MATCHING RECORDS.  CANCELLING ACTION ===***+++"
       return # No resulting records!
       }
     $HostList1 = $HostList1.Substring(0,$HostList1.Length-1)
     $AffectedMachines = "==>AFFECTED HOSTS: " + $HostList1
-    Write-Host $AffectedMachines
+    Write-Output $AffectedMachines
     $RequestBody = '{
     "ids": ['+
     $HostList1+'
@@ -479,14 +486,9 @@ ForEach ($name in $GroupList.resources)
 } # End function Groups
 #endregion
 
-#endregion
-
-#Configure logging
-$LaunchDTS = (Get-Date).ToString("MMddyy-HHmmss")
-$LogPath = "FalconContainer" + $LaunchDTS + ".log"
-Start-Transcript -Path $LogPath
-
 #Launch form
+Write-Output "****************************************************************"
+Write-Output "Launching GUI..."
 [void]$Form.ShowDialog()
 
 #End logging
