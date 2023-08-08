@@ -455,23 +455,6 @@ function Invoke-FalconInstall ([string] $InstallParams, [string] $Tags, [bool] $
             Write-MigrateLog $Message
             break
         }
-        else {
-            if ([Net.ServicePointManager]::SecurityProtocol -notmatch 'Tls12') {
-                try {
-                    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                }
-                catch {
-                    $Message = $_
-                    Write-MigrateLog $Message
-                    throw $Message
-                }
-            }
-            if (!($PSVersionTable.CLRVersion.ToString() -ge 3.5)) {
-                $Message = '.NET Framework 3.5 or newer is required'
-                Write-MigrateLog $Message
-                throw $Message
-            }
-        }
 
         # If NewFalconCid is not provided, get it from the API
         if (!$NewFalconCid) {
@@ -983,7 +966,7 @@ function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $Falco
 
         if (!$response) {
             $message = "Unhandled error occurred while authenticating to the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
-            Write-FalconLog -Source 'Invoke-FalconAuth' -Message $message
+            Write-MigrateLog -Source 'Invoke-FalconAuth' -Message $message
             throw $message
         }
 
@@ -996,7 +979,7 @@ function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $Falco
                 }
                 else {
                     $message = 'Received a redirect but no X-Cs-Region header was provided. Unable to autodiscover the FalconCloud. Please set FalconCloud to the correct region.'
-                    Write-FalconLog -Source 'Invoke-FalconAuth' -Message $message
+                    Write-MigrateLog -Source 'Invoke-FalconAuth' -Message $message
                     throw $message
                 }
 
@@ -1006,13 +989,13 @@ function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $Falco
             }
             else {
                 $message = "Received a redirect. Please set FalconCloud to 'autodiscover' or the correct region."
-                Write-FalconLog -Source 'Invoke-FalconAuth' -Message $message
+                Write-MigrateLog -Source 'Invoke-FalconAuth' -Message $message
                 throw $message
             }
         }
         else {
             $message = "Received a $($response.StatusCode) response from $($BaseUrl)oauth2/token. Please check your credentials and try again. Error: $($response.StatusDescription)"
-            Write-FalconLog -Source 'Invoke-FalconAuth' -Message $message
+            Write-MigrateLog -Source 'Invoke-FalconAuth' -Message $message
             throw $message
         }
     }
@@ -1021,6 +1004,9 @@ function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $Falco
 }
 
 ### Start of Migration Script ###
+
+# Set TLS 1.2
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
         [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {

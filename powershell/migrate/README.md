@@ -12,7 +12,7 @@ The following **API scopes** are required:
 
 - **Sensor Download** [read]
 - **Host** [read,write]
-- **Sensor update policies** [write]
+- **Sensor update policies** [read,write]
 
 ## What Does It Do?
 
