@@ -4,9 +4,11 @@ Use this bash script to pull the latest **Falcon Container** sensor, **Node Kern
 
 ## Deprecation Warning :warning:
 
+1. **Default Sensor Type Change** : The default sensor type will be changed from `falcon-container` to `falcon-sensor`. This change is based off of feedback from our customers and is intended to simplify the usage of this script.
+
 1. **Environment Variable Deprecation** : The `SENSORTYPE` environment variable will be deprecated and replaced by `SENSOR_TYPE`. This update is intended to increase readability and maintain consistency in our environment variable naming convention.
 
-2. **Command Option Deprecation** : The command line options `-n, --node`, `--kubernetes-admission-controller`, and `--kubernetes-protection-agent` will be deprecated and replaced by a single option `-t, --type`. The new `-t, --type` option will allow you to specify the sensor type in a more straightforward and simplified manner.
+1. **Command Option Deprecation** : The command line options `-n, --node`, `--kubernetes-admission-controller`, and `--kubernetes-protection-agent` will be deprecated and replaced by a single option `-t, --type`. The new `-t, --type` option will allow you to specify the sensor type in a more straightforward and simplified manner.
 
 While these changes will be officially introduced in version 2.0.0, we will continue to support the deprecated environment variable and command options until that release. We strongly encourage you to adapt your usage to include the new `SENSOR_TYPE` environment variable and `-t, --type` command option to ensure a smooth transition when version 2.0.0 is released.
 
@@ -45,8 +47,9 @@ Optional Flags:
     -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
-
     -t, --type <SENSOR_TYPE>          specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|kpagent]
+                                      Default is falcon-container.
+
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
     --list-tags                       list all tags available for the selected sensor
@@ -65,7 +68,7 @@ Help Options:
 | `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID`           | `None` (Optional)          | CrowdStrike Customer ID (CID)                                                            |
 | `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)          | CrowdStrike API Client ID                                                                |
 | `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)          | CrowdStrike API Client Secret                                                            |
-| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)          | CrowdStrike Region. Will try to autodiscover if not specified.                                                                       |
+| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)          | CrowdStrike Region                                                                       |
 | `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`     |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)          | Specify sensor version to retrieve from the registry                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)          | Specify sensor platform to retrieve from the registry                                    |
@@ -75,7 +78,6 @@ Help Options:
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                                          |
 | `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)         | Allow the script to run with an older version of cURL                                    |
 | `-h`, `--help`                                 | N/A                     | `None`                     | Display help message                                                                     |
-
 
 ### Sensor Types
 
@@ -96,20 +98,21 @@ The following example will attempt to autodiscover the region and download the l
 
 ```shell
 ./falcon-container-sensor-pull.sh \
---type falcon-kac \
 --client-id <FALCON_CLIENT_ID> \
---client-secret <FALCON_CLIENT_SECRET>
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-kac
 ```
 
-#### Example downloading the Falcon Container sensor
+#### Example downloading the Falcon DaemonSet sensor
 
-The following example will download the latest version of the Falcon Container sensor container image and copy it to another registry.
+The following example will download the latest version of the Falcon DaemonSet sensor container image and copy it to another registry.
 
 ```shell
 ./falcon-container-sensor-pull.sh \
 --client-id <FALCON_CLIENT_ID> \
 --client-secret <FALCON_CLIENT_SECRET> \
---region us-1 \
+--region us-2 \
+--type falcon-sensor \
 --copy myregistry.com/mynamespace
 ```
 

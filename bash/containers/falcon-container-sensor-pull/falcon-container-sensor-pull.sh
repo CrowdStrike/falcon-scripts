@@ -20,8 +20,9 @@ Optional Flags:
     -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
-
     -t, --type <SENSOR_TYPE>          specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|kpagent]
+                                      Default is falcon-container.
+
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
     --list-tags                       list all tags available for the selected sensor
@@ -230,6 +231,7 @@ COPY=$(echo "$COPY" | tr '[:upper:]' '[:lower:]')
 # If not, default SENSOR_TYPE to falcon-container
 # *SENSORTYPE is deprecated and will be removed in a future release
 if [ -z "${SENSOR_TYPE}" ] && [ -z "${SENSORTYPE}" ]; then
+    deprecated "The default sensor type of falcon-container"
     SENSOR_TYPE="falcon-container"
 elif [ -z "${SENSOR_TYPE}" ] && [ -n "${SENSORTYPE}" ]; then
     deprecated "SENSORTYPE"
