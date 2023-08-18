@@ -38,5 +38,5 @@ CrowdStrike Falcon® Contain GUI for more powerful and rapid host containment
 ## Troubleshooting
   - The configuration file cannot be read.
     - The configuration file includes encrypted API details.  The file is not portable between users/computers.  Simply delete FalconContain-Config.xml and run FalconContain.ps1 to build a new configuration file.
-  - A log of all session actions is saved in the working directory as FalconContainerMMddyy-HHmmss.log  
+  - A log of all session actions is saved in the working directory as FalconContainMMddyy-HHmmss.log  
   - More info about the Falcon Query Language can be found here (login required): https://falcon.crowdstrike.com/documentation/45/falcon-query-language-fql  
