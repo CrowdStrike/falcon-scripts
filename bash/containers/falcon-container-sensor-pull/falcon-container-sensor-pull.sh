@@ -25,6 +25,7 @@ Optional Flags:
 
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
+    --get-pull-token                  Get the pull token of the selected SENSOR_TYPE for Kubernetes.
     --list-tags                       list all tags available for the selected sensor type and platform(optional)
     --allow-legacy-curl               allow the script to run with an older version of curl
 
@@ -122,6 +123,11 @@ case "$1" in
     --dump-credentials)
     if [ -n "${1}" ]; then
         CREDS=true
+    fi
+    ;;
+    --get-pull-token)
+    if [ -n "${1}" ]; then
+        PULLTOKEN=true
     fi
     ;;
     --list-tags)
@@ -314,7 +320,7 @@ cs_falcon_cid=$(
     fi
 )
 
-if [ ! "$LISTTAGS" ] ; then
+if [ ! "$LISTTAGS" ] && [ ! "$PULLTOKEN" ]; then
     echo "Using the following settings:"
     echo "Falcon Region:   $(cs_cloud)"
     echo "Falcon Registry: ${cs_registry}"
@@ -343,6 +349,21 @@ else
     docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" | json_value "token")
 fi
 ART_PASSWORD=$(echo "$docker_api_token" | sed 's/ *$//g' | sed 's/^ *//g')
+
+if [ "$PULLTOKEN" ]; then
+    # Determine if base64 supports the -w option
+    BASE64_OPT=""
+    if base64 --help 2>&1 | grep -q "\-w"; then
+        BASE64_OPT="-w 0"
+    fi
+    # shellcheck disable=SC2086
+    PARTIALPULLTOKEN=$(printf "%s:%s" "$ART_USERNAME" "$ART_PASSWORD" | base64 $BASE64_OPT)
+    # Generate and display token
+    # shellcheck disable=SC2086
+    IMAGE_PULL_TOKEN=$(printf '{"auths": { "registry.crowdstrike.com": { "auth": "%s" } } }' "$PARTIALPULLTOKEN" | base64 $BASE64_OPT)
+    echo "Image Pull Token: ${IMAGE_PULL_TOKEN}"
+    exit 0
+fi
 
 #Set container login
 error_message=$(echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "$ART_USERNAME" "$cs_registry" --password-stdin 2>&1 >/dev/null) || ERROR=true
