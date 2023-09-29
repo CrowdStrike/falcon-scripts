@@ -163,7 +163,7 @@ begin {
 
     function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
-        $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.1.6')
+        $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.1.7')
         try {
             $response = Invoke-WebRequest -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
             $content = ConvertFrom-Json -InputObject $response.Content
