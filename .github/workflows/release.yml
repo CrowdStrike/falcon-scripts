@@ -15,8 +15,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Release artifacts to GitHub
         run: |
-          list_of_files=$(find . -type f | egrep '\.sh|\.ps1')
-          gh release upload $TAG $list_of_files
+          # Create a list of .sh and .ps1 files for upload
+          list_of_files=$(find . -type f \( -name "*.sh" -o -name "*.ps1" \))
+
+          # Create ZIP of PowerShell install scripts
+          pushd powershell/install
+          zip -r ../../falcon_windows_install_scripts.zip *.ps1
+          popd
+
+          # Upload the files to GitHub release
+          gh release upload $TAG $list_of_files falcon_windows_install_scripts.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
