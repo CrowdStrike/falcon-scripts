@@ -20,11 +20,11 @@ jobs:
 
           # Create ZIP of PowerShell install scripts
           pushd powershell/install
-          zip -r ../../pwsh_install_scripts.zip *.ps1
+          zip -r ../../falcon_windows_install_scripts.zip *.ps1
           popd
 
           # Upload the files to GitHub release
-          gh release upload $TAG $list_of_files pwsh_install_scripts.zip
+          gh release upload $TAG $list_of_files falcon_windows_install_scripts.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
