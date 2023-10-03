@@ -59,7 +59,7 @@ jobs:
         if: github.event_name == 'pull_request_target'
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
           role-session-name: github-actions-molecule-ansible
