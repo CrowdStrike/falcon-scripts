@@ -102,11 +102,11 @@ jobs:
             collection_role: bash_install_decrement
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         if: github.event_name != 'pull_request_target'
 
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{github.event.pull_request.head.sha}}
         if: github.event_name == 'pull_request_target'
