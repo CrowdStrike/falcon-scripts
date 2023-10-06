@@ -30,6 +30,8 @@ To check your version of cURL, run the following command: `curl --version`
 - CrowdStrike API Client created with these scopes:
   - `Falcon Images Download (read)`
   - `Sensor Download (read)`
+  - `Kubernetes Protection (read)`
+    - For `kpagent` only
 - If you are using Docker, make sure that Docker is running locally.
 
 ## Usage
