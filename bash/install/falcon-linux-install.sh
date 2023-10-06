@@ -149,6 +149,8 @@ cs_sensor_policy_version() {
         curl_command -G "https://$(cs_cloud)/policy/combined/sensor-update/v2" \
              --data-urlencode "filter=platform_name:\"Linux\"+name.raw:\"$cs_policy_name\""
     )
+    
+    handle_curl_error $?
 
     if echo "$sensor_update_policy" | grep "authorization failed"; then
         die "Access denied: Please make sure that your Falcon API credentials allow access to sensor update policies (scope Sensor update policies [read])"
@@ -199,6 +201,8 @@ cs_sensor_download() {
             --data-urlencode "filter=os:\"$cs_os_name\"+os_version:\"*$cs_os_version*\"$cs_api_version_filter$cs_os_arch_filter"
     )
 
+    handle_curl_error $?
+
     if echo "$existing_installers" | grep "authorization failed"; then
         die "Access denied: Please make sure that your Falcon API credentials allow sensor download (scope Sensor Download [read])"
     elif echo "$existing_installers" | grep "invalid bearer token"; then
@@ -223,6 +227,9 @@ cs_sensor_download() {
     installer="${destination_dir}/falcon-sensor.${file_type}"
 
     curl_command "https://$(cs_cloud)/sensors/entities/download-installer/v1?id=$sha" -o "${installer}"
+
+    handle_curl_error $?
+
     echo "$installer"
 }
 
@@ -312,6 +319,7 @@ EOF
 
     response=$(
         curl -s "https://ssm.$aws_my_region.amazonaws.com/" \
+            -x "$proxy" \
             -H "Authorization: AWS4-HMAC-SHA256 \
             Credential=$access_key_id/$date/$aws_my_region/ssm/aws4_request, \
             SignedHeaders=content-type;host;x-amz-date;x-amz-security-token;x-amz-target, \
@@ -322,6 +330,7 @@ EOF
             -d "$request_data" \
             -H "x-amz-date: $datetime"
             )
+    handle_curl_error $?
     if ! echo "$response" | grep -q '^.*"InvalidParameters":\[\].*$'; then
         die "Unexpected response from AWS SSM Parameter Store: $response"
     elif ! echo "$response" | grep -q '^.*'"${param_name}"'.*$'; then
@@ -417,13 +426,38 @@ To bypass this warning, set the environment variable ALLOW_LEGACY_CURL=true
     fi
 fi
 
+# Handle error codes returned by curl
+handle_curl_error() {
+    if [ "$1" = "28" ]; then
+        err_msg="Operation timed out (exit code 28)."
+        if [ -n "$proxy" ]; then
+            err_msg="$err_msg A proxy was used to communicate ($proxy). Please check your proxy settings."
+        fi
+        die "$err_msg"
+    fi
+
+    if [ "$1" = "5" ]; then
+        err_msg="Couldn't resolve proxy (exit code 5). The address ($proxy) of the given proxy host could not be resolved. Please check your proxy settings."
+        die "$err_msg"
+    fi
+
+    if [ "$1" = "7" ]; then
+        err_msg="Failed to connect to host (exit code 7). Host found, but unable to open connection with host."
+        if [ -n "$proxy" ]; then
+            err_msg="$err_msg A proxy was used to communicate ($proxy). Please check your proxy settings."
+        fi
+        die "$err_msg"
+    fi
+}
+
 curl_command() {
     # Dash does not support arrays, so we have to pass the args as separate arguments
     set -- "$@"
+
     if [ "$old_curl" -eq 0 ]; then
-        curl -s -L -H "Authorization: Bearer ${cs_falcon_oauth_token}" "$@"
+        curl -s -x "$proxy" -L -H "Authorization: Bearer ${cs_falcon_oauth_token}" "$@"
     else
-        echo "Authorization: Bearer ${cs_falcon_oauth_token}" | curl -s -L -H @- "$@"
+        echo "Authorization: Bearer ${cs_falcon_oauth_token}" | curl -s -x "$proxy" -L -H @- "$@"
     fi
 }
 
@@ -593,17 +627,38 @@ cs_falcon_sensor_version_dec=$(
 
 response_headers=$(mktemp)
 
+proxy=$(
+    proxy=""
+    if [ -n "$FALCON_APH" ]; then
+        proxy="${FALCON_APH//http*:'//'}"
+
+        if [ -n "$FALCON_APP" ]; then
+            proxy="$proxy:$FALCON_APP"
+        fi
+    fi
+
+    if [ -n "$proxy" ]; then
+        proxy="${proxy//\"}"
+        proxy="${proxy//\'}"
+        proxy="http://$proxy"
+    fi
+    echo "$proxy"
+)
+
 cs_falcon_oauth_token=$(
     if ! command -v curl > /dev/null 2>&1; then
         die "The 'curl' command is missing. Please install it before continuing. Aborting..."
     fi
 
     token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" | \
-                   curl -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
+                   curl -X POST -s -x "$proxy" -L "https://$(cs_cloud)/oauth2/token" \
                        -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
                        -H 'User-Agent: crowdstrike-falcon-scripts/1.1.7' \
                        --dump-header "${response_headers}" \
                        --data @-)
+
+    handle_curl_error $?
+
     token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
     if [ -z "$token" ]; then
         die "Unable to obtain CrowdStrike Falcon OAuth Token. Response was $token_result"
@@ -630,6 +685,9 @@ cs_falcon_cid=$(
         echo "$FALCON_CID"
     else
         cs_target_cid=$(curl_command "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
+        
+        handle_curl_error $?
+   
         if [ -z "$cs_target_cid" ]; then
             die "Unable to obtain CrowdStrike Falcon CID. Response was $cs_target_cid"
         fi
