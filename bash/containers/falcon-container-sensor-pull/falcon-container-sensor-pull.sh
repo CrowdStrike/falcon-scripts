@@ -299,11 +299,7 @@ fi
 registry_opts=$(
     # Account for govcloud api mismatch
     if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
-        if [ "${SENSOR_TYPE}" = "falcon-kac" ]; then
-            echo "$SENSOR_TYPE/gov1"
-        else
-            echo "$SENSOR_TYPE/govcloud"
-        fi
+        echo "$SENSOR_TYPE/gov1"
     else
         echo "$SENSOR_TYPE/$FALCON_CLOUD"
     fi
