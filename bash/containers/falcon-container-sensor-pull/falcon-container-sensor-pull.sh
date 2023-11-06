@@ -25,7 +25,7 @@ Optional Flags:
 
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
-    --list-tags                       list all tags available for the selected sensor
+    --list-tags                       list all tags available for the selected sensor type and platform(optional)
     --allow-legacy-curl               allow the script to run with an older version of curl
 
 Help Options:
@@ -361,7 +361,7 @@ if [ "$LISTTAGS" ] ; then
         die "Please use docker runtime to list tags" ;;
         *docker)
         REGISTRYBEARER=$(echo "-u $ART_USERNAME:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-        curl_command "$REGISTRYBEARER" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list" | sed "s/, /, \\n/g" ;;
+        curl_command "$REGISTRYBEARER" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list" | sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' | tr -d '[:space:]"' | awk -F',' '{for (i=1; i<=NF; i++) print $i}' | grep "$SENSOR_PLATFORM";;
         *skopeo)
         die "Please use docker runtime to list tags" ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
