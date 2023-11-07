@@ -361,7 +361,19 @@ if [ "$LISTTAGS" ] ; then
         die "Please use docker runtime to list tags" ;;
         *docker)
         REGISTRYBEARER=$(echo "-u $ART_USERNAME:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-        curl_command "$REGISTRYBEARER" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list" | sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' | tr -d '[:space:]"' | awk -F',' '{for (i=1; i<=NF; i++) print $i}' | grep "$SENSOR_PLATFORM";;
+        ALL_TAGS=$(curl_command "$REGISTRYBEARER" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list")
+        # If no platform is specified, list all tags
+        if [ -z "$SENSOR_PLATFORM" ]; then
+            # shellcheck disable=SC2001
+            echo "$ALL_TAGS" | sed "s/, /, \\n/g"
+        else
+            # Get filtered tags
+            filtered_tags=$(echo "$ALL_TAGS" | sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' | awk -F',' -v keyword="$SENSOR_PLATFORM" '{for (i=1; i<=NF; i++) if ($i ~ keyword) print $i}')
+            # Reformat back into JSON array
+            formatted_tags=$(echo "$filtered_tags" | paste -sd, - | awk '{print "[" $0 "]"}')
+            # Print tags by replacing the original tags array with the filtered tags
+            echo "$ALL_TAGS" | sed "s/\"tags\" *: *\[[^]]*\]/\"tags\": $formatted_tags/" | sed "s/, /, \\n/g"
+        fi ;;
         *skopeo)
         die "Please use docker runtime to list tags" ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
