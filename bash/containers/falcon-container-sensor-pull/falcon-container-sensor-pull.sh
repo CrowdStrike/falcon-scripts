@@ -368,16 +368,14 @@ if [ "$PULLTOKEN" ]; then
 fi
 
 if [ -z "$ART_PASSWORD" ] ; then
-    echo "===================="
-    echo "API Cloud Response:"
-    echo "$raw_docker_api_token"
-    echo "===================="
-    echo "ART_PASSWORD is NULL, Please check:"
-    echo "1 - Your credentials are valid"
-    echo "2 - Your variables are not NULL"
-    echo "3 - You are have using the correct API Scopes (Falcon Image Download [read], Sensor Download [read], Kubernetes Protection [read])"
-    echo "4 - You have Cloud Security enabled in your tenant"
-    die "Can't get the CrowdStrike registry password"
+    die "Failed to retrieve the CrowdStrike registry password. Response from API:
+$raw_docker_api_token
+
+Ensure the following:
+  - Credentials are valid.
+  - Environment variables are set (not NULL).
+  - Correct API Scopes are assigned (Falcon Images Download [read], Sensor Download [read], Kubernetes Protection [read])
+  - Cloud Security is enabled in your tenant."
 fi
 
 if [ "$CREDS" ] ; then
