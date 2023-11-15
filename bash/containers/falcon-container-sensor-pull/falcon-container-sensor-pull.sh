@@ -373,7 +373,6 @@ $raw_docker_api_token
 
 Ensure the following:
   - Credentials are valid.
-  - Environment variables are set (not NULL).
   - Correct API Scopes are assigned (Falcon Images Download [read], Sensor Download [read], Kubernetes Protection [read])
   - Cloud Security is enabled in your tenant."
 fi
