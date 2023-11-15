@@ -344,9 +344,11 @@ fi
 
 #Set Docker token using the BEARER token captured earlier
 if [ "${SENSOR_TYPE}" = "kpagent" ]; then
-    docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/kubernetes-protection/entities/integration/agent/v1?cluster_name=clustername&is_self_managed_cluster=true" | awk '/dockerAPIToken:/ {print $2}')
+    raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/kubernetes-protection/entities/integration/agent/v1?cluster_name=clustername&is_self_managed_cluster=true")
+    docker_api_token=$(echo "$raw_docker_api_token" | awk '/dockerAPIToken:/ {print $2}')
 else
-    docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" | json_value "token")
+    raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" )
+    docker_api_token=$(echo "$raw_docker_api_token" | json_value "token")
 fi
 ART_PASSWORD=$(echo "$docker_api_token" | sed 's/ *$//g' | sed 's/^ *//g')
 
@@ -362,6 +364,23 @@ if [ "$PULLTOKEN" ]; then
     # shellcheck disable=SC2086
     IMAGE_PULL_TOKEN=$(printf '{"auths": { "registry.crowdstrike.com": { "auth": "%s" } } }' "$PARTIALPULLTOKEN" | base64 $BASE64_OPT)
     echo "Image Pull Token: ${IMAGE_PULL_TOKEN}"
+    exit 0
+fi
+
+if [ -z "$ART_PASSWORD" ] ; then
+    die "Failed to retrieve the CrowdStrike registry password. Response from API:
+$raw_docker_api_token
+
+Ensure the following:
+  - Credentials are valid.
+  - Correct API Scopes are assigned (Falcon Images Download [read], Sensor Download [read], Kubernetes Protection [read])
+  - Cloud Security is enabled in your tenant."
+fi
+
+if [ "$CREDS" ] ; then
+    echo "CS Registry Username: ${ART_USERNAME}"
+    echo "CS Registry Password: ${ART_PASSWORD}"
+    # quitting no need to perform a registry login
     exit 0
 fi
 
@@ -413,12 +432,6 @@ case "${CONTAINER_TOOL}" in
         LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$registry_opts/$repository_name" | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1) ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
 esac
-
-if [ "$CREDS" ] ; then
-    echo "CS Registry Username: ${ART_USERNAME}"
-    echo "CS Registry Password: ${ART_PASSWORD}"
-    exit 0
-fi
 
 #Construct full image path
 FULLIMAGEPATH="$cs_registry/$registry_opts/$repository_name:${LATESTSENSOR}"
