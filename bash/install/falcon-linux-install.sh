@@ -33,7 +33,7 @@ main() {
         print_usage
         exit 1
     fi
-    echo -n 'Check if Falcon Sensor is running ...'; cs_sensor_is_running; echo '[ Not present ]'
+    echo -n 'Check if Falcon Sensor is running ... '; cs_sensor_is_running; echo '[ Not present ]'
     echo -n 'Falcon Sensor Install  ... '; cs_sensor_install;  echo '[ Ok ]'
     # Run if FALCON_INSTALL_ONLY is not set or is set to false
     if [ -z "$FALCON_INSTALL_ONLY" ] || [ "${FALCON_INSTALL_ONLY}" = "false" ]; then
@@ -527,7 +527,7 @@ aws_instance=$(
         echo true
     else
         curl_output="$(curl -s --connect-timeout 5 http://169.254.169.254/latest/dynamic/instance-identity/)"
-        if [ -n "$curl_output" ] && ! echo "$curl_output" | grep --silent -i 'Not Found'; then
+        if [ -n "$curl_output" ] && ! echo "$curl_output" | grep --silent -i 'not.*found'; then
             echo true
         fi
     fi
