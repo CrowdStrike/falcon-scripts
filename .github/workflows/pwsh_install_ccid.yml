@@ -29,6 +29,7 @@ jobs:
       ANSIBLE_FORCE_COLOR: 1
       FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
       FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
+      FALCON_CLOUD: ${{ secrets.FALCON_CLOUD }}
       FALCON_CID: ${{ secrets.FALCON_CID }}
       FALCON_PROV_TOKEN: ${{ secrets.FALCON_PROV_TOKEN }}
       AWS_REGION: "us-west-1"
