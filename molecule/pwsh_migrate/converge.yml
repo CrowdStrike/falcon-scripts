@@ -10,8 +10,8 @@
         -NewFalconClientSecret "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
         -OldFalconClientId "{{ lookup('env', 'FALCON_CLIENT_ID') }}" `
         -OldFalconClientSecret "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
-        -NewFalconCloud "us-2"
-        -OldFalconCloud "us-2"
+        -NewFalconCloud "{{ lookup('env', 'FALCON_CLOUD') }}"
+        -OldFalconCloud "{{ lookup('env', 'FALCON_CLOUD') }}"
         -ProvToken "{{ lookup('env', 'FALCON_PROV_TOKEN') }}"
         -RemoveHost
         -Tags "migrate1,migrate2"
