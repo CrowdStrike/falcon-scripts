@@ -149,7 +149,7 @@ cs_sensor_policy_version() {
         curl_command -G "https://$(cs_cloud)/policy/combined/sensor-update/v2" \
              --data-urlencode "filter=platform_name:\"Linux\"+name.raw:\"$cs_policy_name\""
     )
-    
+
     handle_curl_error $?
 
     if echo "$sensor_update_policy" | grep "authorization failed"; then
@@ -402,6 +402,10 @@ cs_cloud() {
 
 # Check if curl is greater or equal to 7.55
 old_curl=$(
+    if ! command -v curl > /dev/null 2>&1; then
+        die "The 'curl' command is missing. Please install it before continuing. Aborting..."
+    fi
+
     version=$(curl --version | head -n 1 | awk '{ print $2 }')
     minimum="7.55"
 
@@ -627,10 +631,11 @@ cs_falcon_sensor_version_dec=$(
 
 response_headers=$(mktemp)
 
+# shellcheck disable=SC2001
 proxy=$(
     proxy=""
     if [ -n "$FALCON_APH" ]; then
-        proxy="${FALCON_APH//http*:'//'}"
+        proxy="$(echo "$FALCON_APH" | sed "s|http.*://||")"
 
         if [ -n "$FALCON_APP" ]; then
             proxy="$proxy:$FALCON_APP"
@@ -638,18 +643,14 @@ proxy=$(
     fi
 
     if [ -n "$proxy" ]; then
-        proxy="${proxy//\"}"
-        proxy="${proxy//\'}"
+        # Remove redundant quotes
+        proxy="$(echo "$proxy" | sed "s/[\'\"]//g")"
         proxy="http://$proxy"
     fi
     echo "$proxy"
 )
 
 cs_falcon_oauth_token=$(
-    if ! command -v curl > /dev/null 2>&1; then
-        die "The 'curl' command is missing. Please install it before continuing. Aborting..."
-    fi
-
     token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" | \
                    curl -X POST -s -x "$proxy" -L "https://$(cs_cloud)/oauth2/token" \
                        -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
@@ -685,9 +686,9 @@ cs_falcon_cid=$(
         echo "$FALCON_CID"
     else
         cs_target_cid=$(curl_command "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
-        
+
         handle_curl_error $?
-   
+
         if [ -z "$cs_target_cid" ]; then
             die "Unable to obtain CrowdStrike Falcon CID. Response was $cs_target_cid"
         fi
