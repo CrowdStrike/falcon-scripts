@@ -22,13 +22,13 @@ CrowdStrike Falcon OAuth2 API Client Secret [Required]
 .PARAMETER FalconCid
 Manually specify CrowdStrike Customer ID (CID) [default: $null]
 .PARAMETER MemberCid
-Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID.
+Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID [default: $null]
 .PARAMETER SensorUpdatePolicyName
-Sensor Update Policy name to check for assigned sensor version ['platform_default' if left undefined]
+Sensor Update Policy name to check for assigned sensor version [default: 'platform_default']
 .PARAMETER InstallParams
-Sensor installation parameters, without your CID value ['/install /quiet /noreboot' if left undefined]
+Additional Sensor installation parameters. Script parameters should be used instead when supported. [default: '/install /quiet /noreboot' ]
 .PARAMETER LogPath
-Script log location ['Windows\Temp\InstallFalcon.log' if left undefined]
+Script log location [default: 'Windows\Temp\InstallFalcon.log']
 .PARAMETER DeleteInstaller
 Delete sensor installer package when complete [default: $true]
 .PARAMETER DeleteScript
@@ -39,6 +39,13 @@ Provisioning token to use for sensor installation [default: $null]
 Time to wait, in seconds, for sensor to provision [default: 1200]
 .PARAMETER Tags
 A comma-separated list of tags to apply to the host after sensor installation [default: $null]
+.PARAMETER ProxyHost
+The proxy host for the sensor to use when communicating with CrowdStrike [default: $null]
+.PARAMETER ProxyPort
+The proxy port for the sensor to use when communicating with CrowdStrike [default: $null]
+.PARAMETER ProxyDisable
+By default, the Falcon sensor for Windows automatically attempts to use any available proxy connections when it connects to the CrowdStrike cloud.
+This parameter forces the sensor to skip those attempts and ignore any proxy configuration, including Windows Proxy Auto Detection.
 .PARAMETER Verbose
 Enable verbose logging
 .EXAMPLE
@@ -99,7 +106,16 @@ param(
 
     [Parameter(Position = 13)]
     [ValidatePattern('\w{32}-\w{2}')]
-    [string] $FalconCid
+    [string] $FalconCid,
+
+    [Parameter(Position = 14)]
+    [string] $ProxyHost,
+
+    [Parameter(Position = 15)]
+    [int] $ProxyPort,
+
+    [Parameter(Position = 16)]
+    [switch] $ProxyDisable
 )
 begin {
     if ($PSVersionTable.PSVersion -lt '3.0')
@@ -112,6 +128,7 @@ begin {
     else {
         $PSScriptRoot
     }
+
 
     function Write-FalconLog ([string] $Source, [string] $Message, [bool] $stdout = $true) {
         $Content = @(Get-Date -Format 'yyyy-MM-dd hh:MM:ss')
@@ -161,11 +178,11 @@ begin {
         return $Output
     }
 
-    function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
+    function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
         $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.1.7')
         try {
-            $response = Invoke-WebRequest -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
+            $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
             $content = ConvertFrom-Json -InputObject $response.Content
             Write-VerboseLog -VerboseInput $content -PreMessage 'Invoke-FalconAuth - $content:'
 
@@ -251,9 +268,9 @@ begin {
         return $message
     }
 
-    function Get-ResourceContent([string] $url, [string] $logKey, [hashtable] $scope, [string] $errorMessage) {
+    function Get-ResourceContent([hashtable] $WebRequestParams, [string] $url, [string] $logKey, [hashtable] $scope, [string] $errorMessage) {
         try {
-            $response = Invoke-WebRequest -Uri $url -UseBasicParsing -Method 'GET' -Headers $Headers -MaximumRedirection 0
+            $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'GET' -MaximumRedirection 0
             $content = ConvertFrom-Json -InputObject $response.Content
             Write-VerboseLog -VerboseInput $content -PreMessage 'Get-ResourceContent - $content:'
 
@@ -309,10 +326,10 @@ begin {
         return $Output
     }
 
-    function Invoke-FalconDownload ([string] $url, [string] $Outfile) {
+    function Invoke-FalconDownload ([hashtable] $WebRequestParams, [string] $url, [string] $Outfile) {
         try {
             $ProgressPreference = 'SilentlyContinue'
-            $response = Invoke-WebRequest -Uri $url -UseBasicParsing -Method 'GET' -Headers $Headers -OutFile $Outfile
+            $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'GET' -OutFile $Outfile
         }
         catch {
             $response = $_.Exception.Response
@@ -368,16 +385,39 @@ process {
                 throw $message
             }
         }
-        if (!($PSVersionTable.CLRVersion.ToString() -ge 3.5)) {
-            $message = '.NET Framework 3.5 or newer is required'
-            Write-FalconLog 'NetCheck' $message
-            throw $message
+    }
+
+    # Hashtable for common Invoke-WebRequest parameters
+    $WebRequestParams = @{}
+
+    # Configure proxy based on arguments
+    $proxy = ""
+    if ($ProxyHost) {
+        Write-Output "Proxy settings detected in arguments, using proxy settings to communicate with the CrowdStrike api"
+
+        if ($ProxyHost) {
+            $proxy_host = $ProxyHost.Replace("http://", "").Replace("https://", "")
+            Write-FalconLog -Source "Proxy" -Message "Proxy host ${proxy_host} found in arguments" -stdout $true
         }
+
+        if ($ProxyPort) {
+            Write-FalconLog -Source "Proxy" -Message "Proxy port ${ProxyPort} found in arguments" -stdout $true
+            $proxy = "http://${proxy_host}:${ProxyPort}"
+        }
+        else {
+            $proxy = "http://${proxy_host}"
+        }
+
+        $proxy = $proxy.Replace("'", "").Replace("`"", "")
+        Write-FalconLog -Source "Proxy" -Message "Using proxy ${proxy} to communicate with the CrowdStrike Apis" -stdout $true
+    }
+
+    if ($proxy) {
+        $WebRequestParams.Add('Proxy', $proxy)
     }
 
     # Configure OAuth2 authentication
     if ($credsProvided) {
-        $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
         $BaseUrl = Get-FalconCloud $FalconCloud
 
         $Body = @{}
@@ -388,8 +428,9 @@ process {
             $Body['member_cid'] = $MemberCid
         }
 
-        $BaseUrl, $Headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
+        $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
         $Headers['Content-Type'] = 'application/json'
+        $WebRequestParams.Add('Headers', $Headers)
     }
     else {
         $message = 'Unable to proceed without valid API credentials. Ensure you pass the required parameters or define them in the script.'
@@ -404,7 +445,7 @@ process {
         $ccid_scope = @{
             'Sensor Download' = @('Read')
         }
-        $ccid = Get-ResourceContent -url $url -logKey 'GetCcid' -scope $ccid_scope -errorMessage "Unable to grab CCID from the CrowdStrike Falcon API."
+        $ccid = Get-ResourceContent -WebRequestParams $WebRequestParams -url $url -logKey 'GetCcid' -scope $ccid_scope -errorMessage "Unable to grab CCID from the CrowdStrike Falcon API."
 
         $message = "Retrieved CCID: $ccid"
         Write-FalconLog 'GetCcid' $message
@@ -424,7 +465,7 @@ process {
     $policy_scope = @{
         'Sensor update policies' = @('Read')
     }
-    $policyDetails = Get-ResourceContent -url $url -logKey 'GetPolicy' -scope $policy_scope -errorMessage "Unable to fetch policy details from the CrowdStrike Falcon API."
+    $policyDetails = Get-ResourceContent -WebRequestParams $WebRequestParams -url $url -logKey 'GetPolicy' -scope $policy_scope -errorMessage "Unable to fetch policy details from the CrowdStrike Falcon API."
     $policyId = $policyDetails.id
     $build = $policyDetails[0].settings.build
     $version = $policyDetails[0].settings.sensor_version
@@ -447,7 +488,7 @@ process {
     $installer_scope = @{
         'Sensor Download' = @('Read')
     }
-    $installerDetails = Get-ResourceContent -url $url -logKey 'GetInstaller' -scope $installer_scope -errorMessage "Unable to fetch installer details from the CrowdStrike Falcon API."
+    $installerDetails = Get-ResourceContent -WebRequestParams $WebRequestParams -url $url -logKey 'GetInstaller' -scope $installer_scope -errorMessage "Unable to fetch installer details from the CrowdStrike Falcon API."
 
     if ( $installerDetails.sha256 -and $installerDetails.name ) {
         $cloudHash = $installerDetails.sha256
@@ -465,7 +506,7 @@ process {
     $localFile = Join-Path -Path $WinTemp -ChildPath $cloudFile
     Write-FalconLog 'DownloadFile' "Downloading installer to: '$localFile'"
     $url = "${BaseUrl}/sensors/entities/download-installer/v1?id=$cloudHash"
-    Invoke-FalconDownload -url $url -Outfile $localFile
+    Invoke-FalconDownload -WebRequestParams $WebRequestParams -url $url -Outfile $localFile
 
     if (Test-Path $localFile) {
         $localHash = Get-InstallerHash -Path $localFile
@@ -492,6 +533,19 @@ process {
 
     if ($Tags) {
         $InstallParams += " GROUPING_TAGS=$Tags"
+    }
+
+    if ($ProxyHost) {
+        $InstallParams += " APP_PROXYNAME=$ProxyHost"
+    }
+
+    if ($ProxyPort) {
+        $InstallParams += " APP_PROXYPORT=$ProxyPort"
+    }
+
+    # Disable proxy when switch is used
+    if ($ProxyDisable) {
+        $InstallParams += " PROXYDISABLE=0"
     }
 
     $InstallParams += " ProvWaitTime=$ProvWaitTime"
