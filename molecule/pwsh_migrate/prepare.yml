@@ -9,4 +9,5 @@
         -FalconClientId "{{ lookup('env', 'FALCON_CLIENT_ID') }}"
         -FalconClientSecret "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
         -ProvToken "{{ lookup('env', 'FALCON_PROV_TOKEN') }}"
+        -FalconCloud "{{ lookup('env', 'FALCON_CLOUD') }}"
         -Tags "existing1,existing2"
