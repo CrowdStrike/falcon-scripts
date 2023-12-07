@@ -54,7 +54,7 @@ Optional Flags:
 
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
-    --get-pull-token                  Get the pull token of the selected SENSOR_TYPE for Kubernetes.
+    --get-pull-token                  get the pull token of the selected SENSOR_TYPE for Kubernetes.
     --list-tags                       list all tags available for the selected sensor
     --allow-legacy-curl               allow the script to run with an older version of curl
 
