@@ -19,6 +19,12 @@ This repository contains different types of scripts to facilitate the use of the
 
 All contributions are welcome. Please make sure to verify that the CI/CD checks pass and are not failing.
 
+## Support
+
+Falcon Scripts is a community-driven, open source project designed to streamline the deployment and use of the CrowdStrike Falcon sensor. While not a formal CrowdStrike product, Falcon Scripts is maintained by CrowdStrike and supported in partnership with the open source developer community.
+
+For additional support, please see the [SUPPORT.md](SUPPORT.md) file.
+
 ## License
 
 See [LICENSE](LICENSE)
