@@ -218,6 +218,32 @@ curl_command() {
     fi
 }
 
+list_tags() {
+    # Returns the tags for the specified sensor type
+    REGISTRYBEARER=$(echo "-u $ART_USERNAME:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+    # Get list of all tags
+    ALL_TAGS=$(curl_command "$REGISTRYBEARER" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list")
+
+    # If KPA, we need to sort in the same fashion the other images default to
+    if [ "${SENSOR_TYPE}" = "kpagent" ]; then
+        # No arch needed on KPA
+        _tags=$(echo "$ALL_TAGS" | sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' | \
+                tr -d '"' | tr ',' '\n' | \
+                awk -F. '{ printf "%05d.%05d.%05d\n", $1, $2, $3 }' | \
+                sort | \
+                awk -F. '{ printf " \"%d.%d.%d\"\n", $1+0, $2+0, $3+0 }')
+    else
+        # Filter based on platform (if specified)
+        _tags=$(echo "$ALL_TAGS" | sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' | \
+                awk -F',' -v keyword="$SENSOR_PLATFORM" '{for (i=1; i<=NF; i++) if ($i ~ keyword) print $i}')
+    fi
+
+    # Reformat back into JSON array
+    formatted_tags=$(echo "$_tags" | paste -sd, - | awk '{print "[" $0 "]"}')
+    # Print tags by replacing the original tags array with the filtered tags
+    echo "$ALL_TAGS" | sed "s/\"tags\" *: *\[[^]]*\]/\"tags\": $formatted_tags/" | sed "s/, /, \\n/g"
+}
+
 # shellcheck disable=SC2086
 FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
 
@@ -400,20 +426,7 @@ if [ "$LISTTAGS" ] ; then
         *podman)
         die "Please use docker runtime to list tags" ;;
         *docker)
-        REGISTRYBEARER=$(echo "-u $ART_USERNAME:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-        ALL_TAGS=$(curl_command "$REGISTRYBEARER" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list")
-        # If no platform is specified, list all tags
-        if [ -z "$SENSOR_PLATFORM" ]; then
-            # shellcheck disable=SC2001
-            echo "$ALL_TAGS" | sed "s/, /, \\n/g"
-        else
-            # Get filtered tags
-            filtered_tags=$(echo "$ALL_TAGS" | sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' | awk -F',' -v keyword="$SENSOR_PLATFORM" '{for (i=1; i<=NF; i++) if ($i ~ keyword) print $i}')
-            # Reformat back into JSON array
-            formatted_tags=$(echo "$filtered_tags" | paste -sd, - | awk '{print "[" $0 "]"}')
-            # Print tags by replacing the original tags array with the filtered tags
-            echo "$ALL_TAGS" | sed "s/\"tags\" *: *\[[^]]*\]/\"tags\": $formatted_tags/" | sed "s/, /, \\n/g"
-        fi ;;
+        list_tags ;;
         *skopeo)
         die "Please use docker runtime to list tags" ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
@@ -426,8 +439,7 @@ case "${CONTAINER_TOOL}" in
         *podman)
         LATESTSENSOR=$($CONTAINER_TOOL image search --list-tags --limit 100 "$cs_registry/$registry_opts/$repository_name" | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | tail -1 | cut -d" " -f3);;
         *docker)
-        REGISTRYBEARER=$(echo "-u $ART_USERNAME:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-        LATESTSENSOR=$(curl_command "$REGISTRYBEARER" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list" | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
+        LATESTSENSOR=$(list_tags | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
         *skopeo)
         LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$registry_opts/$repository_name" | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1) ;;
         *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
