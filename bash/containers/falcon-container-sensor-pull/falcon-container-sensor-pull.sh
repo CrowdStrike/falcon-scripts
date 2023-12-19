@@ -294,7 +294,7 @@ else
     CONTAINER_TOOL=$(command -v "$CONTAINER_TOOL")
 fi
 
-if grep -qw "skopeo" "$CONTAINER_TOOL" && [ -z "${COPY}" ] ; then
+if grep -qw "skopeo" "$CONTAINER_TOOL" && [ -z "${COPY}" ] && [ -z "${LISTTAGS}" ] ; then
     echo "-c, --copy <REGISTRY/NAMESPACE> must also be set when using skopeo as a runtime"
     exit 1
 fi
@@ -422,28 +422,12 @@ if [ "${ERROR}" = "true" ]; then
 fi
 
 if [ "$LISTTAGS" ] ; then
-    case "${CONTAINER_TOOL}" in
-        *podman)
-        die "Please use docker runtime to list tags" ;;
-        *docker)
-        list_tags ;;
-        *skopeo)
-        die "Please use docker runtime to list tags" ;;
-        *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
-    esac
+    list_tags
     exit 0
 fi
 
 #Get latest sensor version
-case "${CONTAINER_TOOL}" in
-        *podman)
-        LATESTSENSOR=$($CONTAINER_TOOL image search --list-tags --limit 100 "$cs_registry/$registry_opts/$repository_name" | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | tail -1 | cut -d" " -f3);;
-        *docker)
-        LATESTSENSOR=$(list_tags | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
-        *skopeo)
-        LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$registry_opts/$repository_name" | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1) ;;
-        *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
-esac
+LATESTSENSOR=$(list_tags | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1)
 
 #Construct full image path
 FULLIMAGEPATH="$cs_registry/$registry_opts/$repository_name:${LATESTSENSOR}"
