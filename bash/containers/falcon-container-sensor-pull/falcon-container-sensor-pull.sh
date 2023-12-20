@@ -218,30 +218,87 @@ curl_command() {
     fi
 }
 
-list_tags() {
-    # Returns the tags for the specified sensor type
-    REGISTRYBEARER=$(echo "-u $ART_USERNAME:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-    # Get list of all tags
-    ALL_TAGS=$(curl_command "$REGISTRYBEARER" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list")
+# Formats tags into a JSON array
+format_tags_to_json() {
+    local tags_json=$(
+        echo "$1" |
+        sed -n '/"Tags": \[/,/\]/p' |
+        sed '1d;$d' |
+        tr -d ' ,' |
+        awk 'ORS=", "' |
+        sed 's/, $/\n/' |
+        sed 's/^/"tags" : [ /;s/$/ ]/'
+    )
+    echo "{
+  \"name\": \"${SENSOR_TYPE}\",
+  ${tags_json}
+}"
+}
 
-    # If KPA, we need to sort in the same fashion the other images default to
+fetch_tags() {
+    local container_tool=$1
+
+    case "${container_tool}" in
+        *podman)
+            local podman_tags=$($container_tool image search --list-tags --format json --limit 100 "$cs_registry/$registry_opts/$repository_name")
+            echo $(format_tags_to_json "$podman_tags")
+            ;;
+        *docker)
+            local registry_bearer=$(echo "-u $ART_USERNAME:$ART_PASSWORD" |
+                curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- |
+                json_value "token" |
+                sed 's/ *$//g' | sed 's/^ *//g')
+            echo $(curl_command "$registry_bearer" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list")
+            ;;
+        *skopeo)
+            local skopeo_tags=$($container_tool list-tags "docker://$cs_registry/$registry_opts/$repository_name")
+            echo $(format_tags_to_json "$skopeo_tags")
+            ;;
+        *)
+            die "Unrecognized option: ${container_tool}"
+            ;;
+    esac
+}
+
+format_tags() {
+    # Formats tags and handles sorting for KPA
+    local all_tags=$1
+
     if [ "${SENSOR_TYPE}" = "kpagent" ]; then
-        # No arch needed on KPA
-        _tags=$(echo "$ALL_TAGS" | sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' | \
-                tr -d '"' | tr ',' '\n' | \
-                awk -F. '{ printf "%05d.%05d.%05d\n", $1, $2, $3 }' | \
-                sort | \
-                awk -F. '{ printf " \"%d.%d.%d\"\n", $1+0, $2+0, $3+0 }')
+        echo "$all_tags" |
+            sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
+            tr -d '"' | tr ',' '\n' |
+            awk -F. '{ printf "%05d.%05d.%05d\n", $1, $2, $3 }' |
+            sort |
+            awk -F. '{ printf "\"%d.%d.%d\"\n", $1+0, $2+0, $3+0 }'
     else
-        # Filter based on platform (if specified)
-        _tags=$(echo "$ALL_TAGS" | sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' | \
-                awk -F',' -v keyword="$SENSOR_PLATFORM" '{for (i=1; i<=NF; i++) if ($i ~ keyword) print $i}')
+        echo "$all_tags" |
+            sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
+            awk -F',' -v keyword="$SENSOR_PLATFORM" '{for (i=1; i<=NF; i++) if ($i ~ keyword) print $i}'
     fi
+}
 
-    # Reformat back into JSON array
-    formatted_tags=$(echo "$_tags" | paste -sd, - | awk '{print "[" $0 "]"}')
-    # Print tags by replacing the original tags array with the filtered tags
-    echo "$ALL_TAGS" | sed "s/\"tags\" *: *\[[^]]*\]/\"tags\": $formatted_tags/" | sed "s/, /, \\n/g"
+print_formatted_tags() {
+    local formatted_tags=$1
+
+    printf "{\n  \"name\": \"${SENSOR_TYPE}\",\n  \"tags\": [\n"
+    local first=true
+    while IFS= read -r tag; do
+        if [ "$first" = true ]; then
+            printf "    %s" "$tag"
+            first=false
+        else
+            printf ",\n    %s" "$tag"
+        fi
+    done <<< "$formatted_tags"
+    printf "\n  ]\n}\n"
+}
+
+list_tags() {
+    local all_tags=$(fetch_tags "${CONTAINER_TOOL}")
+    local formatted_tags=$(format_tags "$all_tags")
+
+    print_formatted_tags "$formatted_tags" "${SENSOR_TYPE}"
 }
 
 # shellcheck disable=SC2086
