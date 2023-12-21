@@ -6,8 +6,7 @@ Description: Bash script to copy Falcon DaemonSet Sensor, Container Sensor, Kube
 
 set -e
 
-usage()
-{
+usage() {
     echo "usage: $0
 
 Required Flags:
@@ -44,22 +43,13 @@ deprecated() {
     echo "WARNING: $* is deprecated and will be removed in a future release"
 }
 
-cs_container() {
-    case "${CONTAINER_TOOL}" in
-        skopeo)      echo "skopeo";;
-        podman)      echo "podman";;
-        docker)      echo "docker";;
-        *)           die "Unrecognized option: ${CONTAINER_TOOL}";;
-    esac
-}
-
 cs_cloud() {
     case "${FALCON_CLOUD}" in
-        us-1)      echo "api.crowdstrike.com";;
-        us-2)      echo "api.us-2.crowdstrike.com";;
-        eu-1)      echo "api.eu-1.crowdstrike.com";;
-        us-gov-1)  echo "api.laggar.gcw.crowdstrike.com";;
-        *)         die "Unrecognized option: ${FALCON_CLOUD}";;
+        us-1) echo "api.crowdstrike.com" ;;
+        us-2) echo "api.us-2.crowdstrike.com" ;;
+        eu-1) echo "api.eu-1.crowdstrike.com" ;;
+        us-gov-1) echo "api.laggar.gcw.crowdstrike.com" ;;
+        *) die "Unrecognized region option: ${FALCON_CLOUD}" ;;
     esac
 }
 
@@ -69,116 +59,115 @@ json_value() {
     awk -F"[,:}]" '{for(i=1;i<=NF;i++){if($i~/'"$KEY"'\042/){print $(i+1)}}}' | tr -d '"' | sed -n "${num}p"
 }
 
-
 while [ $# != 0 ]; do
-case "$1" in
-    -u|--client-id)
-    if [ -n "${2:-}" ] ; then
-        FALCON_CLIENT_ID="${2}"
-        shift
-    fi
-    ;;
-    -s|--client-secret)
-    if [ -n "${2:-}" ]; then
-        FALCON_CLIENT_SECRET="${2}"
-        shift
-    fi
-    ;;
-    -r|--region)
-    if [ -n "${2:-}" ]; then
-        FALCON_CLOUD="${2}"
-        shift
-    fi
-    ;;
-    -f|--cid)
-    if [ -n "${2:-}" ]; then
-        FALCON_CID="${2}"
-        shift
-    fi
-    ;;
-    -c|--copy)
-    if [ -n "${2}" ]; then
-        COPY="${2}"
-        shift
-    fi
-    ;;
-    -v|--version)
-    if [ -n "${2:-}" ]; then
-        SENSOR_VERSION="${2}"
-        shift
-    fi
-    ;;
-    -p|--platform)
-    if [ -n "${2:-}" ]; then
-        SENSOR_PLATFORM="${2}"
-        shift
-    fi
-    ;;
-    --runtime)
-    if [ -n "${2}" ]; then
-        CONTAINER_TOOL="${2}"
-        shift
-    fi
-    ;;
-    --dump-credentials)
-    if [ -n "${1}" ]; then
-        CREDS=true
-    fi
-    ;;
-    --get-pull-token)
-    if [ -n "${1}" ]; then
-        PULLTOKEN=true
-    fi
-    ;;
-    --list-tags)
-    if [ -n "${1}" ]; then
-        LISTTAGS=true
-    fi
-    ;;
-    --allow-legacy-curl)
-    if [ -n "${1}" ]; then
-        ALLOW_LEGACY_CURL=true
-    fi
-    ;;
-    -n|--node)
-    if [ -n "${1}" ]; then
-        deprecated "-n|--node"
-        SENSOR_TYPE="falcon-sensor"
-    fi
-    ;;
-    --kubernetes-admission-controller)
-    if [ -n "${1}" ]; then
-        deprecated "--kubernetes-admission-controller"
-        SENSOR_TYPE="falcon-kac"
-    fi
-    ;;
-    --kubernetes-protection-agent)
-    if [ -n "${1}" ]; then
-        deprecated "--kubernetes-protection-agent"
-        SENSOR_TYPE="kpagent"
-    fi
-    ;;
-    -t|--type)
-    if [ -n "${2}" ]; then
-        SENSOR_TYPE="${2}"
-        shift
-    fi
-    ;;
-    -h|--help)
-    if [ -n "${1}" ]; then
-        usage
-    fi
-    ;;
-    --) # end argument parsing
+    case "$1" in
+        -u | --client-id)
+            if [ -n "${2:-}" ]; then
+                FALCON_CLIENT_ID="${2}"
+                shift
+            fi
+            ;;
+        -s | --client-secret)
+            if [ -n "${2:-}" ]; then
+                FALCON_CLIENT_SECRET="${2}"
+                shift
+            fi
+            ;;
+        -r | --region)
+            if [ -n "${2:-}" ]; then
+                FALCON_CLOUD="${2}"
+                shift
+            fi
+            ;;
+        -f | --cid)
+            if [ -n "${2:-}" ]; then
+                FALCON_CID="${2}"
+                shift
+            fi
+            ;;
+        -c | --copy)
+            if [ -n "${2}" ]; then
+                COPY="${2}"
+                shift
+            fi
+            ;;
+        -v | --version)
+            if [ -n "${2:-}" ]; then
+                SENSOR_VERSION="${2}"
+                shift
+            fi
+            ;;
+        -p | --platform)
+            if [ -n "${2:-}" ]; then
+                SENSOR_PLATFORM="${2}"
+                shift
+            fi
+            ;;
+        --runtime)
+            if [ -n "${2}" ]; then
+                CONTAINER_TOOL="${2}"
+                shift
+            fi
+            ;;
+        --dump-credentials)
+            if [ -n "${1}" ]; then
+                CREDS=true
+            fi
+            ;;
+        --get-pull-token)
+            if [ -n "${1}" ]; then
+                PULLTOKEN=true
+            fi
+            ;;
+        --list-tags)
+            if [ -n "${1}" ]; then
+                LISTTAGS=true
+            fi
+            ;;
+        --allow-legacy-curl)
+            if [ -n "${1}" ]; then
+                ALLOW_LEGACY_CURL=true
+            fi
+            ;;
+        -n | --node)
+            if [ -n "${1}" ]; then
+                deprecated "-n|--node"
+                SENSOR_TYPE="falcon-sensor"
+            fi
+            ;;
+        --kubernetes-admission-controller)
+            if [ -n "${1}" ]; then
+                deprecated "--kubernetes-admission-controller"
+                SENSOR_TYPE="falcon-kac"
+            fi
+            ;;
+        --kubernetes-protection-agent)
+            if [ -n "${1}" ]; then
+                deprecated "--kubernetes-protection-agent"
+                SENSOR_TYPE="kpagent"
+            fi
+            ;;
+        -t | --type)
+            if [ -n "${2}" ]; then
+                SENSOR_TYPE="${2}"
+                shift
+            fi
+            ;;
+        -h | --help)
+            if [ -n "${1}" ]; then
+                usage
+            fi
+            ;;
+        --) # end argument parsing
+            shift
+            break
+            ;;
+        -*) # unsupported flags
+            echo >&2 "ERROR: Unsupported flag: '${1}'"
+            usage
+            ;;
+    esac
     shift
-    break
-    ;;
-    -*) # unsupported flags
-    >&2 echo "ERROR: Unsupported flag: '${1}'"
-    usage
-    ;;
-esac
-shift
 done
 
 # Check if curl is greater or equal to 7.55
@@ -197,13 +186,13 @@ old_curl=$(
 # Old curl print warning message
 if [ "$old_curl" -eq 0 ]; then
     if [ "${ALLOW_LEGACY_CURL}" != "true" ]; then
-    echo """
+        echo """
 WARNING: Your version of curl does not support the ability to pass headers via stdin.
 For security considerations, we strongly recommend upgrading to curl 7.55.0 or newer.
 
 To bypass this warning, set the optional flag --allow-legacy-curl
 """
-    exit 1
+        exit 1
     fi
 fi
 
@@ -224,12 +213,12 @@ format_tags_to_json() {
 
     tags_json=$(
         echo "$raw_tags" |
-        sed -n '/"Tags": \[/,/\]/p' |
-        sed '1d;$d' |
-        tr -d ' ,' |
-        awk 'ORS=", "' |
-        sed 's/, $/\n/' |
-        sed 's/^/"tags" : [ /;s/$/ ]/'
+            sed -n '/"Tags": \[/,/\]/p' |
+            sed '1d;$d' |
+            tr -d ' ,' |
+            awk 'ORS=", "' |
+            sed 's/, $/\n/' |
+            sed 's/^/"tags" : [ /;s/$/ ]/'
     )
     # The output should mimic the same format as the Docker (curl) output
     echo "{
@@ -310,6 +299,14 @@ FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
 
 # shellcheck disable=SC2086
 CONTAINER_TOOL=$(echo ${CONTAINER_TOOL:-docker} | tr '[:upper:]' '[:lower:]')
+
+# Validate container tool
+case "${CONTAINER_TOOL}" in
+    skopeo | docker | podman) ;;
+    *) die "Unrecognized container runtime: ${CONTAINER_TOOL}" ;;
+esac
+
+
 # shellcheck disable=SC2005,SC2001
 cs_registry="registry.crowdstrike.com"
 if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
@@ -333,10 +330,10 @@ fi
 
 # Check if SENSOR_TYPE is set to a valid value
 case "${SENSOR_TYPE}" in
-    falcon-container|falcon-sensor|falcon-kac|kpagent) ;;
+    falcon-container | falcon-sensor | falcon-kac | kpagent) ;;
     *) die """
     Unrecognized sensor type: ${SENSOR_TYPE}
-    Valid values are [falcon-container|falcon-sensor|falcon-kac|kpagent]""";;
+    Valid values are [falcon-container|falcon-sensor|falcon-kac|kpagent]""" ;;
 esac
 
 #Check all mandatory variables set
@@ -345,33 +342,33 @@ VARIABLES="FALCON_CLIENT_ID FALCON_CLIENT_SECRET"
     for VAR_NAME in $VARIABLES; do
         [ -z "$(eval "echo \"\$$VAR_NAME\"")" ] && echo "$VAR_NAME is not configured!" && VAR_UNSET=true
     done
-        [ -n "$VAR_UNSET" ] && usage
+    [ -n "$VAR_UNSET" ] && usage
 }
 
-if ! command -v "$CONTAINER_TOOL" > /dev/null 2>&1; then
+if ! command -v "$CONTAINER_TOOL" >/dev/null 2>&1; then
     echo "The '$CONTAINER_TOOL' command is missing or invalid. Please install it before continuing. Aborting..."
     exit 2
 else
     CONTAINER_TOOL=$(command -v "$CONTAINER_TOOL")
 fi
 
-if grep -qw "skopeo" "$CONTAINER_TOOL" && [ -z "${COPY}" ] && [ -z "${LISTTAGS}" ] ; then
+if grep -qw "skopeo" "$CONTAINER_TOOL" && [ -z "${COPY}" ] && [ -z "${LISTTAGS}" ]; then
     echo "-c, --copy <REGISTRY/NAMESPACE> must also be set when using skopeo as a runtime"
     exit 1
 fi
 
 response_headers=$(mktemp)
 cs_falcon_oauth_token=$(
-    if ! command -v curl > /dev/null 2>&1; then
+    if ! command -v curl >/dev/null 2>&1; then
         die "The 'curl' command is missing. Please install it before continuing. Aborting..."
     fi
 
-    token_result=$(echo "client_id=$FALCON_CLIENT_ID&client_secret=$FALCON_CLIENT_SECRET" | \
-                   curl -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
-                       -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
-                       -H 'User-Agent: crowdstrike-falcon-scripts/1.1.8' \
-                       --dump-header "$response_headers" \
-                       --data @-)
+    token_result=$(echo "client_id=$FALCON_CLIENT_ID&client_secret=$FALCON_CLIENT_SECRET" |
+        curl -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
+            -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
+            -H 'User-Agent: crowdstrike-falcon-scripts/1.1.8' \
+            --dump-header "$response_headers" \
+            --data @-)
     token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
     if [ -z "$token" ]; then
         die "Unable to obtain CrowdStrike Falcon OAuth Token. Response was $token_result"
@@ -434,7 +431,7 @@ if [ "${SENSOR_TYPE}" = "kpagent" ]; then
     raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/kubernetes-protection/entities/integration/agent/v1?cluster_name=clustername&is_self_managed_cluster=true")
     docker_api_token=$(echo "$raw_docker_api_token" | awk '/dockerAPIToken:/ {print $2}')
 else
-    raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1" )
+    raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1")
     docker_api_token=$(echo "$raw_docker_api_token" | json_value "token")
 fi
 ART_PASSWORD=$(echo "$docker_api_token" | sed 's/ *$//g' | sed 's/^ *//g')
@@ -454,7 +451,7 @@ if [ "$PULLTOKEN" ]; then
     exit 0
 fi
 
-if [ -z "$ART_PASSWORD" ] ; then
+if [ -z "$ART_PASSWORD" ]; then
     die "Failed to retrieve the CrowdStrike registry password. Response from API:
 $raw_docker_api_token
 
@@ -464,7 +461,7 @@ Ensure the following:
   - Cloud Security is enabled in your tenant."
 fi
 
-if [ "$CREDS" ] ; then
+if [ "$CREDS" ]; then
     echo "CS Registry Username: ${ART_USERNAME}"
     echo "CS Registry Password: ${ART_PASSWORD}"
     # quitting no need to perform a registry login
@@ -482,7 +479,7 @@ if [ "${ERROR}" = "true" ]; then
     die "ERROR: ${CONTAINER_TOOL} login failed. Error message: ${error_message}"
 fi
 
-if [ "$LISTTAGS" ] ; then
+if [ "$LISTTAGS" ]; then
     list_tags
     exit 0
 fi
@@ -493,7 +490,7 @@ LATESTSENSOR=$(list_tags | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | gr
 #Construct full image path
 FULLIMAGEPATH="$cs_registry/$registry_opts/$repository_name:${LATESTSENSOR}"
 
-if grep -qw "skopeo" "$CONTAINER_TOOL" ; then
+if grep -qw "skopeo" "$CONTAINER_TOOL"; then
     "$CONTAINER_TOOL" copy "docker://$FULLIMAGEPATH" "docker://$COPY/$repository_name:$LATESTSENSOR"
 else
     #Pull the container image locally
