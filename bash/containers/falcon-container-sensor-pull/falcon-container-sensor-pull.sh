@@ -218,30 +218,91 @@ curl_command() {
     fi
 }
 
-list_tags() {
-    # Returns the tags for the specified sensor type
-    REGISTRYBEARER=$(echo "-u $ART_USERNAME:$ART_PASSWORD" | curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-    # Get list of all tags
-    ALL_TAGS=$(curl_command "$REGISTRYBEARER" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list")
+# Formats tags into a JSON array (Podman/Skopeo Only)
+format_tags_to_json() {
+    local raw_tags=$1
 
-    # If KPA, we need to sort in the same fashion the other images default to
+    tags_json=$(
+        echo "$raw_tags" |
+        sed -n '/"Tags": \[/,/\]/p' |
+        sed '1d;$d' |
+        tr -d ' ,' |
+        awk 'ORS=", "' |
+        sed 's/, $/\n/' |
+        sed 's/^/"tags" : [ /;s/$/ ]/'
+    )
+    # The output should mimic the same format as the Docker (curl) output
+    echo "{
+  \"name\": \"${SENSOR_TYPE}\",
+  ${tags_json}
+}"
+}
+
+fetch_tags() {
+    local container_tool=$1
+
+    case "${container_tool}" in
+        *podman)
+            podman_tags=$($container_tool image search --list-tags --format json --limit 100 "$cs_registry/$registry_opts/$repository_name")
+            format_tags_to_json "$podman_tags"
+            ;;
+        *docker)
+            registry_bearer=$(echo "-u $ART_USERNAME:$ART_PASSWORD" |
+                curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- |
+                json_value "token" |
+                sed 's/ *$//g' | sed 's/^ *//g')
+            curl_command "$registry_bearer" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list"
+            ;;
+        *skopeo)
+            skopeo_tags=$($container_tool list-tags "docker://$cs_registry/$registry_opts/$repository_name")
+            format_tags_to_json "$skopeo_tags"
+            ;;
+        *)
+            die "Unrecognized option: ${container_tool}"
+            ;;
+    esac
+}
+
+format_tags() {
+    # Formats tags and handles sorting for KPA
+    local all_tags=$1
+
     if [ "${SENSOR_TYPE}" = "kpagent" ]; then
-        # No arch needed on KPA
-        _tags=$(echo "$ALL_TAGS" | sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' | \
-                tr -d '"' | tr ',' '\n' | \
-                awk -F. '{ printf "%05d.%05d.%05d\n", $1, $2, $3 }' | \
-                sort | \
-                awk -F. '{ printf " \"%d.%d.%d\"\n", $1+0, $2+0, $3+0 }')
+        echo "$all_tags" |
+            sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
+            tr -d '"' | tr ',' '\n' |
+            awk -F. '{ printf "%05d.%05d.%05d\n", $1, $2, $3 }' |
+            sort |
+            awk -F. '{ printf "\"%d.%d.%d\"\n", $1+0, $2+0, $3+0 }'
     else
-        # Filter based on platform (if specified)
-        _tags=$(echo "$ALL_TAGS" | sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' | \
-                awk -F',' -v keyword="$SENSOR_PLATFORM" '{for (i=1; i<=NF; i++) if ($i ~ keyword) print $i}')
+        echo "$all_tags" |
+            sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
+            awk -F',' -v keyword="$SENSOR_PLATFORM" '{for (i=1; i<=NF; i++) if ($i ~ keyword) print $i}'
     fi
+}
 
-    # Reformat back into JSON array
-    formatted_tags=$(echo "$_tags" | paste -sd, - | awk '{print "[" $0 "]"}')
-    # Print tags by replacing the original tags array with the filtered tags
-    echo "$ALL_TAGS" | sed "s/\"tags\" *: *\[[^]]*\]/\"tags\": $formatted_tags/" | sed "s/, /, \\n/g"
+print_formatted_tags() {
+    local formatted_tags=$1
+
+    # Print a JSON object with tags properly formatted
+    printf "{\n  \"name\": \"%s\",\n  \"tags\": [\n" "${SENSOR_TYPE}"
+    first=true
+    echo "$formatted_tags" | while IFS= read -r tag; do
+        if [ "$first" = true ]; then
+            printf "    %s" "$tag"
+            first=false
+        else
+            printf ",\n    %s" "$tag"
+        fi
+    done
+    printf "\n  ]\n}\n"
+}
+
+list_tags() {
+    all_tags=$(fetch_tags "${CONTAINER_TOOL}")
+    formatted_tags=$(format_tags "$all_tags")
+
+    print_formatted_tags "$formatted_tags" "${SENSOR_TYPE}"
 }
 
 # shellcheck disable=SC2086
@@ -294,7 +355,7 @@ else
     CONTAINER_TOOL=$(command -v "$CONTAINER_TOOL")
 fi
 
-if grep -qw "skopeo" "$CONTAINER_TOOL" && [ -z "${COPY}" ] ; then
+if grep -qw "skopeo" "$CONTAINER_TOOL" && [ -z "${COPY}" ] && [ -z "${LISTTAGS}" ] ; then
     echo "-c, --copy <REGISTRY/NAMESPACE> must also be set when using skopeo as a runtime"
     exit 1
 fi
@@ -422,28 +483,12 @@ if [ "${ERROR}" = "true" ]; then
 fi
 
 if [ "$LISTTAGS" ] ; then
-    case "${CONTAINER_TOOL}" in
-        *podman)
-        die "Please use docker runtime to list tags" ;;
-        *docker)
-        list_tags ;;
-        *skopeo)
-        die "Please use docker runtime to list tags" ;;
-        *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
-    esac
+    list_tags
     exit 0
 fi
 
 #Get latest sensor version
-case "${CONTAINER_TOOL}" in
-        *podman)
-        LATESTSENSOR=$($CONTAINER_TOOL image search --list-tags --limit 100 "$cs_registry/$registry_opts/$repository_name" | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | tail -1 | cut -d" " -f3);;
-        *docker)
-        LATESTSENSOR=$(list_tags | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1);;
-        *skopeo)
-        LATESTSENSOR=$($CONTAINER_TOOL list-tags "docker://$cs_registry/$registry_opts/$repository_name" | grep "$SENSOR_VERSION" | grep "$SENSOR_PLATFORM" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1) ;;
-        *)         die "Unrecognized option: ${CONTAINER_TOOL}";;
-esac
+LATESTSENSOR=$(list_tags | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1)
 
 #Construct full image path
 FULLIMAGEPATH="$cs_registry/$registry_opts/$repository_name:${LATESTSENSOR}"
