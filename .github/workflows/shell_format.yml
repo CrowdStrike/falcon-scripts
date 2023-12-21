@@ -17,7 +17,7 @@ jobs:
     - name: Run shfmt with reviewdog
       uses: reviewdog/action-shfmt@v1.0.2
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        fail_on_error: true
         workdir: 'bash'
         shfmt_flags: '-i 4 -ci'
 
