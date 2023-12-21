@@ -33,12 +33,20 @@ main() {
         print_usage
         exit 1
     fi
-    echo -n 'Check if Falcon Sensor is running ... '; cs_sensor_is_running; echo '[ Not present ]'
-    echo -n 'Falcon Sensor Install  ... '; cs_sensor_install;  echo '[ Ok ]'
+    echo -n 'Check if Falcon Sensor is running ... '
+    cs_sensor_is_running
+    echo '[ Not present ]'
+    echo -n 'Falcon Sensor Install  ... '
+    cs_sensor_install
+    echo '[ Ok ]'
     # Run if FALCON_INSTALL_ONLY is not set or is set to false
     if [ -z "$FALCON_INSTALL_ONLY" ] || [ "${FALCON_INSTALL_ONLY}" = "false" ]; then
-        echo -n 'Falcon Sensor Register ... '; cs_sensor_register; echo '[ Ok ]'
-        echo -n 'Falcon Sensor Restart  ... '; cs_sensor_restart;  echo '[ Ok ]'
+        echo -n 'Falcon Sensor Register ... '
+        cs_sensor_register
+        echo '[ Ok ]'
+        echo -n 'Falcon Sensor Restart  ... '
+        cs_sensor_restart
+        echo '[ Ok ]'
     fi
     echo 'Falcon Sensor installed successfully.'
 }
@@ -95,7 +103,7 @@ cs_sensor_register() {
 }
 
 cs_sensor_is_running() {
-    if pgrep  -u root falcon-sensor >/dev/null 2>&1 ; then
+    if pgrep -u root falcon-sensor >/dev/null 2>&1; then
         echo "sensor is already running... exiting"
         exit 0
     fi
@@ -114,7 +122,8 @@ cs_sensor_restart() {
 cs_sensor_install() {
     tempdir=$(mktemp -d)
 
-    tempdir_cleanup() { rm -rf "$tempdir"; }; trap tempdir_cleanup EXIT
+    tempdir_cleanup() { rm -rf "$tempdir"; }
+    trap tempdir_cleanup EXIT
 
     package_name=$(cs_sensor_download "$tempdir")
     os_install_package "$package_name"
@@ -126,14 +135,14 @@ cs_sensor_remove() {
     remove_package() {
         pkg="$1"
 
-        if type dnf > /dev/null 2>&1; then
+        if type dnf >/dev/null 2>&1; then
             dnf remove -q -y "$pkg" || rpm -e --nodeps "$pkg"
-        elif type yum > /dev/null 2>&1; then
+        elif type yum >/dev/null 2>&1; then
             yum remove -q -y "$pkg" || rpm -e --nodeps "$pkg"
-        elif type zypper > /dev/null 2>&1; then
+        elif type zypper >/dev/null 2>&1; then
             zypper --quiet remove -y "$pkg" || rpm -e --nodeps "$pkg"
-        elif type apt > /dev/null 2>&1; then
-            DEBIAN_FRONTEND=noninteractive apt purge -y "$pkg" > /dev/null
+        elif type apt >/dev/null 2>&1; then
+            DEBIAN_FRONTEND=noninteractive apt purge -y "$pkg" >/dev/null
         else
             rpm -e --nodeps "$pkg"
         fi
@@ -147,7 +156,7 @@ cs_sensor_policy_version() {
 
     sensor_update_policy=$(
         curl_command -G "https://$(cs_cloud)/policy/combined/sensor-update/v2" \
-             --data-urlencode "filter=platform_name:\"Linux\"+name.raw:\"$cs_policy_name\""
+            --data-urlencode "filter=platform_name:\"Linux\"+name.raw:\"$cs_policy_name\""
     )
 
     handle_curl_error $?
@@ -168,7 +177,7 @@ cs_sensor_policy_version() {
     # shellcheck disable=SC2086
     set -- $sensor_update_versions
     if [ "$(echo "$sensor_update_versions" | wc -w)" -gt 1 ]; then
-        if [ "$cs_os_arch" = "aarch64" ] ; then
+        if [ "$cs_os_arch" = "aarch64" ]; then
             echo "$2"
         else
             echo "$1"
@@ -217,8 +226,8 @@ cs_sensor_download() {
     # Set the index accordingly (the json_value expects and index+1 value)
     INDEX=$((cs_falcon_sensor_version_dec + 1))
 
-    sha=$(echo "$existing_installers" | json_value "sha256" "$INDEX" \
-              | sed 's/ *$//g' | sed 's/^ *//g')
+    sha=$(echo "$existing_installers" | json_value "sha256" "$INDEX" |
+        sed 's/ *$//g' | sed 's/^ *//g')
     if [ -z "$sha" ]; then
         die "Unable to identify a sensor installer matching: $cs_os_name, version: $cs_os_version, index: N-$cs_falcon_sensor_version_dec"
     fi
@@ -241,11 +250,11 @@ os_install_package() {
 
         cs_falcon_gpg_import
 
-        if type dnf > /dev/null 2>&1; then
+        if type dnf >/dev/null 2>&1; then
             dnf install -q -y "$pkg" || rpm -ivh --nodeps "$pkg"
-        elif type yum > /dev/null 2>&1; then
+        elif type yum >/dev/null 2>&1; then
             yum install -q -y "$pkg" || rpm -ivh --nodeps "$pkg"
-        elif type zypper > /dev/null 2>&1; then
+        elif type zypper >/dev/null 2>&1; then
             zypper --quiet install -y "$pkg" || rpm -ivh --nodeps "$pkg"
         else
             rpm -ivh --nodeps "$pkg"
@@ -253,17 +262,18 @@ os_install_package() {
     }
     # shellcheck disable=SC2221,SC2222
     case "${os_name}" in
-        Amazon|CentOS|Oracle|RHEL|Rocky|AlmaLinux|SLES)
+        Amazon | CentOS | Oracle | RHEL | Rocky | AlmaLinux | SLES)
             rpm_install_package "$pkg"
             ;;
         Debian)
-            DEBIAN_FRONTEND=noninteractive apt-get -qq install -y "$pkg" > /dev/null
+            DEBIAN_FRONTEND=noninteractive apt-get -qq install -y "$pkg" >/dev/null
             ;;
         Ubuntu)
-            DEBIAN_FRONTEND=noninteractive apt-get -qq install -y "$pkg" > /dev/null
+            DEBIAN_FRONTEND=noninteractive apt-get -qq install -y "$pkg" >/dev/null
             ;;
         *)
-            die "Unrecognized OS: ${os_name}";;
+            die "Unrecognized OS: ${os_name}"
+            ;;
     esac
 }
 
@@ -329,7 +339,7 @@ EOF
             -H "content-type: application/x-amz-json-1.1" \
             -d "$request_data" \
             -H "x-amz-date: $datetime"
-            )
+    )
     handle_curl_error $?
     if ! echo "$response" | grep -q '^.*"InvalidParameters":\[\].*$'; then
         die "Unexpected response from AWS SSM Parameter Store: $response"
@@ -341,7 +351,7 @@ EOF
 
 cs_falcon_gpg_import() {
     tempfile=$(mktemp)
-    cat > "$tempfile" <<EOF
+    cat >"$tempfile" <<EOF
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 
 mQINBGDaIBgBEADXSeElUO9NmPLhkSzeN7fGW1MRbNwxgHdo+UYt9R98snUEjXqV
@@ -376,7 +386,6 @@ EOF
     rm "$tempfile"
 }
 
-
 set -e
 
 json_value() {
@@ -392,17 +401,17 @@ die() {
 
 cs_cloud() {
     case "${cs_falcon_cloud}" in
-        us-1)      echo "api.crowdstrike.com";;
-        us-2)      echo "api.us-2.crowdstrike.com";;
-        eu-1)      echo "api.eu-1.crowdstrike.com";;
-        us-gov-1)  echo "api.laggar.gcw.crowdstrike.com";;
-        *)         die "Unrecognized Falcon Cloud: ${cs_falcon_cloud}";;
+        us-1) echo "api.crowdstrike.com" ;;
+        us-2) echo "api.us-2.crowdstrike.com" ;;
+        eu-1) echo "api.eu-1.crowdstrike.com" ;;
+        us-gov-1) echo "api.laggar.gcw.crowdstrike.com" ;;
+        *) die "Unrecognized Falcon Cloud: ${cs_falcon_cloud}" ;;
     esac
 }
 
 # Check if curl is greater or equal to 7.55
 old_curl=$(
-    if ! command -v curl > /dev/null 2>&1; then
+    if ! command -v curl >/dev/null 2>&1; then
         die "The 'curl' command is missing. Please install it before continuing. Aborting..."
     fi
 
@@ -420,13 +429,13 @@ old_curl=$(
 # Old curl print warning message
 if [ "$old_curl" -eq 0 ]; then
     if [ "${ALLOW_LEGACY_CURL}" != "true" ]; then
-    echo """
+        echo """
 WARNING: Your version of curl does not support the ability to pass headers via stdin.
 For security considerations, we strongly recommend upgrading to curl 7.55.0 or newer.
 
 To bypass this warning, set the environment variable ALLOW_LEGACY_CURL=true
 """
-    exit 1
+        exit 1
     fi
 fi
 
@@ -468,7 +477,9 @@ curl_command() {
 # shellcheck disable=SC2034
 cs_uninstall=$(
     if [ "$FALCON_UNINSTALL" ]; then
-        echo -n 'Removing Falcon Sensor  ... '; cs_sensor_remove;  echo '[ Ok ]'
+        echo -n 'Removing Falcon Sensor  ... '
+        cs_sensor_remove
+        echo '[ Ok ]'
         echo 'Falcon Sensor removed successfully.'
         exit 2
     fi
@@ -495,7 +506,7 @@ os_name=$(
 os_version=$(
     version=$(cat /etc/*release | grep VERSION_ID= | awk '{ print $1 }' | awk -F'=' '{ print $2 }' | sed "s/\"//g")
     if [ -z "$version" ]; then
-        if type rpm > /dev/null 2>&1; then
+        if type rpm >/dev/null 2>&1; then
             # older systems may have *release files of different form
             version=$(rpm -qf /etc/redhat-release --queryformat '%{VERSION}' | sed 's/\([[:digit:]]\+\).*/\1/g')
         elif [ -f /etc/debian_version ]; then
@@ -516,17 +527,23 @@ cs_os_name=$(
     # shellcheck disable=SC2221,SC2222
     case "${os_name}" in
         Amazon)
-            echo "Amazon Linux";;
-        CentOS|Oracle|RHEL|Rocky|AlmaLinux)
-            echo "*RHEL*";;
+            echo "Amazon Linux"
+            ;;
+        CentOS | Oracle | RHEL | Rocky | AlmaLinux)
+            echo "*RHEL*"
+            ;;
         Debian)
-            echo "Debian";;
+            echo "Debian"
+            ;;
         SLES)
-            echo "SLES";;
+            echo "SLES"
+            ;;
         Ubuntu)
-            echo "Ubuntu";;
+            echo "Ubuntu"
+            ;;
         *)
-            die "Unrecognized OS: ${os_name}";;
+            die "Unrecognized OS: ${os_name}"
+            ;;
     esac
 )
 
@@ -537,13 +554,17 @@ cs_os_arch=$(
 cs_os_arch_filter=$(
     case "${cs_os_arch}" in
         x86_64)
-            echo "+os_version:!~\"arm64\"+os_version:!~\"zLinux\"";;
+            echo "+os_version:!~\"arm64\"+os_version:!~\"zLinux\""
+            ;;
         aarch64)
-            echo "+os_version:~\"arm64\"";;
+            echo "+os_version:~\"arm64\""
+            ;;
         s390x)
-            echo "+os_version:~\"zLinux\"";;
+            echo "+os_version:~\"zLinux\""
+            ;;
         *)
-            die "Unrecognized OS architecture: ${cs_os_arch}";;
+            die "Unrecognized OS architecture: ${cs_os_arch}"
+            ;;
     esac
 )
 
@@ -617,15 +638,15 @@ cs_sensor_policy_name=$(
 cs_falcon_sensor_version_dec=$(
     re='^[0-9]\+$'
     if [ -n "$FALCON_SENSOR_VERSION_DECREMENT" ]; then
-       if ! expr "$FALCON_SENSOR_VERSION_DECREMENT" : "$re" > /dev/null 2>&1; then
-          die "The FALCON_SENSOR_VERSION_DECREMENT must be an integer greater than or equal to 0 or less than 5. FALCON_SENSOR_VERSION_DECREMENT: \"$FALCON_SENSOR_VERSION_DECREMENT\""
-       elif [ "$FALCON_SENSOR_VERSION_DECREMENT" -lt 0 ] || [ "$FALCON_SENSOR_VERSION_DECREMENT" -gt 5 ]; then
-          die "The FALCON_SENSOR_VERSION_DECREMENT must be an integer greater than or equal to 0 or less than 5. FALCON_SENSOR_VERSION_DECREMENT: \"$FALCON_SENSOR_VERSION_DECREMENT\""
-       else
-          echo "$FALCON_SENSOR_VERSION_DECREMENT"
-       fi
+        if ! expr "$FALCON_SENSOR_VERSION_DECREMENT" : "$re" >/dev/null 2>&1; then
+            die "The FALCON_SENSOR_VERSION_DECREMENT must be an integer greater than or equal to 0 or less than 5. FALCON_SENSOR_VERSION_DECREMENT: \"$FALCON_SENSOR_VERSION_DECREMENT\""
+        elif [ "$FALCON_SENSOR_VERSION_DECREMENT" -lt 0 ] || [ "$FALCON_SENSOR_VERSION_DECREMENT" -gt 5 ]; then
+            die "The FALCON_SENSOR_VERSION_DECREMENT must be an integer greater than or equal to 0 or less than 5. FALCON_SENSOR_VERSION_DECREMENT: \"$FALCON_SENSOR_VERSION_DECREMENT\""
+        else
+            echo "$FALCON_SENSOR_VERSION_DECREMENT"
+        fi
     else
-       echo "0"
+        echo "0"
     fi
 )
 
@@ -651,12 +672,12 @@ proxy=$(
 )
 
 cs_falcon_oauth_token=$(
-    token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" | \
-                   curl -X POST -s -x "$proxy" -L "https://$(cs_cloud)/oauth2/token" \
-                       -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
-                       -H 'User-Agent: crowdstrike-falcon-scripts/1.1.8' \
-                       --dump-header "${response_headers}" \
-                       --data @-)
+    token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" |
+        curl -X POST -s -x "$proxy" -L "https://$(cs_cloud)/oauth2/token" \
+            -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
+            -H 'User-Agent: crowdstrike-falcon-scripts/1.1.8' \
+            --dump-header "${response_headers}" \
+            --data @-)
 
     handle_curl_error $?
 
@@ -700,11 +721,14 @@ if [ -n "$FALCON_APD" ]; then
     cs_falcon_apd=$(
         case "${FALCON_APD}" in
             true)
-                echo "true";;
+                echo "true"
+                ;;
             false)
-                echo "false";;
+                echo "false"
+                ;;
             *)
-                die "Unrecognized APD: ${FALCON_APD} value must be one of : [true|false]";;
+                die "Unrecognized APD: ${FALCON_APD} value must be one of : [true|false]"
+                ;;
         esac
     )
 fi
@@ -713,11 +737,14 @@ if [ -n "$FALCON_BILLING" ]; then
     cs_falcon_billing=$(
         case "${FALCON_BILLING}" in
             default)
-                echo "default";;
+                echo "default"
+                ;;
             metered)
-                echo "metered";;
+                echo "metered"
+                ;;
             *)
-                die "Unrecognized BILLING: ${FALCON_BILLING} value must be one of : [default|metered]";;
+                die "Unrecognized BILLING: ${FALCON_BILLING} value must be one of : [default|metered]"
+                ;;
         esac
     )
 fi
@@ -726,13 +753,17 @@ if [ -n "$FALCON_BACKEND" ]; then
     cs_falcon_backend=$(
         case "${FALCON_BACKEND}" in
             auto)
-                echo "auto";;
+                echo "auto"
+                ;;
             bpf)
-                echo "bpf";;
+                echo "bpf"
+                ;;
             kernel)
-                echo "kernel";;
+                echo "kernel"
+                ;;
             *)
-                die "Unrecognized BACKEND: ${FALCON_BACKEND} value must be one of : [auto|bpf|kernel]";;
+                die "Unrecognized BACKEND: ${FALCON_BACKEND} value must be one of : [auto|bpf|kernel]"
+                ;;
         esac
     )
 fi
@@ -741,17 +772,23 @@ if [ -n "$FALCON_TRACE" ]; then
     cs_falcon_trace=$(
         case "${FALCON_TRACE}" in
             none)
-                echo "none";;
+                echo "none"
+                ;;
             err)
-                echo "err";;
+                echo "err"
+                ;;
             warn)
-                echo "warn";;
+                echo "warn"
+                ;;
             info)
-                echo "info";;
+                echo "info"
+                ;;
             debug)
-                echo "debug";;
+                echo "debug"
+                ;;
             *)
-                die "Unrecognized TRACE: ${FALCON_TRACE} value must be one of : [none|err|warn|info|debug]";;
+                die "Unrecognized TRACE: ${FALCON_TRACE} value must be one of : [none|err|warn|info|debug]"
+                ;;
         esac
     )
 fi

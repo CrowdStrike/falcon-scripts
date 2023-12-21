@@ -306,7 +306,6 @@ case "${CONTAINER_TOOL}" in
     *) die "Unrecognized container runtime: ${CONTAINER_TOOL}" ;;
 esac
 
-
 # shellcheck disable=SC2005,SC2001
 cs_registry="registry.crowdstrike.com"
 if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then

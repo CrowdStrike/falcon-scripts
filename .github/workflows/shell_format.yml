@@ -1,0 +1,24 @@
+on:
+  push:
+    paths:
+      - 'bash/**'
+      - '.github/workflows/shell_format.yml'
+
+  pull_request:
+    paths:
+      - 'bash/**'
+      - '.github/workflows/shell_format.yml'
+
+jobs:
+  shfmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run shfmt with reviewdog
+      uses: reviewdog/action-shfmt@v1.0.2
+      with:
+        fail_on_error: true
+        workdir: 'bash'
+        shfmt_flags: '-i 4 -ci'
+
+
