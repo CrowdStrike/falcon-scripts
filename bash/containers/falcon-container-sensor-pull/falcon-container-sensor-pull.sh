@@ -43,22 +43,13 @@ deprecated() {
     echo "WARNING: $* is deprecated and will be removed in a future release"
 }
 
-cs_container() {
-    case "${CONTAINER_TOOL}" in
-        skopeo) echo "skopeo" ;;
-        podman) echo "podman" ;;
-        docker) echo "docker" ;;
-        *) die "Unrecognized option: ${CONTAINER_TOOL}" ;;
-    esac
-}
-
 cs_cloud() {
     case "${FALCON_CLOUD}" in
         us-1) echo "api.crowdstrike.com" ;;
         us-2) echo "api.us-2.crowdstrike.com" ;;
         eu-1) echo "api.eu-1.crowdstrike.com" ;;
         us-gov-1) echo "api.laggar.gcw.crowdstrike.com" ;;
-        *) die "Unrecognized option: ${FALCON_CLOUD}" ;;
+        *) die "Unrecognized region option: ${FALCON_CLOUD}" ;;
     esac
 }
 
@@ -308,6 +299,14 @@ FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
 
 # shellcheck disable=SC2086
 CONTAINER_TOOL=$(echo ${CONTAINER_TOOL:-docker} | tr '[:upper:]' '[:lower:]')
+
+# Validate container tool
+case "${CONTAINER_TOOL}" in
+    skopeo | docker | podman) ;;
+    *) die "Unrecognized container runtime: ${CONTAINER_TOOL}" ;;
+esac
+
+
 # shellcheck disable=SC2005,SC2001
 cs_registry="registry.crowdstrike.com"
 if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
