@@ -218,7 +218,7 @@ begin {
                     }
 
                     $BaseUrl = Get-FalconCloud($region)
-                    $BaseUrl, $Headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
+                    $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
 
                 }
                 else {
