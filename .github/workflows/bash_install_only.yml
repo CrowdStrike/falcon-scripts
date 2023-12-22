@@ -59,10 +59,10 @@ jobs:
             image_arch: x86_64
             image_name: amzn2-ami-hvm-2.0*gp2
             instance_type: t2.micro
-          - distro: sles-15-sp4
+          - distro: sles-15-sp5
             image_owner: '013907871322'
             image_arch: x86_64
-            image_name: suse-sles-15-sp4-v????????-hvm*
+            image_name: suse-sles-15-sp5-v????????-hvm*
             instance_type: t2.micro
           - distro: centos-7
             image_owner: '679593333241'
