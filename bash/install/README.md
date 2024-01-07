@@ -31,6 +31,10 @@ Ensure the following API scopes are enabled:
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 ```
+**or**
+```bash
+export FALCON_OAUTH_TOKEN="eyJhb****"
+```
 
 The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET` are not provided AND the script is running on an AWS instance, the script will try to get API credentials from the SSM store of the region.
 

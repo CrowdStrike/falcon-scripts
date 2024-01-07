@@ -8,6 +8,7 @@ CrowdStrike API credentials are needed to download Falcon sensor. The script rec
 
     - FALCON_CLIENT_ID
     - FALCON_CLIENT_SECRET
+or  - FALCON_OAUTH_TOKEN
 
 Optional:
     - FALCON_CID                        (default: auto)
@@ -672,20 +673,25 @@ proxy=$(
 )
 
 cs_falcon_oauth_token=$(
-    token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" |
-        curl -X POST -s -x "$proxy" -L "https://$(cs_cloud)/oauth2/token" \
-            -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
-            -H 'User-Agent: crowdstrike-falcon-scripts/1.1.9' \
-            --dump-header "${response_headers}" \
-            --data @-)
+    if [ -n "$FALCON_OAUTH_TOKEN" ]; then
+        token=$(echo "$FALCON_OAUTH_TOKEN" | sed 's/ *$//g' | sed 's/^ *//g')
+        echo "$token"
+    else
+        token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" |
+            curl -X POST -s -x "$proxy" -L "https://$(cs_cloud)/oauth2/token" \
+                -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
+                -H 'User-Agent: crowdstrike-falcon-scripts/1.1.9' \
+                --dump-header "${response_headers}" \
+                --data @-)
 
-    handle_curl_error $?
+        handle_curl_error $?
 
-    token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
-    if [ -z "$token" ]; then
-        die "Unable to obtain CrowdStrike Falcon OAuth Token. Response was $token_result"
+        token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
+        if [ -z "$token" ]; then
+            die "Unable to obtain CrowdStrike Falcon OAuth Token. Response was $token_result"
+        fi
+        echo "$token"
     fi
-    echo "$token"
 )
 
 region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
