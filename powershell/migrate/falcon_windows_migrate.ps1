@@ -238,7 +238,7 @@ function Write-VerboseLog ([psobject] $VerboseInput, [string] $PreMessage) {
         $message = $VerboseInput
     }
     else {
-        $message = $VerboseInput | ConvertTo-Json -Depth 10
+        $message = $VerboseInput | ConvertTo-Json -Depth 5
     }
 
     # If an pre message is provided, add it to the beginning of the message
@@ -255,7 +255,7 @@ function Write-VerboseLog ([psobject] $VerboseInput, [string] $PreMessage) {
 
 
 # Uninstall Falcon Sensor
-function Invoke-FalconUninstall ([string] $UninstallParams, [switch] $RemoveHost, [bool] $DeleteUninstaller, [string] $MaintenanceToken, [string] $UninstallTool) {
+function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $UninstallParams, [switch] $RemoveHost, [bool] $DeleteUninstaller, [string] $MaintenanceToken, [string] $UninstallTool) {
     try {
         $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
         if (!$AgentService) {
@@ -291,12 +291,12 @@ function Invoke-FalconUninstall ([string] $UninstallParams, [switch] $RemoveHost
 
         # If $oldBaseUrl and $oldCloudHeaders are null, then call the Get-HeadersAndUrl function again. Could be due to recovery mode.
         if (!$oldBaseUrl -or !$oldCloudHeaders) {
-            $oldBaseUrl, $oldCloudHeaders = Get-HeadersAndUrl -FalconClientId $OldFalconClientId -FalconClientSecret $OldFalconClientSecret -FalconCloud $OldFalconCloud -MemberCid $OldMemberCid
+            $oldBaseUrl, $oldCloudHeaders = Get-HeadersAndUrl -WebRequestParams $WebRequestParams -FalconClientId $OldFalconClientId -FalconClientSecret $OldFalconClientSecret -FalconCloud $OldFalconCloud -MemberCid $OldMemberCid
         }
 
         if ($RemoveHost) {
             Write-FalconLog -Source 'Invoke-FalconUninstall' -Message 'Removing host from Falcon console'
-            Invoke-HostVisibility -Aid $oldAid -action 'hide'
+            Invoke-HostVisibility -WebRequestParams $WebRequestParams -Aid $oldAid -action 'hide' -BaseUrl $oldBaseUrl -Headers $oldCloudHeaders
         }
 
         if ($MaintenanceToken) {
@@ -318,8 +318,7 @@ function Invoke-FalconUninstall ([string] $UninstallParams, [switch] $RemoveHost
                 try {
                     $url = "${oldBaseUrl}/policy/combined/reveal-uninstall-token/v1"
 
-                    $oldCloudHeaders['Content-Type'] = 'application/json'
-                    $response = Invoke-WebRequest -Uri $url -UseBasicParsing -Method 'POST' -Headers $oldCloudHeaders -Body $bodyJson -MaximumRedirection 0
+                    $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'POST' -Headers $oldCloudHeaders -Body $bodyJson -MaximumRedirection 0
                     $content = ConvertFrom-Json -InputObject $response.Content
                     Write-VerboseLog -VerboseInput $content -PreMessage 'GetToken - $content:'
 
@@ -383,7 +382,7 @@ function Invoke-FalconUninstall ([string] $UninstallParams, [switch] $RemoveHost
             if ($RemoveHost) {
                 $Message = 'Uninstall failed, attempting to restore host visibility...'
                 Write-FalconLog -Source 'Invoke-FalconUninstall' -Message $Message
-                Invoke-HostVisibility -Aid $oldAid -action 'show'
+                Invoke-HostVisibility -WebRequestParams $WebRequestParams -Aid $oldAid -action 'show' -BaseUrl $oldBaseUrl -Headers $oldCloudHeaders
             }
             throw $Message
         }
@@ -435,24 +434,9 @@ function Invoke-FalconUninstall ([string] $UninstallParams, [switch] $RemoveHost
 
 
 # Install Falcon Sensor
-function Invoke-FalconInstall ([string] $InstallParams, [string] $Tags, [bool] $DeleteInstaller, [string] $SensorUpdatePolicyName, [string] $ProvToken, [int] $ProvWaitTime, [string] $NewFalconCid) {
-    $newBaseUrl, $newCloudHeaders = Get-HeadersAndUrl -FalconClientId $NewFalconClientId -FalconClientSecret $NewFalconClientSecret -FalconCloud $NewFalconCloud -MemberCid $NewMemberCid
-    $Falcon = New-Object System.Net.WebClient
-    $Falcon.Encoding = [System.Text.Encoding]::UTF8
-    $Falcon.BaseAddress = $newBaseUrl
-    $newCloudHeaders.Keys | ForEach-Object {
-        $Falcon.Headers.Add($_, $newCloudHeaders[$_])
-    }
+function Invoke-FalconInstall ([hashtable] $WebRequestParams, [string] $InstallParams, [string] $Tags, [bool] $DeleteInstaller, [string] $SensorUpdatePolicyName, [string] $ProvToken, [int] $ProvWaitTime, [string] $NewFalconCid) {
+    $newBaseUrl, $newCloudHeaders = Get-HeadersAndUrl -WebRequestParams $WebRequestParams -FalconClientId $NewFalconClientId -FalconClientSecret $NewFalconClientSecret -FalconCloud $NewFalconCloud -MemberCid $NewMemberCid
 
-    $Patterns = @{
-        access_token = '"(?<name>access_token)": "(?<access_token>.*)",'
-        build        = '"(?<name>build)": "(?<version>.+)",'
-        ccid         = '(?<ccid>\w{32}-\w{2})'
-        csregion     = '(?<name>X-Cs-Region): ([a-z0-9\-]+)'
-        major_minor  = '"(?<name>sensor_version)": "(?<version>\d{1,}\.\d{1,})\.\d+",'
-        policy_id    = '"(?<name>id)": "(?<id>\w{32})",'
-        version      = '"(?<name>sensor_version)": "(?<version>.+)",'
-    }
     try {
         if (!$SensorUpdatePolicyName) {
             $SensorUpdatePolicyName = 'platform_default'
@@ -470,58 +454,41 @@ function Invoke-FalconInstall ([string] $InstallParams, [string] $Tags, [bool] $
 
         # If NewFalconCid is not provided, get it from the API
         if (!$NewFalconCid) {
-            $Response = Invoke-FalconGet '/sensors/queries/installers/ccid/v1'
-            if ($Response -match $Patterns.ccid) {
-                $Ccid = [regex]::Matches($Response, $Patterns.ccid)[0].Groups['ccid'].Value
-                $Message = "Retrieved CCID: $Ccid"
-                Write-FalconLog -Source 'Invoke-FalconInstall' -Message $Message
-                $InstallParams += " CID=$Ccid"
+            Write-FalconLog 'GetCcid' 'No CCID provided. Attempting to retrieve from the CrowdStrike Falcon API.'
+            $url = "${newBaseUrl}/sensors/queries/installers/ccid/v1"
+            $ccid_scope = @{
+                'Sensor Download' = @('Read')
             }
-            else {
-                $Message = 'Failed to retrieve CCID'
-                Write-FalconLog -Source 'Invoke-FalconInstall' -Message $Message
-                throw $Message
-            }
-        } else {
-            $Message = "Using provided CCID: $NewFalconCid"
-            Write-FalconLog -Source 'Invoke-FalconInstall' -Message $Message
+            $ccid = Get-ResourceContent -WebRequestParams $WebRequestParams -url $url -logKey 'GetCcid' -scope $ccid_scope -errorMessage "Unable to grab CCID from the CrowdStrike Falcon API." -Headers $newCloudHeaders
+
+            $message = "Retrieved CCID: $ccid"
+            Write-FalconLog 'GetCcid' $message
+            $InstallParams += " CID=$ccid"
+        }
+        else {
+            $message = "Using provided CCID: $NewFalconCid"
+            Write-FalconLog 'GetCcid' $message
             $InstallParams += " CID=$NewFalconCid"
         }
 
         # Get sensor version from policy
         $message = "Retrieving sensor policy details for '$($SensorUpdatePolicyName)'"
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
-        $Response = Invoke-FalconGet ("/policy/combined/sensor-update/v2?filter=platform_name:" +
-            "'Windows'%2Bname:'$($SensorUpdatePolicyName.ToLower())'")
-        $PolicyId = if ($Response -match $Patterns.policy_id) {
-            [regex]::Matches($Response, $Patterns.policy_id)[0].Groups['id'].Value
+        $filter = "platform_name:'Windows'+name.raw:'$($SensorUpdatePolicyName.ToLower())'"
+        $url = "${newBaseUrl}/policy/combined/sensor-update/v2?filter=$([System.Web.HttpUtility]::UrlEncode($filter)))"
+        $policy_scope = @{
+            'Sensor update policies' = @('Read')
         }
+        $policyDetails = Get-ResourceContent -WebRequestParams $WebRequestParams -url $url -logKey 'GetPolicy' -scope $policy_scope -errorMessage "Unable to fetch policy details from the CrowdStrike Falcon API." -Headers $newCloudHeaders
+        $policyId = $policyDetails.id
+        $build = $policyDetails[0].settings.build
+        $version = $policyDetails[0].settings.sensor_version
 
-        if ($Response -match $Patterns.build -or $Response -match $Patterns.version) {
-            $Build = [regex]::Matches($Response, $Patterns.build)[0].Groups['version'].Value
-            $Version = [regex]::Matches($Response, $Patterns.version)[0].Groups['version'].Value
-            $MajorMinor = if ($Version) {
-                [regex]::Matches($Response, $Patterns.major_minor)[0].Groups['version'].Value
-            }
-            $Patch = if ($Build) {
-            ($Build).Split('|')[0]
-            }
-            elseif ($Version) {
-            ($Version).Split('.')[-1]
-            }
-            if ($Patch) {
-                Write-FalconLog -Source 'Invoke-FalconInstall' -Message "Policy '$PolicyId' has build '$Patch' assigned"
-            }
-            else {
-                $Message = "Failed to determine sensor version for policy '$PolicyId'"
-                Write-FalconLog -Source 'Invoke-FalconInstall' -Message $Message
-                throw $Message
-            }
-        }
-        else {
-            $Message = "Failed to match policy name '$($SensorUpdatePolicyName.ToLower())'"
-            Write-FalconLog -Source 'Invoke-FalconInstall' -Message $Message
-            throw $Message
+        # Make sure we got a version from the policy
+        if (!$version) {
+            $message = "Unable to retrieve sensor version from policy '$($SensorUpdatePolicyName)'. Please check the policy and try again."
+            Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
+            throw $message
         }
 
         $message = "Retrieved sensor policy details: Policy ID: $policyId, Build: $build, Version: $version"
@@ -529,53 +496,51 @@ function Invoke-FalconInstall ([string] $InstallParams, [string] $Tags, [bool] $
 
         # Get installer details based on policy version
         $message = "Retrieving installer details for sensor version: '$($version)'"
-        $Response = Invoke-FalconGet "/sensors/combined/installers/v1?filter=platform:'windows'"
-        if ($Response) {
-            $BuildMatch = '\d{1,}?\.\d{1,}\.' + $Patch
-            if ($MajorMinor) {
-                $BuildMatch = "($BuildMatch|$([regex]::Escape($MajorMinor))\.\d+)"
-            }
-            $Installer = '"name": "(?<filename>(\w+\.){1,}?exe)",\n\s+"description": "(.*)?Falcon(.*)",(\n.*){1,}"sh' +
-            'a256": "(?<hash>\w{64})",(\n.*){1,}"version": "' + $BuildMatch + '"'
-            $Match = $Response.Split('}') | Where-Object { $_ -match $Installer }
-            if ($Match) {
-                $CloudHash = [regex]::Matches($Match, $Installer)[0].Groups['hash'].Value
-                $CloudFile = [regex]::Matches($Match, $Installer)[0].Groups['filename'].Value
-                $message = "Found installer: ($CloudFile) with sha256: '$CloudHash'"
-                Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
-            }
-            else {
-                $MatchValue = "'$Patch'"
-                if ($MajorMinor) {
-                    $MatchValue += " or '$MajorMinor'"
-                }
-                $Message = "Unable to match installer using $MatchValue"
-                Write-FalconLog -Source 'Invoke-FalconInstall' -Message $Message
-                throw $Message
-            }
+        Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
+        $encodedFilter = [System.Web.HttpUtility]::UrlEncode("platform:'windows'+version:'$($version)'")
+        $url = "${newBaseUrl}/sensors/combined/installers/v1?filter=${encodedFilter}"
+        $installer_scope = @{
+            'Sensor Download' = @('Read')
+        }
+        $installerDetails = Get-ResourceContent -WebRequestParams $WebRequestParams -url $url -logKey 'GetInstaller' -scope $installer_scope -errorMessage "Unable to fetch installer details from the CrowdStrike Falcon API." -Headers $newCloudHeaders
+
+        if ( $installerDetails.sha256 -and $installerDetails.name ) {
+            $cloudHash = $installerDetails.sha256
+            $cloudFile = $installerDetails.name
+            $message = "Found installer: ($cloudFile) with sha256: '$cloudHash'"
+            Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
         }
         else {
-            $Message = 'Failed to retrieve available installer list'
-            Write-FalconLog -Source 'Invoke-FalconInstall' -Message $Message
-            throw $Message
+            $message = "Failed to retrieve installer details."
+            Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
+            throw $message
         }
 
-        if ($CloudHash -and $CloudFile) {
-            $LocalFile = Join-Path -Path $WinTemp -ChildPath $CloudFile
-            Write-FalconLog -Source 'Invoke-FalconInstall' -Message "Downloading installer to: '$LocalFile'"
-            Invoke-FalconDownload "/sensors/entities/download-installer/v1?id=$CloudHash" $LocalFile
-            if (Test-Path $LocalFile) {
-                Write-FalconLog -Source 'Invoke-FalconInstall' -Message "Created '$LocalFile'"
-                $LocalHash = Get-InstallerHash $LocalFile
-            }
+        # Download the installer
+        $localFile = Join-Path -Path $WinTemp -ChildPath $cloudFile
+        Write-FalconLog -Source 'Invoke-FalconInstall' -Message "Downloading installer to: '$localFile'"
+        $url = "${newBaseUrl}/sensors/entities/download-installer/v1?id=$cloudHash"
+        Invoke-FalconDownload -WebRequestParams $WebRequestParams -url $url -Outfile $localFile -Headers $newCloudHeaders
+
+        if (Test-Path $localFile) {
+            $localHash = Get-InstallerHash -Path $localFile
+            $message = "Successfull downloaded installer '$localFile' ($localHash)"
+            Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
+        }
+        else {
+            $message = "Failed to download installer."
+            Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
+            throw $message
         }
 
+        # Compare the hashes prior to installation
         if ($CloudHash -ne $LocalHash) {
             $Message = "Hash mismatch on download (Local: $LocalHash, Cloud: $CloudHash)"
             Write-FalconLog -Source 'Invoke-FalconInstall' -Message $Message
             throw $Message
         }
 
+        # Additional parameters
         if ($ProvToken) {
             $InstallParams += " ProvToken=$ProvToken"
         }
@@ -584,8 +549,22 @@ function Invoke-FalconInstall ([string] $InstallParams, [string] $Tags, [bool] $
             $InstallParams += " GROUPING_TAGS=$Tags"
         }
 
+        if ($ProxyHost) {
+            $InstallParams += " APP_PROXYNAME=$ProxyHost"
+        }
+
+        if ($ProxyPort) {
+            $InstallParams += " APP_PROXYPORT=$ProxyPort"
+        }
+
+        # Disable proxy when switch is used
+        if ($ProxyDisable) {
+            $InstallParams += " PROXYDISABLE=0"
+        }
+
         $InstallParams += " ProvWaitTime=$ProvWaitTime"
 
+        # Begin installation
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message "Installing Falcon Sensor..."
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message "Starting installer '$LocalFile' with parameters '$InstallParams'"
 
@@ -637,21 +616,21 @@ function Invoke-FalconInstall ([string] $InstallParams, [string] $Tags, [bool] $
 }
 
 
-function Get-HeadersAndUrl([string] $FalconClientId, [string] $FalconClientSecret, [string] $MemberCid, [string] $FalconCloud) {
-    $headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
-    $baseUrl = Get-FalconCloud $FalconCloud
+function Get-HeadersAndUrl([hashtable] $WebRequestParams, [string] $FalconClientId, [string] $FalconClientSecret, [string] $MemberCid, [string] $FalconCloud) {
+    $BaseUrl = Get-FalconCloud $FalconCloud
 
-    $body = @{}
-    $body['client_id'] = $FalconClientId
-    $body['client_secret'] = $FalconClientSecret
+    $Body = @{}
+    $Body['client_id'] = $FalconClientId
+    $Body['client_secret'] = $FalconClientSecret
 
     if ($MemberCid) {
-        $body['member_cid'] = $MemberCid
+        $Body['member_cid'] = $MemberCid
     }
 
-    $baseUrl, $headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
-    $headers['Content-Type'] = 'application/json'
-    return $baseUrl, $headers
+    $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
+    $Headers['Content-Type'] = 'application/json'
+
+    return $BaseUrl, $Headers
 }
 
 
@@ -683,6 +662,50 @@ function Format-403Error([string] $url, [hashtable] $scope) {
 }
 
 
+function Get-ResourceContent([hashtable] $WebRequestParams, [string] $url, [string] $logKey, [hashtable] $scope, [string] $errorMessage, [hashtable] $Headers) {
+    try {
+        $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'GET' -Headers $Headers -MaximumRedirection 0
+        $content = ConvertFrom-Json -InputObject $response.Content
+        Write-VerboseLog -VerboseInput $content -PreMessage 'Get-ResourceContent - $content:'
+
+        if ($content.errors) {
+            $message = "Error when getting content: "
+            $message += Format-FalconResponseError -errors $content.errors
+            Write-FalconLog $logKey $message
+            throw $message
+        }
+
+        if ($content.resources) {
+            return $content.resources
+        }
+        else {
+            $message = $errorMessage
+            throw $message
+        }
+    }
+    catch {
+        Write-VerboseLog -VerboseInput $_.Exception -PreMessage 'Get-ResourceContent - CAUGHT EXCEPTION - $_.Exception:'
+        $response = $_.Exception.Response
+
+        if (!$response) {
+            $message = "Unhandled error occurred. Error: $($_.Exception.Message)"
+            throw $message
+        }
+
+        if ($response.StatusCode -eq 403) {
+            $message = Format-403Error -url $url -scope $scope
+            Write-FalconLog $logKey $message
+            throw $message
+        }
+        else {
+            $message = "Received a $($response.StatusCode) response from ${url}. Error: $($response.StatusDescription)"
+            Write-FalconLog $logKey $message
+            throw $message
+        }
+    }
+}
+
+
 function Get-AID {
     $reg_paths = 'HKLM:\SYSTEM\CrowdStrike\{9b03c1d9-3138-44ed-9fae-d9f4c034b88d}\{16e0423f-7058-48c9-a204-725362b67639}\Default', 'HKLM:\SYSTEM\CurrentControlSet\Services\CSAgent\Sim'
     $aid = $null
@@ -708,7 +731,7 @@ function Get-AID {
 # Changes the host visibility status in the CrowdStrike Falcon console
 # an action of $hide will hide the host, anything else will unhide the host
 # should only be called to hide/unhide a host that is already in the console
-function Invoke-HostVisibility ([string] $Aid, [string] $action) {
+function Invoke-HostVisibility ([hashtable] $WebRequestParams, [string] $Aid, [string] $action, [string] $BaseUrl, [hashtable] $Headers) {
     if ($action -eq 'hide') {
         $action = 'hide_host'
     }
@@ -728,10 +751,8 @@ function Invoke-HostVisibility ([string] $Aid, [string] $action) {
 
     $bodyJson = $Body | ConvertTo-Json
     try {
-        $url = "${oldBaseUrl}/devices/entities/devices-actions/v2?action_name=${action}"
-
-        $oldCloudHeaders['Content-Type'] = 'application/json'
-        $response = Invoke-WebRequest -Uri $url -UseBasicParsing -Method 'POST' -Headers $oldCloudHeaders -Body $bodyJson -MaximumRedirection 0
+        $url = "${BaseUrl}/devices/entities/devices-actions/v2?action_name=${action}"
+        $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
         $content = ConvertFrom-Json -InputObject $response.Content
         Write-VerboseLog -VerboseInput $content -PreMessage 'Invoke-HostVisibility - $content:'
 
@@ -793,30 +814,38 @@ function Get-InstallerHash ([string] $Path) {
     return $Output
 }
 
-
-function Invoke-FalconDownload ([string] $Path, [string] $Outfile) {
-    $Falcon.Headers.Add('Accept', 'application/octet-stream')
-    $Falcon.DownloadFile($Path, $Outfile)
-}
-
-
-function Invoke-FalconGet ([string] $Path) {
-    # $Falcon.Headers.Add('Accept', 'application/json')
-    $Request = $Falcon.OpenRead($Path)
-    $Stream = New-Object System.IO.StreamReader $Request
-    $Output = $Stream.ReadToEnd()
-    @($Request, $Stream) | ForEach-Object {
-        if ($null -ne $_) {
-            $_.Dispose()
+function Invoke-FalconDownload ([hashtable] $WebRequestParams, [string] $url, [string] $Outfile, [hashtable] $Headers) {
+    try {
+        $ProgressPreference = 'SilentlyContinue'
+        $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'GET' -Headers $Headers -OutFile $Outfile
+    }
+    catch {
+        $response = $_.Exception.Response
+        if (!$response) {
+            $message = "Unhandled error occurred. Error: $($_.Exception.Message)"
+            Write-FalconLog 'DownloadFile' $message
+            throw $message
+        }
+        if ($response.StatusCode -eq 403) {
+            $scope = @{
+                'Sensor Download' = @('Read')
+            }
+            $message = Format-403Error -url $url -scope $scope
+            Write-FalconLog 'Permissions' $message
+            throw $message
+        }
+        else {
+            $message = "Received a $($response.StatusCode) response from ${url}. Error: $($response.StatusDescription)"
+            Write-FalconLog 'DownloadFile' $message
+            throw $message
         }
     }
-    return $Output
 }
 
 
 # Sets falcon tags
 #psbinding
-function Set-Tag ([string] $Aid, [array] $Tags, [string] $BaseUrl, $Headers) {
+function Set-Tag ([hashtable] $WebRequestParams, [string] $Aid, [array] $Tags, [string] $BaseUrl, [hashtable] $Headers) {
     try {
         $url = "${BaseUrl}/devices/entities/devices/tags/v1"
         $errorMessage = ''
@@ -828,8 +857,7 @@ function Set-Tag ([string] $Aid, [array] $Tags, [string] $BaseUrl, $Headers) {
             'tags'       = $Tags
         }
         $body = ConvertTo-Json -InputObject $body
-        $Headers['Content-Type'] = 'application/json'
-        $response = Invoke-WebRequest -Uri $url -UseBasicParsing -Method 'PATCH' -Body $body -Headers $Headers -MaximumRedirection 0
+        $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'PATCH' -Headers $Headers -Body $body -MaximumRedirection 0
         $content = ConvertFrom-Json -InputObject $response.Content
         Write-VerboseLog -VerboseInput $content -PreMessage 'Set-Tag - $content:'
 
@@ -873,15 +901,13 @@ function Set-Tag ([string] $Aid, [array] $Tags, [string] $BaseUrl, $Headers) {
 }
 
 # Gets sensor and falcon tags
-function Get-Tag ([string] $Aid, [string] $BaseUrl, $Headers) {
+function Get-Tag ([hashtable] $WebRequestParams, [string] $Aid, [string] $BaseUrl, [hashtable] $Headers) {
     try {
         Write-FalconLog -Source 'Get-Tag' -Message "Getting tags for host with AID: ${aid}"
         $url = "${BaseUrl}/devices/entities/devices/v2?ids=${aid}"
 
-
         Write-FalconLog -Source 'Get-Tag' -Message "Calling ${url}"
-        $Headers['Content-Type'] = 'application/json'
-        $response = Invoke-WebRequest -Uri $url -UseBasicParsing -Method 'GET' -Headers $Headers -MaximumRedirection 0
+        $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'GET' -Headers $Headers -MaximumRedirection 0
         $content = ConvertFrom-Json -InputObject $response.Content
         Write-VerboseLog -VerboseInput $content -PreMessage 'Get-Tag - $content:'
 
@@ -956,11 +982,11 @@ function Get-FalconCloud ([string] $xCsRegion) {
 }
 
 
-function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
+function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
     $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
     $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.1.9')
     try {
-        $response = Invoke-WebRequest -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
+        $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
         $content = ConvertFrom-Json -InputObject $response.Content
         Write-VerboseLog -VerboseInput $content -PreMessage 'Invoke-FalconAuth - $content:'
 
@@ -996,7 +1022,7 @@ function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $Falco
                 }
 
                 $BaseUrl = Get-FalconCloud($region)
-                $BaseUrl, $Headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
+                $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
 
             }
             else {
@@ -1047,6 +1073,35 @@ if (!(Test-FalconCredential $OldFalconClientId $OldFalconClientSecret)) {
     throw $message
 }
 
+# Hashtable for common Invoke-WebRequest parameters
+$WebRequestParams = @{}
+
+# Configure proxy based on arguments
+$proxy = ""
+if ($ProxyHost) {
+    Write-Output "Proxy settings detected in arguments, using proxy settings to communicate with the CrowdStrike api"
+
+    if ($ProxyHost) {
+        $proxy_host = $ProxyHost.Replace("http://", "").Replace("https://", "")
+        Write-FalconLog -Source "Proxy" -Message "Proxy host ${proxy_host} found in arguments" -stdout $true
+    }
+
+    if ($ProxyPort) {
+        Write-FalconLog -Source "Proxy" -Message "Proxy port ${ProxyPort} found in arguments" -stdout $true
+        $proxy = "http://${proxy_host}:${ProxyPort}"
+    }
+    else {
+        $proxy = "http://${proxy_host}"
+    }
+
+    $proxy = $proxy.Replace("'", "").Replace("`"", "")
+    Write-FalconLog -Source "Proxy" -Message "Using proxy ${proxy} to communicate with the CrowdStrike Apis" -stdout $true
+}
+
+if ($proxy) {
+    $WebRequestParams.Add('Proxy', $proxy)
+}
+
 $sensorGroupingTags = @()
 $falconGroupingTags = @()
 $oldAid = Get-AID
@@ -1067,9 +1122,9 @@ else {
             Write-FalconLog -Source 'GetTags' -Message $message
             throw $message
         }
-        $oldBaseUrl, $oldCloudHeaders = Get-HeadersAndUrl -FalconClientId $OldFalconClientId -FalconClientSecret $OldFalconClientSecret -FalconCloud $OldFalconCloud -MemberCid $OldMemberCid
+        $oldBaseUrl, $oldCloudHeaders = Get-HeadersAndUrl -WebRequestParams $WebRequestParams -FalconClientId $OldFalconClientId -FalconClientSecret $OldFalconClientSecret -FalconCloud $OldFalconCloud -MemberCid $OldMemberCid
 
-        $apiTags = Get-Tag -Aid $oldAid -Headers $oldCloudHeaders -BaseUrl $oldBaseUrl
+        $apiTags = Get-Tag -WebRequestParams $WebRequestParams -Aid $oldAid -BaseUrl $oldBaseUrl -Headers $oldCloudHeaders
         Write-FalconLog -Source 'GetTags' -Message 'Successfully retrieved tags'
         $sensorGroupingTags, $falconGroupingTags = Split-Tag -Tags $apiTags
         Write-VerboseLog -VerboseInput $sensorGroupingTags -PreMessage 'sensorGroupingTags pre-diff:'
@@ -1092,8 +1147,8 @@ Write-FalconLog -Source 'DisplayFalconTags' -Message "Falcon Grouping tags: $fal
 Write-FalconLog -Source 'CreateRecoveryCSV' -Message 'Creating recovery csv to keep track of tags...'
 Write-RecoveryCsv -SensorGroupingTags $sensorGroupingTags -FalconGroupingTags $falconGroupingTags -OldAid $oldAid -Path $recoveryCsvPath
 
-Invoke-FalconUninstall -UninstallParams $UninstallParams -RemoveHost $RemoveHost -DeleteUninstaller $DeleteUninstaller -MaintenanceToken $MaintenanceToken -UninstallTool $UninstallTool
-Invoke-FalconInstall -InstallParams $InstallParams -Tags ($SensorGroupingTags -join ',') -DeleteInstaller $DeleteInstaller -SensorUpdatePolicyName $SensorUpdatePolicyName -ProvToken $ProvToken -ProvWaitTime $ProvWaitTime -NewFalconCid $NewFalconCid
+Invoke-FalconUninstall -WebRequestParams $WebRequestParams -UninstallParams $UninstallParams -RemoveHost $RemoveHost -DeleteUninstaller $DeleteUninstaller -MaintenanceToken $MaintenanceToken -UninstallTool $UninstallTool
+Invoke-FalconInstall -WebRequestParams $WebRequestParams -InstallParams $InstallParams -Tags ($SensorGroupingTags -join ',') -DeleteInstaller $DeleteInstaller -SensorUpdatePolicyName $SensorUpdatePolicyName -ProvToken $ProvToken -ProvWaitTime $ProvWaitTime -NewFalconCid $NewFalconCid
 
 $timeout = Get-Date
 $timeout = $timeout.AddSeconds(120)
@@ -1120,7 +1175,7 @@ if (!$SkipTags) {
     if ($falconGroupingTags.Count -gt 0) {
         Write-FalconLog -Source 'MigrateFalconTags' -Message 'Migrating Falcon Grouping tags...'
         if (!$newBaseUrl -or !$newCloudHeaders) {
-            $newBaseUrl, $newCloudHeaders = Get-HeadersAndUrl -FalconClientId $NewFalconClientId -FalconClientSecret $NewFalconClientSecret -FalconCloud $NewFalconCloud -MemberCid $NewMemberCid
+            $newBaseUrl, $newCloudHeaders = Get-HeadersAndUrl -WebRequestParams $WebRequestParams -FalconClientId $NewFalconClientId -FalconClientSecret $NewFalconClientSecret -FalconCloud $NewFalconCloud -MemberCid $NewMemberCid
         }
         $timeout = Get-Date
         $timeout = $timeout.AddSeconds(120)
@@ -1131,7 +1186,7 @@ if (!$SkipTags) {
             $groupingTags += "FalconGroupingTags/$tag"
         }
 
-        $tagsMigrated, $errorMessage = Set-Tag -Aid $newAid -Tags $groupingTags -BaseUrl $newBaseUrl -Headers $newCloudHeaders
+        $tagsMigrated, $errorMessage = Set-Tag -WebRequestParams $WebRequestParams -Aid $newAid -Tags $groupingTags -BaseUrl $newBaseUrl -Headers $newCloudHeaders
 
         while ($tagsMigrated -eq $false -and (Get-Date) -lt $timeout) {
             # fail if error is not device not found
