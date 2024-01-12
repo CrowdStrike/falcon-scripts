@@ -419,7 +419,8 @@ function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $Uninst
             else {
                 Write-FalconLog -Source 'Invoke-FalconUninstall' -Message "Deleted '$UninstallerPath'"
             }
-        } else {
+        }
+        else {
             Write-FalconLog -Source 'Invoke-FalconUninstall' -Message "Skipping deletion of '$UninstallerPath'"
         }
 
