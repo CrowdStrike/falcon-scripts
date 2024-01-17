@@ -34,6 +34,10 @@ CrowdStrike Falcon OAuth2 API Client Id [Required if RemoveHost is $true]
 CrowdStrike Falcon OAuth2 API Client Secret [Required if RemoveHost is $true]
 .PARAMETER MemberCid
 Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID.
+.PARAMETER ProxyHost
+The proxy host for the sensor to use when communicating with CrowdStrike [default: $null]
+.PARAMETER ProxyPort
+The proxy port for the sensor to use when communicating with CrowdStrike [default: $null]
 .PARAMETER Verbose
 Enable verbose logging
 .EXAMPLE
@@ -85,8 +89,13 @@ param(
     [string] $FalconClientSecret,
 
     [Parameter(Position = 11)]
-    [string] $MemberCid
+    [string] $MemberCid,
 
+    [Parameter(Position = 12)]
+    [string] $ProxyHost,
+
+    [Parameter(Position = 13)]
+    [int] $ProxyPort
 )
 begin {
     $ScriptName = $MyInvocation.MyCommand.Name
@@ -145,11 +154,11 @@ begin {
         return $Output
     }
 
-    function Invoke-FalconAuth([string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
+    function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
         $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.1.9')
         try {
-            $response = Invoke-WebRequest -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
+            $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
             $content = ConvertFrom-Json -InputObject $response.Content
             Write-VerboseLog -VerboseInput $content -PreMessage 'Invoke-FalconAuth - $content:'
 
@@ -185,7 +194,7 @@ begin {
                     }
 
                     $BaseUrl = Get-FalconCloud($region)
-                    $BaseUrl, $Headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
+                    $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
 
                 }
                 else {
@@ -256,7 +265,7 @@ begin {
     # Changes the host visibility status in the CrowdStrike Falcon console
     # an action of $hide will hide the host, anything else will unhide the host
     # should only be called to hide/unhide a host that is already in the console
-    function Invoke-HostVisibility ([string] $action) {
+    function Invoke-HostVisibility ([hashtable] $WebRequestParams, [string] $action) {
         if ($action -eq 'hide') {
             $action = 'hide_host'
         }
@@ -279,7 +288,7 @@ begin {
             $url = "${baseUrl}/devices/entities/devices-actions/v2?action_name=${action}"
 
             $Headers['Content-Type'] = 'application/json'
-            $response = Invoke-WebRequest -Uri $url -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
+            $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'POST' -Body $bodyJson -MaximumRedirection 0
             $content = ConvertFrom-Json -InputObject $response.Content
             Write-VerboseLog -VerboseInput $content -PreMessage 'Invoke-HostVisibility - $content:'
 
@@ -385,11 +394,37 @@ process {
         Write-FalconLog 'GetAID' $Message
     }
 
+    # Hashtable for common Invoke-WebRequest parameters
+    $WebRequestParams = @{}
+
+    # Configure proxy based on arguments
+    $proxy = ""
+    if ($ProxyHost) {
+        Write-Output "Proxy settings detected in arguments, using proxy settings to communicate with the CrowdStrike api"
+
+        if ($ProxyHost) {
+            $proxy_host = $ProxyHost.Replace("http://", "").Replace("https://", "")
+            Write-FalconLog -Source "Proxy" -Message "Proxy host ${proxy_host} found in arguments" -stdout $true
+        }
+
+        if ($ProxyPort) {
+            Write-FalconLog -Source "Proxy" -Message "Proxy port ${ProxyPort} found in arguments" -stdout $true
+            $proxy = "http://${proxy_host}:${ProxyPort}"
+        }
+        else {
+            $proxy = "http://${proxy_host}"
+        }
+
+        $proxy = $proxy.Replace("'", "").Replace("`"", "")
+        Write-FalconLog -Source "Proxy" -Message "Using proxy ${proxy} to communicate with the CrowdStrike Apis" -stdout $true
+    }
+
+    if ($proxy) {
+        $WebRequestParams.Add('Proxy', $proxy)
+    }
 
     if ($credsProvided) {
-        $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
         $BaseUrl = Get-FalconCloud $FalconCloud
-
 
         $Body = @{}
         $Body['client_id'] = $FalconClientId
@@ -399,8 +434,9 @@ process {
             $Body['member_cid'] = $MemberCid
         }
 
-        $BaseUrl, $Headers = Invoke-FalconAuth -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
+        $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
         $Headers['Content-Type'] = 'application/json'
+        $WebRequestParams.Add('Headers', $Headers)
     }
 
     if ($RemoveHost) {
@@ -428,8 +464,7 @@ process {
             try {
                 $url = 'policy/combined/reveal-uninstall-token/v1'
 
-                $Headers['Content-Type'] = 'application/json'
-                $response = Invoke-WebRequest -Uri "$($baseUrl)/$($url)" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
+                $response = Invoke-WebRequest @WebRequestParams -Uri "$($baseUrl)/$($url)" -UseBasicParsing -Method 'POST' -Body $bodyJson -MaximumRedirection 0
                 $content = ConvertFrom-Json -InputObject $response.Content
                 Write-VerboseLog -VerboseInput $content -PreMessage 'GetToken - $content:'
 
