@@ -19,7 +19,7 @@ Optional Flags:
     -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
-    -t, --type <SENSOR_TYPE>          specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|kpagent]
+    -t, --type <SENSOR_TYPE>          specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|kpagent]
                                       Default is falcon-container.
 
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
@@ -222,7 +222,7 @@ format_tags_to_json() {
     )
     # The output should mimic the same format as the Docker (curl) output
     echo "{
-  \"name\": \"${SENSOR_TYPE}\",
+  \"name\": \"${IMAGE_NAME}\",
   ${tags_json}
 }"
 }
@@ -256,7 +256,7 @@ format_tags() {
     # Formats tags and handles sorting for KPA
     local all_tags=$1
 
-    if [ "${SENSOR_TYPE}" = "kpagent" ]; then
+    if [ "${SENSOR_TYPE}" = "kpagent" ] || [ "${SENSOR_TYPE}" = "falcon-snapshot" ]; then
         echo "$all_tags" |
             sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
             tr -d '"' | tr ',' '\n' |
@@ -274,7 +274,7 @@ print_formatted_tags() {
     local formatted_tags=$1
 
     # Print a JSON object with tags properly formatted
-    printf "{\n  \"name\": \"%s\",\n  \"tags\": [\n" "${SENSOR_TYPE}"
+    printf "{\n  \"name\": \"%s\",\n  \"tags\": [\n" "${IMAGE_NAME}"
     first=true
     echo "$formatted_tags" | while IFS= read -r tag; do
         if [ "$first" = true ]; then
@@ -291,7 +291,7 @@ list_tags() {
     all_tags=$(fetch_tags "${CONTAINER_TOOL}")
     formatted_tags=$(format_tags "$all_tags")
 
-    print_formatted_tags "$formatted_tags" "${SENSOR_TYPE}"
+    print_formatted_tags "$formatted_tags"
 }
 
 # shellcheck disable=SC2086
@@ -329,10 +329,10 @@ fi
 
 # Check if SENSOR_TYPE is set to a valid value
 case "${SENSOR_TYPE}" in
-    falcon-container | falcon-sensor | falcon-kac | kpagent) ;;
+    falcon-container | falcon-sensor | falcon-kac | falcon-snapshot | kpagent) ;;
     *) die """
     Unrecognized sensor type: ${SENSOR_TYPE}
-    Valid values are [falcon-container|falcon-sensor|falcon-kac|kpagent]""" ;;
+    Valid values are [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|kpagent]""" ;;
 esac
 
 #Check all mandatory variables set
@@ -410,27 +410,35 @@ if [ ! "$LISTTAGS" ] && [ ! "$PULLTOKEN" ]; then
 fi
 
 ART_USERNAME="fc-$cs_falcon_cid"
-sensor_name="falcon-sensor"
+IMAGE_NAME="falcon-sensor"
 repository_name="release/falcon-sensor"
+registry_type="container-security"
 
 if [ "${SENSOR_TYPE}" = "falcon-kac" ]; then
     # overrides for KAC
-    sensor_name="falcon-kac"
+    IMAGE_NAME="falcon-kac"
     repository_name="release/falcon-kac"
+elif [ "${SENSOR_TYPE}" = "falcon-snapshot" ]; then
+    # overrides for Snapshot
+    ART_USERNAME="fs-$cs_falcon_cid"
+    IMAGE_NAME="cs-snapshotscanner"
+    repository_name="release/cs-snapshotscanner"
+    registry_type="snapshots"
 elif [ "${SENSOR_TYPE}" = "kpagent" ]; then
     # overrides for KPA
     ART_USERNAME="kp-$cs_falcon_cid"
-    sensor_name="kpagent"
+    IMAGE_NAME="kpagent"
     repository_name="kpagent"
+    registry_type="kubernetes-protection"
     registry_opts="kubernetes_protection"
 fi
 
 #Set Docker token using the BEARER token captured earlier
 if [ "${SENSOR_TYPE}" = "kpagent" ]; then
-    raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/kubernetes-protection/entities/integration/agent/v1?cluster_name=clustername&is_self_managed_cluster=true")
+    raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/$registry_type/entities/integration/agent/v1?cluster_name=clustername&is_self_managed_cluster=true")
     docker_api_token=$(echo "$raw_docker_api_token" | awk '/dockerAPIToken:/ {print $2}')
 else
-    raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/container-security/entities/image-registry-credentials/v1")
+    raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/$registry_type/entities/image-registry-credentials/v1")
     docker_api_token=$(echo "$raw_docker_api_token" | json_value "token")
 fi
 ART_PASSWORD=$(echo "$docker_api_token" | sed 's/ *$//g' | sed 's/^ *//g')
@@ -456,7 +464,7 @@ $raw_docker_api_token
 
 Ensure the following:
   - Credentials are valid.
-  - Correct API Scopes are assigned (Falcon Images Download [read], Sensor Download [read], Kubernetes Protection [read])
+  - Correct API Scopes are assigned (Falcon Images Download [read], Sensor Download [read], Snapshot Scanner Image Download [read], Snapshot [read/write], Kubernetes Protection [read])
   - Cloud Security is enabled in your tenant."
 fi
 
@@ -497,7 +505,7 @@ else
 
     # For those that don't want to use skopeo to copy
     if [ -n "$COPY" ]; then
-        "$CONTAINER_TOOL" tag "$FULLIMAGEPATH" "$COPY/$sensor_name:$LATESTSENSOR"
-        "$CONTAINER_TOOL" push "$COPY/$sensor_name:$LATESTSENSOR"
+        "$CONTAINER_TOOL" tag "$FULLIMAGEPATH" "$COPY/$IMAGE_NAME:$LATESTSENSOR"
+        "$CONTAINER_TOOL" push "$COPY/$IMAGE_NAME:$LATESTSENSOR"
     fi
 fi
