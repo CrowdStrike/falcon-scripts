@@ -32,6 +32,10 @@ To check your version of cURL, run the following command: `curl --version`
   - `Sensor Download (read)`
   - `Kubernetes Protection (read)`
     - For `kpagent` only
+  - `Snapshot Scanner Image Download (read)`
+    - For `falcon-snapshot` only
+  - `Snapshot (read/write)`
+    - For `falcon-snapshot` only
 - If you are using Docker, make sure that Docker is running locally.
 
 ## Usage
@@ -49,7 +53,7 @@ Optional Flags:
     -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
-    -t, --type <SENSOR_TYPE>          specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|kpagent]
+    -t, --type <SENSOR_TYPE>          specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|kpagent]
                                       Default is falcon-container.
 
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
@@ -75,7 +79,7 @@ Help Options:
 | `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`     |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)          | Specify sensor version to retrieve from the registry                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)          | Specify sensor platform to retrieve from the registry                                    |
-| `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`         | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-kac`, `kpagent`] ([see more details below](#sensor-types)) |
+| `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`         | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-kac`, `falcon-snapshot`, `kpagent`] ([see more details below](#sensor-types)) |
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.       |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools                  |
 | `--get-pull-token`                             | N/A                     | `None`                     | Get the pull token of the selected SENSOR_TYPE for Kubernetes.                           |
@@ -92,6 +96,7 @@ The following sensor types are available to download:
 | `falcon-sensor` | The Falcon sensor for Linux as a DaemonSet deployment |
 | `falcon-container` **(default)** | The Falcon Container sensor for Linux |
 | `falcon-kac` | The Falcon Kubernetes Admission Controller |
+| `falcon-snapshot` | The Falcon Snapshot scanner |
 | `kpagent` | The Falcon Kubernetes Protection Agent |
 
 ### Examples
@@ -118,6 +123,18 @@ The following example will download the latest version of the Falcon DaemonSet s
 --region us-2 \
 --type falcon-sensor \
 --copy myregistry.com/mynamespace
+```
+
+#### Example generating a pull token for K8s
+
+The following example will generate a pull token for the Falcon Container sensor for use in Kubernetes.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-container \
+--get-pull-token
 ```
 
 #### Example dumping credentials
