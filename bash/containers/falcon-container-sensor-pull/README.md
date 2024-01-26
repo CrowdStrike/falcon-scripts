@@ -141,7 +141,7 @@ The following example will generate a pull token for the Falcon Container sensor
 
 #### Example getting the CID
 
-The following example will get the CID for the Falcon Sensor for use in Kubernetes.
+The following example will get the CID for the Falcon Sensor configuration for kubernetes deployment.
 
 ```shell
 ./falcon-container-sensor-pull.sh \
