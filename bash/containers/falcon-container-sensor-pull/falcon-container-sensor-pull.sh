@@ -402,7 +402,7 @@ registry_opts=$(
 
 cs_falcon_cid_with_checksum=$(
     if [ -n "$FALCON_CID" ]; then
-        echo "$FALCON_CID" 
+        echo "$FALCON_CID"
     else
         cs_target_cid=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
         echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}'
@@ -410,7 +410,7 @@ cs_falcon_cid_with_checksum=$(
 )
 cs_falcon_cid=$(echo "$cs_falcon_cid_with_checksum" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]')
 
-if [ "$GETCID" ]; then 
+if [ "$GETCID" ]; then
     if [ "${SENSOR_TYPE}" = "kpagent" ]; then
         echo "${cs_falcon_cid}"
     else
