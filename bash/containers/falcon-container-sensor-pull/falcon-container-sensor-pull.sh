@@ -317,7 +317,6 @@ cs_registry="registry.crowdstrike.com"
 if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
     cs_registry="registry.laggar.gcw.crowdstrike.com"
 fi
-FALCON_CID=$(echo "${FALCON_CID}" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]')
 SENSOR_VERSION=$(echo "$SENSOR_VERSION" | tr '[:upper:]' '[:lower:]')
 SENSOR_PLATFORM=$(echo "$SENSOR_PLATFORM" | tr '[:upper:]' '[:lower:]')
 COPY=$(echo "$COPY" | tr '[:upper:]' '[:lower:]')
