@@ -58,6 +58,7 @@ Optional Flags:
 
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
+    --get-image-repo-tag              Get the image repository and latest tag for the specified SENSOR_TYPE
     --get-pull-token                  get the pull token of the selected SENSOR_TYPE for Kubernetes.
     --list-tags                       list all tags available for the selected sensor
     --allow-legacy-curl               allow the script to run with an older version of curl
@@ -82,6 +83,7 @@ Help Options:
 | `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`         | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-kac`, `falcon-snapshot`, `kpagent`] ([see more details below](#sensor-types)) |
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.       |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools                  |
+| `--get-image-repo-tag`                         | N/A                     | `None`                     | Get the image repository and latest tag for the specified SENSOR_TYPE                    |
 | `--get-pull-token`                             | N/A                     | `None`                     | Get the pull token of the selected SENSOR_TYPE for Kubernetes.                           |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                                          |
 | `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)         | Allow the script to run with an older version of cURL                                    |
@@ -110,6 +112,18 @@ The following example will attempt to autodiscover the region and download the l
 --client-id <FALCON_CLIENT_ID> \
 --client-secret <FALCON_CLIENT_SECRET> \
 --type falcon-kac
+```
+
+#### Example getting the full image path for the Falcon DaemonSet sensor
+
+The following example will print the image repository path with the latest image tag of the Falcon DaemonSet sensor.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-sensor \
+--get-image-repo-tag
 ```
 
 #### Example downloading the Falcon DaemonSet sensor

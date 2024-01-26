@@ -24,6 +24,7 @@ Optional Flags:
 
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
+    --get-image-repo-tag              Get the image repository and latest tag for the specified SENSOR_TYPE
     --get-pull-token                  Get the pull token of the selected SENSOR_TYPE for Kubernetes.
     --list-tags                       list all tags available for the selected sensor type and platform(optional)
     --allow-legacy-curl               allow the script to run with an older version of curl
@@ -112,6 +113,11 @@ while [ $# != 0 ]; do
         --dump-credentials)
             if [ -n "${1}" ]; then
                 CREDS=true
+            fi
+            ;;
+        --get-image-repo-tag)
+            if [ -n "${1}" ]; then
+                GETIMAGEREPOTAG=true
             fi
             ;;
         --get-pull-token)
@@ -496,6 +502,11 @@ LATESTSENSOR=$(list_tags | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | gr
 
 #Construct full image path
 FULLIMAGEPATH="$cs_registry/$registry_opts/$repository_name:${LATESTSENSOR}"
+
+if [ "$GETIMAGEREPOTAG" ]; then
+    echo "${FULLIMAGEPATH}"
+    exit 0
+fi
 
 if grep -qw "skopeo" "$CONTAINER_TOOL"; then
     "$CONTAINER_TOOL" copy "docker://$FULLIMAGEPATH" "docker://$COPY/$repository_name:$LATESTSENSOR"
