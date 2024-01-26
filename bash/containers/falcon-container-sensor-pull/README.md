@@ -60,6 +60,7 @@ Optional Flags:
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
     --get-image-repo-tag              Get the image repository and latest tag for the specified SENSOR_TYPE
     --get-pull-token                  get the pull token of the selected SENSOR_TYPE for Kubernetes.
+    --get-cid                         Get the CID assigned to the API Credentials.
     --list-tags                       list all tags available for the selected sensor
     --allow-legacy-curl               allow the script to run with an older version of curl
 
@@ -85,6 +86,7 @@ Help Options:
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools                  |
 | `--get-image-repo-tag`                         | N/A                     | `None`                     | Get the image repository and latest tag for the specified SENSOR_TYPE                    |
 | `--get-pull-token`                             | N/A                     | `None`                     | Get the pull token of the selected SENSOR_TYPE for Kubernetes.                           |
+| `--get-cid`                                    | N/A                     | `None`                     | Get the CID assigned to the API Credentials.                                             |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                                          |
 | `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)         | Allow the script to run with an older version of cURL                                    |
 | `-h`, `--help`                                 | N/A                     | `None`                     | Display help message                                                                     |
@@ -149,6 +151,18 @@ The following example will generate a pull token for the Falcon Container sensor
 --client-secret <FALCON_CLIENT_SECRET> \
 --type falcon-container \
 --get-pull-token
+```
+
+#### Example getting the CID
+
+The following example will get the CID for the Falcon Sensor configuration for kubernetes deployment.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-sensor \
+--get-cid
 ```
 
 #### Example dumping credentials
