@@ -25,7 +25,7 @@ Optional Flags:
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
     --get-pull-token                  Get the pull token of the selected SENSOR_TYPE for Kubernetes.
-    --get-cid                         Get the CID assigned to the Falcon Client ID
+    --get-cid                         Get the CID assigned to the API Credentials.
     --list-tags                       list all tags available for the selected sensor type and platform(optional)
     --allow-legacy-curl               allow the script to run with an older version of curl
 
@@ -418,7 +418,7 @@ if [ "$GETCID" ]; then
     exit 0
 fi
 
-if [ ! "$LISTTAGS" ] && [ ! "$PULLTOKEN" ]; then
+if [ ! "$LISTTAGS" ] && [ ! "$PULLTOKEN" ] && [ ! "$GETIMAGEREPOTAG" ]; then
     echo "Using the following settings:"
     echo "Falcon Region:   $(cs_cloud)"
     echo "Falcon Registry: ${cs_registry}"
