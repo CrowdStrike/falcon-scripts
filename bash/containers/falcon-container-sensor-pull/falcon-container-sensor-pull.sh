@@ -25,6 +25,7 @@ Optional Flags:
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
     --get-pull-token                  Get the pull token of the selected SENSOR_TYPE for Kubernetes.
+    --get-cid                         Get the CID assigned to the Falcon Client ID
     --list-tags                       list all tags available for the selected sensor type and platform(optional)
     --allow-legacy-curl               allow the script to run with an older version of curl
 
@@ -117,6 +118,11 @@ while [ $# != 0 ]; do
         --get-pull-token)
             if [ -n "${1}" ]; then
                 PULLTOKEN=true
+            fi
+            ;;
+        --get-cid)
+            if [ -n "${1}" ]; then
+                GETCID=true
             fi
             ;;
         --list-tags)
@@ -394,14 +400,24 @@ registry_opts=$(
     fi
 )
 
-cs_falcon_cid=$(
+cs_falcon_cid_with_checksum=$(
     if [ -n "$FALCON_CID" ]; then
-        echo "$FALCON_CID" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]'
+        echo "$FALCON_CID" 
     else
         cs_target_cid=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
-        echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}' | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]'
+        echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}'
     fi
 )
+cs_falcon_cid=$(echo "$cs_falcon_cid_with_checksum" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]')
+
+if [ "$GETCID" ]; then 
+    if [ "${SENSOR_TYPE}" = "kpagent" ]; then
+        echo "${cs_falcon_cid}"
+    else
+        echo "${cs_falcon_cid_with_checksum}"
+    fi
+    exit 0
+fi
 
 if [ ! "$LISTTAGS" ] && [ ! "$PULLTOKEN" ]; then
     echo "Using the following settings:"
