@@ -475,7 +475,7 @@ if [ "$PULLTOKEN" ]; then
     # Generate and display token
     # shellcheck disable=SC2086
     IMAGE_PULL_TOKEN=$(printf '{"auths": { "registry.crowdstrike.com": { "auth": "%s" } } }' "$PARTIALPULLTOKEN" | base64 $BASE64_OPT)
-    echo "Image Pull Token: ${IMAGE_PULL_TOKEN}"
+    echo "${IMAGE_PULL_TOKEN}"
     exit 0
 fi
 
