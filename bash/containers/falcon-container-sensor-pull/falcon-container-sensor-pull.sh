@@ -24,7 +24,7 @@ Optional Flags:
 
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
-    --get-image-repo-tag              Get the image repository and latest tag for the specified SENSOR_TYPE
+    --get-image-path                  Get the full image path including the registry, repository, and latest tag for the specified SENSOR_TYPE.
     --get-pull-token                  Get the pull token of the selected SENSOR_TYPE for Kubernetes.
     --get-cid                         Get the CID assigned to the API Credentials.
     --list-tags                       list all tags available for the selected sensor type and platform(optional)
@@ -116,9 +116,9 @@ while [ $# != 0 ]; do
                 CREDS=true
             fi
             ;;
-        --get-image-repo-tag)
+        --get-image-path)
             if [ -n "${1}" ]; then
-                GETIMAGEREPOTAG=true
+                GETIMAGEPATH=true
             fi
             ;;
         --get-pull-token)
@@ -424,7 +424,7 @@ if [ "$GETCID" ]; then
     exit 0
 fi
 
-if [ ! "$LISTTAGS" ] && [ ! "$PULLTOKEN" ] && [ ! "$GETIMAGEREPOTAG" ]; then
+if [ ! "$LISTTAGS" ] && [ ! "$PULLTOKEN" ] && [ ! "$GETIMAGEPATH" ]; then
     echo "Using the following settings:"
     echo "Falcon Region:   $(cs_cloud)"
     echo "Falcon Registry: ${cs_registry}"
@@ -518,7 +518,7 @@ LATESTSENSOR=$(list_tags | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | gr
 #Construct full image path
 FULLIMAGEPATH="$cs_registry/$registry_opts/$repository_name:${LATESTSENSOR}"
 
-if [ "$GETIMAGEREPOTAG" ]; then
+if [ "$GETIMAGEPATH" ]; then
     echo "${FULLIMAGEPATH}"
     exit 0
 fi
