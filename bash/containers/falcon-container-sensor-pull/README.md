@@ -58,7 +58,7 @@ Optional Flags:
 
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
-    --get-image-repo-tag              Get the image repository and latest tag for the specified SENSOR_TYPE
+    --get-image-path                  Get the full image path including the registry, repository, and latest tag for the specified SENSOR_TYPE.
     --get-pull-token                  get the pull token of the selected SENSOR_TYPE for Kubernetes.
     --get-cid                         Get the CID assigned to the API Credentials.
     --list-tags                       list all tags available for the selected sensor
@@ -125,7 +125,7 @@ The following example will print the image repository path with the latest image
 --client-id <FALCON_CLIENT_ID> \
 --client-secret <FALCON_CLIENT_SECRET> \
 --type falcon-sensor \
---get-image-repo-tag
+--get-image-path
 ```
 
 #### Example downloading the Falcon DaemonSet sensor
