@@ -286,7 +286,7 @@ print_formatted_tags() {
     local formatted_tags=$1
 
     # Print a JSON object with tags properly formatted
-    printf "{\n  \"name\": \"%s\",\n  \"tags\": [\n" "${IMAGE_NAME}"
+    printf "{\n  \"name\": \"%s\",\n  \"repository\": \"%s\",\n  \"tags\": [\n" "${IMAGE_NAME}" "${REPOSITORY}"
     first=true
     echo "$formatted_tags" | while IFS= read -r tag; do
         if [ "$first" = true ]; then
@@ -507,6 +507,9 @@ if [ "${ERROR}" = "true" ]; then
     die "ERROR: ${CONTAINER_TOOL} login failed. Error message: ${error_message}"
 fi
 
+#Construct repository path
+REPOSITORY="$cs_registry/$registry_opts/$repository_name"
+
 if [ "$LISTTAGS" ]; then
     list_tags
     exit 0
@@ -516,7 +519,7 @@ fi
 LATESTSENSOR=$(list_tags | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1)
 
 #Construct full image path
-FULLIMAGEPATH="$cs_registry/$registry_opts/$repository_name:${LATESTSENSOR}"
+FULLIMAGEPATH="${REPOSITORY}:${LATESTSENSOR}"
 
 if [ "$GETIMAGEPATH" ]; then
     echo "${FULLIMAGEPATH}"
