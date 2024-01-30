@@ -19,7 +19,7 @@ Optional Flags:
     -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
-    -t, --type <SENSOR_TYPE>          specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|kpagent]
+    -t, --type <SENSOR_TYPE>          specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent]
                                       Default is falcon-container.
 
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
@@ -340,10 +340,10 @@ fi
 
 # Check if SENSOR_TYPE is set to a valid value
 case "${SENSOR_TYPE}" in
-    falcon-container | falcon-sensor | falcon-kac | falcon-snapshot | kpagent) ;;
+    falcon-container | falcon-sensor | falcon-kac | falcon-snapshot | falcon-imageanalyzer | kpagent) ;;
     *) die """
     Unrecognized sensor type: ${SENSOR_TYPE}
-    Valid values are [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|kpagent]""" ;;
+    Valid values are [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent]""" ;;
 esac
 
 #Check all mandatory variables set
@@ -445,6 +445,10 @@ elif [ "${SENSOR_TYPE}" = "falcon-snapshot" ]; then
     IMAGE_NAME="cs-snapshotscanner"
     repository_name="release/cs-snapshotscanner"
     registry_type="snapshots"
+elif [ "${SENSOR_TYPE}" = "falcon-imageanalyzer" ]; then
+    # overrides for Image Analyzer
+    IMAGE_NAME="falcon-imageanalyzer"
+    repository_name="release/falcon-imageanalyzer"
 elif [ "${SENSOR_TYPE}" = "kpagent" ]; then
     # overrides for KPA
     ART_USERNAME="kp-$cs_falcon_cid"
