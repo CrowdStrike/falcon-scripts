@@ -133,7 +133,7 @@ jobs:
 
       - name: Run role tests
         id: molecule-role-test
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         env:
           MOLECULE_INSTANCE_NAME: ${{ matrix.molecule.distro }}-${{ matrix.collection_role }}
           MOLECULE_IMAGE_OWNER: ${{ matrix.molecule.image_owner }}
@@ -152,7 +152,7 @@ jobs:
         continue-on-error: true
 
       - name: Ensure instances are destroyed
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         env:
           MOLECULE_INSTANCE_NAME: ${{ matrix.molecule.distro }}-${{ matrix.collection_role }}
           MOLECULE_IMAGE_OWNER: ${{ matrix.molecule.image_owner }}
