@@ -24,9 +24,9 @@ Optional Flags:
 
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
-    --get-image-path                  Get the full image path including the registry, repository, and latest tag for the specified SENSOR_TYPE.
-    --get-pull-token                  Get the pull token of the selected SENSOR_TYPE for Kubernetes.
-    --get-cid                         Get the CID assigned to the API Credentials.
+    --get-image-path                  get the full image path including the registry, repository, and latest tag for the specified SENSOR_TYPE.
+    --get-pull-token                  get the pull token of the selected SENSOR_TYPE for Kubernetes.
+    --get-cid                         get the CID assigned to the API Credentials.
     --list-tags                       list all tags available for the selected sensor type and platform(optional)
     --allow-legacy-curl               allow the script to run with an older version of curl
 

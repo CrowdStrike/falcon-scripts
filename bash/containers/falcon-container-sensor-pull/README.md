@@ -53,15 +53,15 @@ Optional Flags:
     -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
-    -t, --type <SENSOR_TYPE>          specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|kpagent]
+    -t, --type <SENSOR_TYPE>          specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent]
                                       Default is falcon-container.
 
     --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
     --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
-    --get-image-path                  Get the full image path including the registry, repository, and latest tag for the specified SENSOR_TYPE.
+    --get-image-path                  get the full image path including the registry, repository, and latest tag for the specified SENSOR_TYPE.
     --get-pull-token                  get the pull token of the selected SENSOR_TYPE for Kubernetes.
-    --get-cid                         Get the CID assigned to the API Credentials.
-    --list-tags                       list all tags available for the selected sensor
+    --get-cid                         get the CID assigned to the API Credentials.
+    --list-tags                       list all tags available for the selected sensor type and platform(optional)
     --allow-legacy-curl               allow the script to run with an older version of curl
 
 Help Options:
