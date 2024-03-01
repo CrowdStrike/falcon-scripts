@@ -170,7 +170,7 @@ jobs:
             molecule --debug destroy -s ${{ matrix.collection_role }}
 
       - name: Assert molecule tests passed
-        uses: nick-fields/assert-action@v1
+        uses: nick-fields/assert-action@v2
         with:
           expected: success
           actual: ${{ steps.molecule-role-test.outcome }}
