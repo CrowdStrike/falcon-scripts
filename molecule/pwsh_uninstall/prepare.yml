@@ -1,0 +1,17 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Run Install Script w/ CID
+      ansible.builtin.script: >
+        ../../powershell/install/falcon_windows_install.ps1
+        -FalconClientId "{{ lookup('env', 'FALCON_CLIENT_ID') }}"
+        -FalconClientSecret "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
+        -FalconCid "{{ lookup('env', 'FALCON_CID') }}"
+        -ProvToken "{{ lookup('env', 'FALCON_PROV_TOKEN') }}"
+        -FalconCloud "{{ lookup('env', 'FALCON_CLOUD') }}"
+
+    - name: Pause for 60 seconds
+      ansible.builtin.pause:
+        seconds: 60

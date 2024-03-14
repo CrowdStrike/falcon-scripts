@@ -131,7 +131,7 @@ An example using the Falcon API to retrieve the maintenance token and remove the
 after uninstalling.
 
 ```pwsh
-.\falcon_windows_uninstall.ps1 -FalconClientId <string> -FalconClientSecret <string> -RemoveHost $true
+.\falcon_windows_uninstall.ps1 -FalconClientId <string> -FalconClientSecret <string> -RemoveHost
 ```
 
 ## Troubleshooting

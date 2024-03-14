@@ -130,7 +130,7 @@ begin {
             $message = $VerboseInput | ConvertTo-Json -Depth 10
         }
 
-        # If an pre message is provided, add it to the beginning of the message
+        # If a pre-message is provided, add it to the beginning of the message
         if ($PreMessage) {
             $message = "$PreMessage`r`n$message"
         }
@@ -284,10 +284,9 @@ begin {
         }
 
         $bodyJson = $Body | ConvertTo-Json
-        try {
-            $url = "${baseUrl}/devices/entities/devices-actions/v2?action_name=${action}"
+        $url = "${BaseUrl}/devices/entities/devices-actions/v2?action_name=${action}"
 
-            $Headers['Content-Type'] = 'application/json'
+        try {
             $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'POST' -Body $bodyJson -MaximumRedirection 0
             $content = ConvertFrom-Json -InputObject $response.Content
             Write-VerboseLog -VerboseInput $content -PreMessage 'Invoke-HostVisibility - $content:'
@@ -304,7 +303,7 @@ begin {
             }
         }
         catch {
-            Write-VerboseLog -VerboseInput $_.Exception -PreMessage 'Invoke-HostVisibility - CAUGHT EXCEPTION - $_.Exception:'
+            Write-VerboseLog -VerboseInput $_.Exception.Message -PreMessage 'Invoke-HostVisibility - CAUGHT EXCEPTION - $_.Exception.Message:'
             $response = $_.Exception.Response
 
             if (!$response) {
@@ -442,7 +441,7 @@ process {
     if ($RemoveHost) {
         # Remove host from CrowdStrike Falcon
         Write-FalconLog 'RemoveHost' 'Removing host from Falcon console'
-        Invoke-HostVisibility -action 'hide'
+        Invoke-HostVisibility -WebRequestParams $WebRequestParams -action 'hide'
     }
 
     if ($MaintenanceToken) {
@@ -460,11 +459,10 @@ process {
             }
 
             $bodyJson = $Body | ConvertTo-Json
+            $url = "${BaseUrl}/policy/combined/reveal-uninstall-token/v1"
 
             try {
-                $url = 'policy/combined/reveal-uninstall-token/v1'
-
-                $response = Invoke-WebRequest @WebRequestParams -Uri "$($baseUrl)/$($url)" -UseBasicParsing -Method 'POST' -Body $bodyJson -MaximumRedirection 0
+                $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'POST' -Body $bodyJson -MaximumRedirection 0
                 $content = ConvertFrom-Json -InputObject $response.Content
                 Write-VerboseLog -VerboseInput $content -PreMessage 'GetToken - $content:'
 
@@ -481,7 +479,7 @@ process {
                 }
             }
             catch {
-                Write-VerboseLog -VerboseInput $_.Exception -PreMessage 'GetToken - CAUGHT EXCEPTION - $_.Exception:'
+                Write-VerboseLog -VerboseInput $_.Exception.Message -PreMessage 'GetToken - CAUGHT EXCEPTION - $_.Exception.Message:'
                 $response = $_.Exception.Response
 
                 if (!$response) {
@@ -501,7 +499,7 @@ process {
                     throw $Message
                 }
                 else {
-                    $Message = "Received a $($response.StatusCode) response from $($baseUrl)$($url) Error: $($response.StatusDescription)"
+                    $Message = "Received a $($response.StatusCode) response from $($BaseUrl)$($url) Error: $($response.StatusDescription)"
                     Write-FalconLog 'GetTokenError' $Message
                     throw $Message
                 }
@@ -527,7 +525,7 @@ process {
 
         if ($RemoveHost) {
             Write-FalconLog 'UninstallError' 'Uninstall failed, attempting to restore host visibility...'
-            Invoke-HostVisibility -action 'show'
+            Invoke-HostVisibility -WebRequestParams $WebRequestParams -action 'show'
         }
         throw $Message
     }

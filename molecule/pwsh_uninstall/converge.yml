@@ -1,0 +1,18 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Run Uninstall Script w/ RemoveHost
+      ansible.builtin.script: >
+        ../../powershell/install/falcon_windows_uninstall.ps1
+        -FalconClientId "{{ lookup('env', 'FALCON_CLIENT_ID') }}"
+        -FalconClientSecret "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
+        -FalconCloud "{{ lookup('env', 'FALCON_CLOUD') }}"
+        -RemoveHost
+    #   register: install_script
+
+    # # Print stdout
+    # - name: Task STDOUT
+    #   ansible.builtin.debug:
+    #     msg: "{{ install_script.stdout_lines }}"

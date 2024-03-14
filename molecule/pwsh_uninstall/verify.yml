@@ -1,0 +1,33 @@
+---
+- name: Verify
+  hosts: all
+  tasks:
+    - name: Check status of Falcon Sensor
+      ansible.windows.win_command: sc.exe query csagent
+      failed_when: false
+      changed_when: false
+      register: win_status
+
+    - name: Verify Falcon Sensor is not installed
+      ansible.builtin.assert:
+        that: "'[SC] EnumQueryServicesStatus:OpenService FAILED' in win_status.stdout"
+
+    - name: CrowdStrike Falcon | Check for Windows Sensor directory (Windows)
+      ansible.windows.win_stat:
+        path: C:\Windows\System32\drivers\CrowdStrike
+      register: falcon_win_sensor_dir
+
+    - name: CrowdStrike Falcon | Assert Windows Sensor directory is absent (Windows)
+      ansible.builtin.assert:
+        that:
+          - not falcon_win_sensor_dir.stat.exists
+
+    - name: CrowdStrike Falcon | Check for Windows Sensor registry key (Windows)
+      ansible.windows.win_reg_stat:
+        path: HKLM:\System\Crowdstrike
+      register: falcon_win_sensor_reg
+
+    - name: CrowdStrike Falcon | Assert Windows Sensor registry key is absent (Windows)
+      ansible.builtin.assert:
+        that:
+          - not falcon_win_sensor_reg.exists
