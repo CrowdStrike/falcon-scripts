@@ -154,7 +154,7 @@ begin {
             $message = $VerboseInput | ConvertTo-Json -Depth 10
         }
 
-        # If a pre message is provided, add it to the beginning of the message
+        # If a pre-message is provided, add it to the beginning of the message
         if ($PreMessage) {
             $message = "$PreMessage`r`n$message"
         }
@@ -290,7 +290,7 @@ begin {
             }
         }
         catch {
-            Write-VerboseLog -VerboseInput $_.Exception -PreMessage 'Get-ResourceContent - CAUGHT EXCEPTION - $_.Exception:'
+            Write-VerboseLog -VerboseInput $_.Exception.Message -PreMessage 'Get-ResourceContent - CAUGHT EXCEPTION - $_.Exception.Message:'
             $response = $_.Exception.Response
 
             if (!$response) {
