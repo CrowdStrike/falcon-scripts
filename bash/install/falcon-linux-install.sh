@@ -269,7 +269,13 @@ os_install_package() {
             DEBIAN_FRONTEND=noninteractive apt-get -qq install -y "$pkg" >/dev/null
             ;;
         Ubuntu)
-            DEBIAN_FRONTEND=noninteractive apt-get -qq install -y "$pkg" >/dev/null
+            # If this is ubuntu 14, we need to use dpkg instead
+            if [ "${cs_os_version}" -eq 14 ]; then
+                DEBIAN_FRONTEND=noninteractive dpkg -i "$pkg" > /dev/null 2>&1 || true # ignore dep errors
+                DEBIAN_FRONTEND=noninteractive apt-get -qq install -f -y >/dev/null
+            else
+                DEBIAN_FRONTEND=noninteractive apt-get -qq install -y "$pkg" >/dev/null
+            fi
             ;;
         *)
             die "Unrecognized OS: ${os_name}"
