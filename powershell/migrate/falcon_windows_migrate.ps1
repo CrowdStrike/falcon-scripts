@@ -475,7 +475,7 @@ function Invoke-FalconInstall ([hashtable] $WebRequestParams, [string] $InstallP
         # Get sensor version from policy
         $message = "Retrieving sensor policy details for '$($SensorUpdatePolicyName)'"
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
-        $filter = "platform_name:'Windows'+name.raw:'$($SensorUpdatePolicyName.ToLower())'"
+        $filter = "platform_name:'Windows'+name.raw:'$($SensorUpdatePolicyName)'"
         $url = "${newBaseUrl}/policy/combined/sensor-update/v2?filter=$([System.Web.HttpUtility]::UrlEncode($filter)))"
         $policy_scope = @{
             'Sensor update policies' = @('Read')

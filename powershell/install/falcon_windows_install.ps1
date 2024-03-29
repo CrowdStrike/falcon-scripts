@@ -460,7 +460,7 @@ process {
     # Get sensor version from policy
     $message = "Retrieving sensor policy details for '$($SensorUpdatePolicyName)'"
     Write-FalconLog 'GetPolicy' $message
-    $filter = "platform_name:'Windows'+name.raw:'$($SensorUpdatePolicyName.ToLower())'"
+    $filter = "platform_name:'Windows'+name.raw:'$($SensorUpdatePolicyName)'"
     $url = "${BaseUrl}/policy/combined/sensor-update/v2?filter=$([System.Web.HttpUtility]::UrlEncode($filter)))"
     $policy_scope = @{
         'Sensor update policies' = @('Read')
