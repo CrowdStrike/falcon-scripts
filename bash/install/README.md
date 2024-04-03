@@ -31,6 +31,17 @@ Ensure the following API scopes are enabled:
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 ```
+**You can also specify a falcon access token if doing a batch install across multiple machines to prevent the need to call the token endpoint multiple times. If using the an access token to authenticate, you MUST also provide `FALCON_CLOUD`:**
+```bash
+export FALCON_ACCESS_TOKEN="XXXXXXXX"
+export FALCON_CLOUD="us-1"
+```
+**To retrieve your falcon access token, set the GET_ACCESS_TOKEN. The Falcon sensor will NOT be installed while this variable is set**
+```bash
+export FALCON_CLIENT_ID="XXXXXXX"
+export FALCON_CLIENT_SECRET="YYYYYYYYY"
+export GET_ACCESS_TOKEN="true"
+```
 
 The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET` are not provided AND the script is running on an AWS instance, the script will try to get API credentials from the SSM store of the region.
 
@@ -51,6 +62,8 @@ FALCON_BILLING                    (default: default) possible values: [default|m
 FALCON_BACKEND                    (default: auto)    possible values: [auto|bpf|kernel]
 FALCON_TRACE                      (default: none)    possible values: [none|err|warn|info|debug]
 ALLOW_LEGACY_CURL                 (default: false)
+GET_ACCESS_TOKEN                  (default: false)   possible values: [true|false]
+FALCON_REMOVE_HOST                (default: true)
 ```
 
 **Run the script**:

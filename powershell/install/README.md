@@ -28,6 +28,9 @@ The script must be run as an administrator on the local machine in order for the
 to complete.
 
 Script options can be passed as parameters or defined in the param() block. Default values are listed in
+
+**When performing a batch install across multiple machines, you can provide a pre-retrieved access token by using the `FalconAccessToken` parameter. If Supplying the access token `FalconCloud` must also be provided.**
+
 the parameter descriptions:
 
 ```terminal
@@ -59,6 +62,11 @@ Time to wait, in seconds, for sensor to provision [default: 1200]
 A comma-separated list of tags to apply to the host after sensor installation [default: $null]
 .PARAMETER Verbose
 Enable verbose logging
+.PARAMETER GetAccessToken
+Flag to return API credential access token. Will NOT install Falcon sensor. [default: $false]
+.PARAMETER FalconAccessToken
+Manually set Falcon access token. Used to reduce number of requests to the token endpoint when performing batch installs.
+
 ```
 
 ***Examples***:
