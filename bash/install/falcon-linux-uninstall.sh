@@ -200,13 +200,6 @@ else
 fi
 
 
-cs_falcon_token=$(
-    if [ -n "$FALCON_PROVISIONING_TOKEN" ]; then
-        echo "$FALCON_PROVISIONING_TOKEN"
-    fi
-)
-
-
 cs_falcon_oauth_token=$(
     if [ -n "$FALCON_ACCESS_TOKEN" ]; then
         token=$FALCON_ACCESS_TOKEN
@@ -245,7 +238,7 @@ else
 fi
 
 aid=$(
-    echo $(/opt/CrowdStrike/falconctl 2>/dev/null -g --aid | cut -c 6- | rev | cut -c 3- | rev) 
+    echo "$(/opt/CrowdStrike/falconctl 2>/dev/null -g --aid | cut -c 6- | rev | cut -c 3- | rev)"
 )
 
 main "$@"
