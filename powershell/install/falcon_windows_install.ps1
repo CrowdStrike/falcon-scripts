@@ -207,7 +207,7 @@ begin {
                 }
     
                 if ($GetAccessToken -eq $true){
-                    Write-Host $content.access_token
+                    Write-Output $content.access_token | out-host
                     exit
                 }
     

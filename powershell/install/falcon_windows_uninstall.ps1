@@ -189,6 +189,11 @@ begin {
                     $Message = 'Unable to authenticate to the CrowdStrike Falcon API. Please check your credentials and try again.'
                     throw $Message
                 }
+
+                if ($GetAccessToken -eq $true){
+                    Write-Output $content.access_token | out-host
+                    exit
+                }
     
                 $Headers.Add('Authorization', "bearer $($content.access_token)")
             }
