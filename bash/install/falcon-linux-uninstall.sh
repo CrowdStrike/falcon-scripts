@@ -154,6 +154,7 @@ cs_falcon_cloud=$(
 )
 
 response_headers=$(mktemp)
+# shellcheck disable=SC2001
 proxy=$(
     proxy=""
     if [ -n "$FALCON_APH" ]; then
@@ -171,7 +172,6 @@ proxy=$(
     fi
     echo "$proxy"
 )
-
 
 if [ -z "$FALCON_ACCESS_TOKEN" ]; then
     cs_falcon_client_id=$(
@@ -237,8 +237,6 @@ else
     fi
 fi
 
-aid=$(
-    echo "$(/opt/CrowdStrike/falconctl 2>/dev/null -g --aid | cut -c 6- | rev | cut -c 3- | rev)"
-)
+aid="$(/opt/CrowdStrike/falconctl 2>/dev/null -g --aid | cut -c 6- | rev | cut -c 3- | rev)"
 
 main "$@"
