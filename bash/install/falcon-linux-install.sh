@@ -36,7 +36,7 @@ main() {
         print_usage
         exit 1
     fi
-    
+
     if [ "$GET_ACCESS_TOKEN" = "true" ]; then
         echo "$cs_falcon_oauth_token"
         exit 1
@@ -650,12 +650,11 @@ if [ -z "$FALCON_ACCESS_TOKEN" ]; then
             die "Missing FALCON_CLIENT_SECRET environment variable. Please provide your OAuth2 API Client Secret for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
         fi
     )
-else 
+else
     if [ -z "$FALCON_CLOUD" ]; then
         die "If setting the FALCON_ACCESS_TOKEN manually, you must also specify the FALCON_CLOUD"
     fi
 fi
-
 
 cs_falcon_token=$(
     if [ -n "$FALCON_PROVISIONING_TOKEN" ]; then
@@ -843,6 +842,5 @@ if [ -n "$FALCON_TRACE" ]; then
         esac
     )
 fi
-
 
 main "$@"
