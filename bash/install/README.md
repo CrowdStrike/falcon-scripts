@@ -25,14 +25,22 @@ Ensure the following API scopes are enabled:
 
 ## Configuration
 
-**Export the required environment variables:**
+### Setting up Authentication
+
+#### Using Client ID and Client Secret
+
+Export the required environment variables:
 
 ```bash
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 ```
 
+#### Using AWS SSM
+
 The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET` are not provided AND the script is running on an AWS instance, the script will try to get API credentials from the SSM store of the region.
+
+### Additional Configuration
 
 Optional environment variables that can be exported:
 
@@ -51,6 +59,8 @@ FALCON_BILLING                    (default: default) possible values: [default|m
 FALCON_BACKEND                    (default: auto)    possible values: [auto|bpf|kernel]
 FALCON_TRACE                      (default: none)    possible values: [none|err|warn|info|debug]
 ALLOW_LEGACY_CURL                 (default: false)
+GET_ACCESS_TOKEN                  (default: false)   possible values: [true|false]
+FALCON_REMOVE_HOST                (default: true)
 ```
 
 **Run the script**:

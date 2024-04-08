@@ -8,10 +8,6 @@ Crowdstrike API credentials are needed to remove host from the Falcon console
 
     - FALCON_CLIENT_ID
     - FALCON_CLIENT_SECRET
-    or 
-    - FALCON_ACCESS_TOKEN               (default: unset)
-    - FALCON_CLOUD                      (default: auto)
-
 
 Optional:
     - GET_ACCESS_TOKEN                  (default: false)   possible values: [true|false
