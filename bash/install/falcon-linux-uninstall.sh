@@ -65,11 +65,11 @@ cs_remove_host_from_console() {
 
 cs_cloud() {
     case "${cs_falcon_cloud}" in
-    us-1) echo "api.crowdstrike.com" ;;
-    us-2) echo "api.us-2.crowdstrike.com" ;;
-    eu-1) echo "api.eu-1.crowdstrike.com" ;;
-    us-gov-1) echo "api.laggar.gcw.crowdstrike.com" ;;
-    *) die "Unrecognized Falcon Cloud: ${cs_falcon_cloud}" ;;
+        us-1) echo "api.crowdstrike.com" ;;
+        us-2) echo "api.us-2.crowdstrike.com" ;;
+        eu-1) echo "api.eu-1.crowdstrike.com" ;;
+        us-gov-1) echo "api.laggar.gcw.crowdstrike.com" ;;
+        *) die "Unrecognized Falcon Cloud: ${cs_falcon_cloud}" ;;
     esac
 }
 
