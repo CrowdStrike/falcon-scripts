@@ -199,12 +199,12 @@ begin {
                 $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
                 $content = ConvertFrom-Json -InputObject $response.Content
                 Write-VerboseLog -VerboseInput $content -PreMessage 'Invoke-FalconAuth - $content:'
-    
+
                 if ([string]::IsNullOrEmpty($content.access_token)) {
                     $message = 'Unable to authenticate to the CrowdStrike Falcon API. Please check your credentials and try again.'
                     throw $message
                 }
-    
+
                 if ($GetAccessToken -eq $true){
                     Write-Output $content.access_token | out-host
                     exit

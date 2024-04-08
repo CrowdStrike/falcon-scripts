@@ -194,7 +194,7 @@ begin {
                     Write-Output $content.access_token | out-host
                     exit
                 }
-    
+
                 $Headers.Add('Authorization', "bearer $($content.access_token)")
             }
             catch {
