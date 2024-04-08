@@ -50,7 +50,7 @@ FALCON_APP                        (default: unset)
 FALCON_BILLING                    (default: default) possible values: [default|metered]
 FALCON_BACKEND                    (default: auto)    possible values: [auto|bpf|kernel]
 FALCON_TRACE                      (default: none)    possible values: [none|err|warn|info|debug]
-ALLOW_LEGACY_CURL                 (default: false)
+ALLOW_LEGACY_CURL                 (default: true)
 ```
 
 **Run the script**:
