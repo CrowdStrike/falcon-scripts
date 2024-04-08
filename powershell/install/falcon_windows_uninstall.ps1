@@ -114,7 +114,7 @@ begin {
             $Message = 'Unable to auto discover Falcon region using access token, please provide FalconCloud'
             throw $Message
         }
-        
+
     }
 
     $ScriptName = $MyInvocation.MyCommand.Name
