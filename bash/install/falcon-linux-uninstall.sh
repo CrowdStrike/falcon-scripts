@@ -2,19 +2,25 @@
 
 print_usage() {
     cat <<EOF
-This script removes the CrowdStrike Falcon Sensor for Linux from the operating system.
+Uninstalls the CrowdStrike Falcon Sensor from Linux operating systems.
 
-Crowdstrike API credentials are needed to remove host from the Falcon console
+The script recognizes the following environmental variables:
 
-    - FALCON_CLIENT_ID
-    - FALCON_CLIENT_SECRET
+    - FALCON_CLIENT_ID                  (default: unset)
+        Your CrowdStrike Falcon API client ID. Required if FALCON_REMOVE_HOST is 'true'.
 
-Optional:
-    - GET_ACCESS_TOKEN                  (default: false)   possible values: [true|false
+    - FALCON_CLIENT_SECRET              (default: unset)
+        Your CrowdStrike Falcon API client secret. Required if FALCON_REMOVE_HOST is 'true'.
+
+    - FALCON_REMOVE_HOST                (default: unset)
+        Determines whether the host should be removed from the Falcon console after uninstalling the sensor.
+        Accepted values are ['true', 'false'].
+
     - FALCON_APH                        (default: unset)
-    - FALCON_APP                        (default: unset)
-    - FALCON_REMOVE_HOST                (default: true)
+        The proxy host for the sensor to use when communicating with CrowdStrike.
 
+    - FALCON_APP                        (default: unset)
+        The proxy port for the sensor to use when communicating with CrowdStrike.
 EOF
 }
 
@@ -23,10 +29,11 @@ main() {
         print_usage
         exit 1
     fi
+    cs_sensor_installed
     echo -n 'Removing Falcon Sensor  ... '
     cs_sensor_remove
     echo '[ Ok ]'
-    if [ -z "$FALCON_REMOVE_HOST" ] || [ "${FALCON_REMOVE_HOST}" = "true" ]; then
+    if [ "${FALCON_REMOVE_HOST}" = "true" ]; then
         echo -n 'Removing host from console ... '
         cs_remove_host_from_console
         echo '[ Ok ] '
@@ -55,10 +62,14 @@ cs_sensor_remove() {
 }
 
 cs_remove_host_from_console() {
-    if [ "$aid" = "" ]; then
-        echo 'unable to find aid'
+    if [ -z "$aid" ]; then
+        echo 'Unable to find AID. Skipping host removal from console.'
     else
-        curl_command -X "POST" "https://$(cs_cloud)/devices/entities/devices-actions/v2?action_name=hide_host" -d "{    \"ids\": [    \"$aid\"  ]}" -H 'Content-Type: application/json'
+        payload="{\"ids\": [\"$aid\"]}"
+        url="https://$(cs_cloud)/devices/entities/devices-actions/v2?action_name=hide_host"
+
+        curl_command -X "POST" -H "Content-Type: application/json" -d "$payload" "$url" >/dev/null
+
         handle_curl_error $?
     fi
 }
@@ -73,10 +84,12 @@ cs_cloud() {
     esac
 }
 
-if ! test -f /opt/CrowdStrike/falconctl; then
-    echo "Falcon sensor is not installed."
-    exit 1
-fi
+cs_sensor_installed() {
+    if ! test -f /opt/CrowdStrike/falconctl; then
+        echo "Falcon sensor is not installed."
+        exit 1
+    fi
+}
 
 old_curl=$(
     if ! command -v curl >/dev/null 2>&1; then
@@ -169,7 +182,7 @@ proxy=$(
     echo "$proxy"
 )
 
-if [ -z "$FALCON_REMOVE_HOST" ] || [ "${FALCON_REMOVE_HOST}" = "true" ]; then
+if [ "${FALCON_REMOVE_HOST}" = "true" ]; then
 
     cs_falcon_client_id=$(
         if [ -n "$FALCON_CLIENT_ID" ]; then
@@ -225,7 +238,7 @@ if [ -z "$FALCON_REMOVE_HOST" ] || [ "${FALCON_REMOVE_HOST}" = "true" ]; then
         fi
     fi
 
-    aid="$(/opt/CrowdStrike/falconctl -g --aid | cut -c 6- | rev | cut -c 3- | rev)"
+    aid="$(/opt/CrowdStrike/falconctl -g --aid | awk -F '"' '{print $2}')"
 
 fi
 
