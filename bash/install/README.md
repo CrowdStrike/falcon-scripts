@@ -40,9 +40,7 @@ export FALCON_CLIENT_SECRET="YYYYYYYYY"
 
 The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET` are not provided AND the script is running on an AWS instance, the script will try to get API credentials from the SSM store of the region.
 
-### Additional Configuration
-
-Optional environment variables that can be exported:
+### Install
 
 ```terminal
 FALCON_CID                        (default: auto)
@@ -63,7 +61,9 @@ GET_ACCESS_TOKEN                  (default: false)   possible values: [true|fals
 FALCON_REMOVE_HOST                (default: true)
 ```
 
-**Run the script**:
+***Examples***:
+
+To download and run the script:
 
 ```bash
 curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.3.3/bash/install/falcon-linux-install.sh | bash
@@ -85,6 +85,47 @@ or
 
 ```bash
 bash falcon-linux-install.sh
+```
+
+### Uninstall
+
+```terminal
+Uninstalls the CrowdStrike Falcon Sensor from Linux operating systems.
+
+The script recognizes the following environmental variables:
+
+    - FALCON_CLIENT_ID                  (default: unset)
+        Your CrowdStrike Falcon API client ID. Required if FALCON_REMOVE_HOST is 'true'.
+
+    - FALCON_CLIENT_SECRET              (default: unset)
+        Your CrowdStrike Falcon API client secret. Required if FALCON_REMOVE_HOST is 'true'.
+
+    - FALCON_REMOVE_HOST                (default: unset)
+        Determines whether the host should be removed from the Falcon console after uninstalling the sensor.
+        Accepted values are ['true', 'false'].
+
+    - FALCON_APH                        (default: unset)
+        The proxy host for the sensor to use when communicating with CrowdStrike.
+
+    - FALCON_APP                        (default: unset)
+        The proxy port for the sensor to use when communicating with CrowdStrike.
+```
+
+***Examples***:
+
+To download and run the script:
+
+```bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.3.3/bash/install/falcon-linux-uninstall.sh | bash
+```
+
+Uninstall and remove the host from the Falcon console:
+
+```bash
+export FALCON_CLIENT_ID="XXXXXXX"
+export FALCON_CLIENT_SECRET="YYYYYYYYY"
+export FALCON_REMOVE_HOST="true"
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.3.3/bash/install/falcon-linux-uninstall.sh | bash
 ```
 
 ## Troubleshooting
