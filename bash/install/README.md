@@ -36,6 +36,26 @@ export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 ```
 
+#### Using an Access Token
+
+You can also specify a Falcon access token if doing a batch install across multiple machines to prevent the need to call the token endpoint multiple times. If using an access token to authenticate, you ***MUST*** also provide `FALCON_CLOUD`:
+
+```bash
+export FALCON_ACCESS_TOKEN="XXXXXXXX"
+export FALCON_CLOUD="us-1"
+```
+
+> [!NOTE]
+> If you need to retrieve an access token, run the script with the `GET_ACCESS_TOKEN` environment variable set to `true`. The Falcon sensor will NOT be installed while this variable is set.
+>
+> ```bash
+> export FALCON_CLIENT_ID="XXXXXXX"
+> export FALCON_CLIENT_SECRET="YYYYYYYYY"
+> export GET_ACCESS_TOKEN="true"
+> ```
+>
+> The script will output the access token to the console.
+
 #### Using AWS SSM
 
 The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET` are not provided AND the script is running on an AWS instance, the script will try to get API credentials from the SSM store of the region.
