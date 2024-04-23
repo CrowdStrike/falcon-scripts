@@ -24,6 +24,33 @@ The scripts support auto-discovery of the Falcon cloud region. If the `FalconClo
 
 ## Configuration
 
+### Setting up Authentication
+
+#### Using Client ID and Client Secret
+
+Provide the required parameters:
+
+```powershell
+.\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string> 
+```
+
+#### Using an Access Token
+
+You can also specify a Falcon access token if doing a batch install across multiple machines to prevent the need to call the token endpoint multiple times. If using an access token to authenticate, you ***MUST*** also provide `FALCON_CLOUD`:
+
+```powershell
+.\falcon_windows_install.ps1 -FalconCloud us-2 -FalconAccessToken <string>
+```
+
+> [!NOTE]
+> If you need to retrieve an access token, run the script with the `GET_ACCESS_TOKEN` parameter set to `true`. The Falcon sensor will NOT be installed while this parameteris provided.
+>
+> ```powershell
+> .\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string> -GetAccessToken True
+> ```
+>
+> The script will output the access token to the console.
+
 ### Install
 
 Uses the CrowdStrike Falcon APIs to check the sensor version assigned to a ***Windows Sensor Update policy***,
