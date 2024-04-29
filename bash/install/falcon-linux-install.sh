@@ -110,10 +110,10 @@ cs_sensor_is_running() {
 }
 
 cs_sensor_restart() {
-    if type service >/dev/null 2>&1; then
-        service falcon-sensor restart
-    elif type systemctl >/dev/null 2>&1; then
+    if type systemctl >/dev/null 2>&1; then
         systemctl restart falcon-sensor
+    elif type service >/dev/null 2>&1; then
+        service falcon-sensor restart
     else
         die "Could not restart falcon sensor"
     fi
