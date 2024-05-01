@@ -512,6 +512,26 @@ curl_command() {
     fi
 }
 
+check_aws_instance() {
+    local aws_instance
+
+    # Check if running on EC2 hypervisor
+    if [ -f /sys/hypervisor/uuid ] && grep -qi ec2 /sys/hypervisor/uuid; then
+        aws_instance=true
+    # Check if DMI board asset tag matches EC2 instance pattern
+    elif [ -f /sys/devices/virtual/dmi/id/board_asset_tag ] && grep -q '^i-[a-z0-9]*$' /sys/devices/virtual/dmi/id/board_asset_tag; then
+        aws_instance=true
+    # Check if EC2 instance identity document is accessible
+    else
+        curl_output="$(curl -s --connect-timeout 5 http://169.254.169.254/latest/dynamic/instance-identity/)"
+        if [ -n "$curl_output" ] && ! echo "$curl_output" | grep --silent -i 'not.*found'; then
+            aws_instance=true
+        fi
+    fi
+
+    echo "$aws_instance"
+}
+
 # shellcheck disable=SC2034
 cs_uninstall=$(
     if [ "$FALCON_UNINSTALL" ]; then
@@ -617,20 +637,8 @@ cs_os_version=$(
     echo "$version"
 )
 
-aws_instance=$(
-    if [ -f /sys/hypervisor/uuid ] && grep -qi ec2 /sys/hypervisor/uuid; then
-        echo true
-    elif [ -f /sys/devices/virtual/dmi/id/board_asset_tag ] && grep -q '^i-[a-z0-9]*$' /sys/devices/virtual/dmi/id/board_asset_tag; then
-        echo true
-    else
-        curl_output="$(curl -s --connect-timeout 5 http://169.254.169.254/latest/dynamic/instance-identity/)"
-        if [ -n "$curl_output" ] && ! echo "$curl_output" | grep --silent -i 'not.*found'; then
-            echo true
-        fi
-    fi
-)
-
 if [ -z "$FALCON_ACCESS_TOKEN" ]; then
+    aws_instance=$(check_aws_instance)
     cs_falcon_client_id=$(
         if [ -n "$FALCON_CLIENT_ID" ]; then
             echo "$FALCON_CLIENT_ID"
@@ -736,21 +744,22 @@ cs_falcon_oauth_token=$(
     echo "$token"
 )
 
-region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
-rm "${response_headers}"
+if [ -z "$FALCON_ACCESS_TOKEN" ]; then
+    region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
 
-if [ -z "${FALCON_CLOUD}" ]; then
-    if [ -z "${region_hint}" ]; then
-        die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
-    fi
-    cs_falcon_cloud="${region_hint}"
-else
-    if [ -n "$FALCON_ACCESS_TOKEN" ]; then
-        :
-    elif [ "x${FALCON_CLOUD}" != "x${region_hint}" ]; then
-        echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
+    if [ -z "${FALCON_CLOUD}" ]; then
+        if [ -z "${region_hint}" ]; then
+            die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
+        fi
+        cs_falcon_cloud="${region_hint}"
+    else
+        if [ "x${FALCON_CLOUD}" != "x${region_hint}" ]; then
+            echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
+        fi
     fi
 fi
+
+rm "${response_headers}"
 
 cs_falcon_cid=$(
     if [ -n "$FALCON_CID" ]; then
