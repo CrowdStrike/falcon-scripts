@@ -6,18 +6,31 @@ Uninstalls the CrowdStrike Falcon Sensor from Linux operating systems.
 
 The script recognizes the following environmental variables:
 
+Authentication:
     - FALCON_CLIENT_ID                  (default: unset)
-        Your CrowdStrike Falcon API client ID. Required if FALCON_REMOVE_HOST is 'true'.
+        Your CrowdStrike Falcon API client ID.
 
     - FALCON_CLIENT_SECRET              (default: unset)
-        Your CrowdStrike Falcon API client secret. Required if FALCON_REMOVE_HOST is 'true'.
+        Your CrowdStrike Falcon API client secret.
 
-    - FALCON_CLOUD                      (default: 'us-1')
-        The CrowdStrike cloud region to use.
+    - FALCON_ACCESS_TOKEN               (default: unset)
+        Your CrowdStrike Falcon API access token.
+        If used, FALCON_CLIENT_ID and FALCON_CLIENT_SECRET are not needed.
+
+    - FALCON_CLOUD                      (default: unset)
+        The cloud region where your CrowdStrike Falcon instance is hosted.
+        Required if using FALCON_ACCESS_TOKEN.
         Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1'].
 
+Other Options:
     - FALCON_REMOVE_HOST                (default: unset)
         Determines whether the host should be removed from the Falcon console after uninstalling the sensor.
+        Requires API Authentication.
+        Accepted values are ['true', 'false'].
+
+    - GET_ACCESS_TOKEN                  (default: unset)
+        Prints an access token and exits.
+        Requires FALCON_CLIENT_ID and FALCON_CLIENT_SECRET.
         Accepted values are ['true', 'false'].
 
     - FALCON_APH                        (default: unset)
@@ -25,6 +38,7 @@ The script recognizes the following environmental variables:
 
     - FALCON_APP                        (default: unset)
         The proxy port for the sensor to use when communicating with CrowdStrike.
+
 EOF
 }
 
@@ -35,16 +49,19 @@ main() {
     fi
 
     if [ "$GET_ACCESS_TOKEN" = "true" ]; then
+        get_oauth_token
         echo "$cs_falcon_oauth_token"
-        exit 1
+        exit 0
     fi
 
+    # Check if Falcon sensor is installed
     cs_sensor_installed
     echo -n 'Removing Falcon Sensor  ... '
     cs_sensor_remove
     echo '[ Ok ]'
     if [ "${FALCON_REMOVE_HOST}" = "true" ]; then
         echo -n 'Removing host from console ... '
+        get_oauth_token
         cs_remove_host_from_console
         echo '[ Ok ] '
     fi
@@ -62,7 +79,7 @@ cs_sensor_remove() {
         elif type zypper >/dev/null 2>&1; then
             zypper --quiet remove -y "$pkg" || rpm -e --nodeps "$pkg"
         elif type apt >/dev/null 2>&1; then
-            DEBIAN_FRONTEND=noninteractive apt purge -y "$pkg" >/dev/null
+            DEBIAN_FRONTEND=noninteractive apt purge -y "$pkg" >/dev/null 2>&1
         else
             rpm -e --nodeps "$pkg"
         fi
@@ -96,9 +113,10 @@ cs_cloud() {
 
 cs_sensor_installed() {
     if ! test -f /opt/CrowdStrike/falconctl; then
-        echo "Falcon sensor is not installed."
-        exit 1
+        echo "Falcon sensor is already uninstalled." && exit 0
     fi
+    # Get AID if FALCON_REMOVE_HOST is set to true and sensor is installed
+    [ "${FALCON_REMOVE_HOST}" = "true" ] && get_aid
 }
 
 old_curl=$(
@@ -162,6 +180,177 @@ die() {
     exit 1
 }
 
+aws_ssm_parameter() {
+    local param_name="$1"
+
+    hmac_sha256() {
+        key="$1"
+        data="$2"
+        echo -n "$data" | openssl dgst -sha256 -mac HMAC -macopt "$key" | sed 's/^.* //'
+    }
+
+    token=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+    api_endpoint="AmazonSSM.GetParameters"
+    iam_role="$(curl -s -H "X-aws-ec2-metadata-token: $token" http://169.254.169.254/latest/meta-data/iam/security-credentials/)"
+    aws_my_region="$(curl -s -H "X-aws-ec2-metadata-token: $token" http://169.254.169.254/latest/meta-data/placement/availability-zone | sed s/.$//)"
+    _security_credentials="$(curl -s -H "X-aws-ec2-metadata-token: $token" http://169.254.169.254/latest/meta-data/iam/security-credentials/"$iam_role")"
+    access_key_id="$(echo "$_security_credentials" | grep AccessKeyId | sed -e 's/  "AccessKeyId" : "//' -e 's/",$//')"
+    access_key_secret="$(echo "$_security_credentials" | grep SecretAccessKey | sed -e 's/  "SecretAccessKey" : "//' -e 's/",$//')"
+    security_token="$(echo "$_security_credentials" | grep Token | sed -e 's/  "Token" : "//' -e 's/",$//')"
+    datetime=$(date -u +"%Y%m%dT%H%M%SZ")
+    date=$(date -u +"%Y%m%d")
+    request_data='{"Names":["'"${param_name}"'"],"WithDecryption":"true"}'
+    request_data_dgst=$(echo -n "$request_data" | openssl dgst -sha256 | awk -F' ' '{print $2}')
+    request_dgst=$(
+        cat <<EOF | head -c -1 | openssl dgst -sha256 | awk -F' ' '{print $2}'
+POST
+/
+
+content-type:application/x-amz-json-1.1
+host:ssm.$aws_my_region.amazonaws.com
+x-amz-date:$datetime
+x-amz-security-token:$security_token
+x-amz-target:$api_endpoint
+
+content-type;host;x-amz-date;x-amz-security-token;x-amz-target
+$request_data_dgst
+EOF
+    )
+    dateKey=$(hmac_sha256 key:"AWS4$access_key_secret" "$date")
+    dateRegionKey=$(hmac_sha256 "hexkey:$dateKey" "$aws_my_region")
+    dateRegionServiceKey=$(hmac_sha256 "hexkey:$dateRegionKey" ssm)
+    hex_key=$(hmac_sha256 "hexkey:$dateRegionServiceKey" "aws4_request")
+
+    signature=$(
+        cat <<EOF | head -c -1 | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$hex_key" | awk -F' ' '{print $2}'
+AWS4-HMAC-SHA256
+$datetime
+$date/$aws_my_region/ssm/aws4_request
+$request_dgst
+EOF
+    )
+
+    response=$(
+        curl -s "https://ssm.$aws_my_region.amazonaws.com/" \
+            -x "$proxy" \
+            -H "Authorization: AWS4-HMAC-SHA256 \
+            Credential=$access_key_id/$date/$aws_my_region/ssm/aws4_request, \
+            SignedHeaders=content-type;host;x-amz-date;x-amz-security-token;x-amz-target, \
+            Signature=$signature" \
+            -H "x-amz-security-token: $security_token" \
+            -H "x-amz-target: $api_endpoint" \
+            -H "content-type: application/x-amz-json-1.1" \
+            -d "$request_data" \
+            -H "x-amz-date: $datetime"
+    )
+    handle_curl_error $?
+    if ! echo "$response" | grep -q '^.*"InvalidParameters":\[\].*$'; then
+        die "Unexpected response from AWS SSM Parameter Store: $response"
+    elif ! echo "$response" | grep -q '^.*'"${param_name}"'.*$'; then
+        die "Unexpected response from AWS SSM Parameter Store: $response"
+    fi
+    echo "$response"
+}
+
+check_aws_instance() {
+    local aws_instance
+
+    # Check if running on EC2 hypervisor
+    if [ -f /sys/hypervisor/uuid ] && grep -qi ec2 /sys/hypervisor/uuid; then
+        aws_instance=true
+    # Check if DMI board asset tag matches EC2 instance pattern
+    elif [ -f /sys/devices/virtual/dmi/id/board_asset_tag ] && grep -q '^i-[a-z0-9]*$' /sys/devices/virtual/dmi/id/board_asset_tag; then
+        aws_instance=true
+    # Check if EC2 instance identity document is accessible
+    else
+        curl_output="$(curl -s --connect-timeout 5 http://169.254.169.254/latest/dynamic/instance-identity/)"
+        if [ -n "$curl_output" ] && ! echo "$curl_output" | grep --silent -i 'not.*found'; then
+            aws_instance=true
+        fi
+    fi
+
+    echo "$aws_instance"
+}
+
+get_falcon_credentials() {
+    if [ -z "$FALCON_ACCESS_TOKEN" ]; then
+        aws_instance=$(check_aws_instance)
+        cs_falcon_client_id=$(
+            if [ -n "$FALCON_CLIENT_ID" ]; then
+                echo "$FALCON_CLIENT_ID"
+            elif [ -n "$aws_instance" ]; then
+                aws_ssm_parameter "FALCON_CLIENT_ID" | json_value Value 1
+            else
+                die "Missing FALCON_CLIENT_ID environment variable. Please provide your OAuth2 API Client ID for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
+            fi
+        )
+
+        cs_falcon_client_secret=$(
+            if [ -n "$FALCON_CLIENT_SECRET" ]; then
+                echo "$FALCON_CLIENT_SECRET"
+            elif [ -n "$aws_instance" ]; then
+                aws_ssm_parameter "FALCON_CLIENT_SECRET" | json_value Value 1
+            else
+                die "Missing FALCON_CLIENT_SECRET environment variable. Please provide your OAuth2 API Client Secret for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
+            fi
+        )
+    else
+        if [ -z "$FALCON_CLOUD" ]; then
+            die "If setting the FALCON_ACCESS_TOKEN manually, you must also specify the FALCON_CLOUD"
+        fi
+    fi
+}
+
+get_oauth_token() {
+    # Get credentials first
+    get_falcon_credentials
+
+    cs_falcon_oauth_token=$(
+        if [ -n "$FALCON_ACCESS_TOKEN" ]; then
+            token=$FALCON_ACCESS_TOKEN
+        else
+            token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" |
+                curl -X POST -s -x "$proxy" -L "https://$(cs_cloud)/oauth2/token" \
+                    -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
+                    -H 'User-Agent: crowdstrike-falcon-scripts/1.4.1' \
+                    --dump-header "${response_headers}" \
+                    --data @-)
+
+            handle_curl_error $?
+
+            token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
+            if [ -z "$token" ]; then
+                die "Unable to obtain CrowdStrike Falcon OAuth Token. Double check your credentials and/or ensure you set the correct cloud region."
+            fi
+        fi
+        echo "$token"
+    )
+
+    if [ -z "$FALCON_ACCESS_TOKEN" ]; then
+        region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
+
+        if [ -z "${FALCON_CLOUD}" ]; then
+            if [ -z "${region_hint}" ]; then
+                die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
+            fi
+            cs_falcon_cloud="${region_hint}"
+        else
+            if [ "x${FALCON_CLOUD}" != "x${region_hint}" ]; then
+                echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
+            fi
+        fi
+    fi
+
+    rm "${response_headers}"
+}
+
+get_aid() {
+    aid="$(/opt/CrowdStrike/falconctl -g --aid | awk -F '"' '{print $2}')"
+}
+
+#------Start of the script------#
+set -e
+
 cs_falcon_cloud=$(
     if [ -n "$FALCON_CLOUD" ]; then
         echo "$FALCON_CLOUD"
@@ -191,74 +380,5 @@ proxy=$(
     fi
     echo "$proxy"
 )
-
-if [ "${FALCON_REMOVE_HOST}" = "true" ]; then
-
-    if [ -z "$FALCON_ACCESS_TOKEN" ]; then
-        cs_falcon_client_id=$(
-            if [ -n "$FALCON_CLIENT_ID" ]; then
-                echo "$FALCON_CLIENT_ID"
-            elif [ -n "$aws_instance" ]; then
-                aws_ssm_parameter "FALCON_CLIENT_ID" | json_value Value 1
-            else
-                die "Missing FALCON_CLIENT_ID environment variable. Please provide your OAuth2 API Client ID for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
-            fi
-        )
-
-        cs_falcon_client_secret=$(
-            if [ -n "$FALCON_CLIENT_SECRET" ]; then
-                echo "$FALCON_CLIENT_SECRET"
-            elif [ -n "$aws_instance" ]; then
-                aws_ssm_parameter "FALCON_CLIENT_SECRET" | json_value Value 1
-            else
-                die "Missing FALCON_CLIENT_SECRET environment variable. Please provide your OAuth2 API Client Secret for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
-            fi
-        )
-    else
-        if [ -z "$FALCON_CLOUD" ]; then
-            die "If setting the FALCON_ACCESS_TOKEN manually, you must also specify the FALCON_CLOUD"
-        fi
-    fi
-
-    cs_falcon_oauth_token=$(
-        if [ -n "$FALCON_ACCESS_TOKEN" ]; then
-            token=$FALCON_ACCESS_TOKEN
-        else
-            token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" |
-                curl -X POST -s -x "$proxy" -L "https://$(cs_cloud)/oauth2/token" \
-                    -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
-                    -H 'User-Agent: crowdstrike-falcon-scripts/1.4.1' \
-                    --dump-header "${response_headers}" \
-                    --data @-)
-
-            handle_curl_error $?
-
-            token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
-            if [ -z "$token" ]; then
-                die "Unable to obtain CrowdStrike Falcon OAuth Token. Double check your credentials and/or ensure you set the correct cloud region."
-            fi
-        fi
-        echo "$token"
-    )
-
-    region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
-    rm "${response_headers}"
-
-    if [ -z "${FALCON_CLOUD}" ]; then
-        if [ -z "${region_hint}" ]; then
-            die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
-        fi
-        cs_falcon_cloud="${region_hint}"
-    else
-        if [ -n "$FALCON_ACCESS_TOKEN" ]; then
-            :
-        elif [ "x${FALCON_CLOUD}" != "x${region_hint}" ]; then
-            echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
-        fi
-    fi
-
-    aid="$(/opt/CrowdStrike/falconctl -g --aid | awk -F '"' '{print $2}')"
-
-fi
 
 main "$@"
