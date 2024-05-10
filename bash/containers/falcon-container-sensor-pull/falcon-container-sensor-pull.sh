@@ -278,7 +278,7 @@ format_tags() {
     else
         echo "$all_tags" |
             sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
-            awk -F',' -v keyword="$SENSOR_PLATFORM" '{for (i=1; i<=NF; i++) if ($i ~ keyword) print $i}'
+            awk -F',' -v keyword="$SENSOR_PLATFORM" '{for (i=1; i<=NF; i++) if ($i ~ keyword && $i !~ /sha256/) print $i}'
     fi
 }
 
