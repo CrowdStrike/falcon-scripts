@@ -278,7 +278,13 @@ format_tags() {
     else
         echo "$all_tags" |
             sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
-            awk -F',' -v keyword="$SENSOR_PLATFORM" '{for (i=1; i<=NF; i++) if ($i ~ keyword && $i !~ /sha256/) print $i}'
+            awk -F',' -v keyword="$SENSOR_PLATFORM" '{
+                for (i=1; i<=NF; i++) {
+                    if (($i ~ keyword || $i !~ /x86_64|aarch64/) && $i !~ /sha256/) {
+                        print $i
+                    }
+                }
+            }'
     fi
 }
 
@@ -328,8 +334,7 @@ pull_image() {
     local image_path="$1"
     local platform_override="$2"
     if [ -n "$platform_override" ]; then
-        platform_override="--platform linux/$platform_override"
-        "$CONTAINER_TOOL" pull "$platform_override" "$image_path"
+        "$CONTAINER_TOOL" pull --platform "$platform_override" "$image_path"
     else
         "$CONTAINER_TOOL" pull "$image_path"
     fi
@@ -341,15 +346,15 @@ copy_image() {
     local multi_arch_copy="$3"
     if [ "$multi_arch_copy" = "true" ]; then
         case "${CONTAINER_TOOL}" in
-            skopeo)
+            *skopeo)
                 "$CONTAINER_TOOL" copy --all "docker://$source_path" "docker://$destination_path"
                 ;;
-            podman)
+            *podman)
                 "$CONTAINER_TOOL" manifest create --all "$destination_path" "$source_path" >/dev/null
                 "$CONTAINER_TOOL" manifest push --all "$destination_path"
                 "$CONTAINER_TOOL" manifest rm "$destination_path" >/dev/null
                 ;;
-            docker)
+            *docker)
                 if ! "$CONTAINER_TOOL" buildx version >/dev/null 2>&1; then
                     die "Docker buildx is not installed/enabled. Please install/enable buildx before continuing."
                 else
@@ -600,10 +605,10 @@ if [ "$(is_multi_arch)" = "true" ]; then
     if [ -n "$SENSOR_PLATFORM" ]; then
         # If Skopeo is being used, the platform must be overridden
         if grep -qw "skopeo" "$CONTAINER_TOOL"; then
-            "$CONTAINER_TOOL" copy --override-arch "$(pf_override)" "docker://$source_path" "docker://$destination_path"
+            "$CONTAINER_TOOL" copy --override-arch "$(platform_override)" "docker://$FULLIMAGEPATH" "docker://$COPYPATH"
         else
             # Podman/Docker can pull the specific platform
-            pf_override="--platform linux/$(pf_override)"
+            pf_override="linux/$(platform_override)"
             pull_image "$FULLIMAGEPATH" "$pf_override"
             # Copy the image to the desired registry
             if [ -n "$COPY" ]; then
@@ -629,7 +634,7 @@ You can either:
 else
     # Handle non-multi-arch images
     if grep -qw "skopeo" "$CONTAINER_TOOL"; then
-        "$CONTAINER_TOOL" copy "docker://$source_path" "docker://$destination_path"
+        "$CONTAINER_TOOL" copy "docker://$FULLIMAGEPATH" "docker://$COPYPATH"
     else
         pull_image "$FULLIMAGEPATH"
 
