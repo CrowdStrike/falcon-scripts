@@ -4,15 +4,27 @@ Use this bash script to pull the latest **Falcon Container** sensor, **Node Kern
 
 ## Deprecation Warning :warning:
 
-1. **Default Sensor Type Change** : The default sensor type will be changed from `falcon-container` to `falcon-sensor`. This change is based off of feedback from our customers and is intended to simplify the usage of this script.
+Please refer to the [Deprecation](DEPRECATION.md) document for more information pertaining to deprecated features and upcoming changes in version 2.0.0.
 
-1. **Environment Variable Deprecation** : The `SENSORTYPE` environment variable will be deprecated and replaced by `SENSOR_TYPE`. This update is intended to increase readability and maintain consistency in our environment variable naming convention.
+## Multi-Architecture Support :rocket:
 
-1. **Command Option Deprecation** : The command line options `-n, --node`, `--kubernetes-admission-controller`, and `--kubernetes-protection-agent` will be deprecated and replaced by a single option `-t, --type`. The new `-t, --type` option will allow you to specify the sensor type in a more straightforward and simplified manner.
+The Falcon Container Sensor Pull script now supports multi-arch images. However, there are some limitations to be aware of:
 
-While these changes will be officially introduced in version 2.0.0, we will continue to support the deprecated environment variable and command options until that release. We strongly encourage you to adapt your usage to include the new `SENSOR_TYPE` environment variable and `-t, --type` command option to ensure a smooth transition when version 2.0.0 is released.
+- Currently only the `falcon-sensor` container image supports multi-arch as of 7.15.X.
+  - The `falcon-sensor` image supports the following platforms:
+    - `x86_64`
+    - `aaarch64`
+- `--list-tags` will list all tags for a selected platform **and** multi-arch images.
+  - This is because multi-arch images support multiple platforms with the same tag.
+- ***Pulling the full multi-arch image locally is not supported***
+  - Because pulling mutilple images with the same tag locally will overwrite the previous image, the script will allow:
+    - Pulling the image for a specific platform with the `-p, --platform` flag.
+    - Or copying the multi-arch image to a different registry with the `-c, --copy` flag.
 
-Please refer to the updated usage instructions and examples in the [Usage](#usage) section of this README. Feel free to reach out with any questions or concerns.
+Refer to the [examples](#examples) section for more information on how to use the script with multi-arch images.
+
+> [!NOTE]
+> While we do support copying the multi-arch image to a different registry using Podman, Docker, or Skopeo, we recommend using Skopeo for this purpose. Skopeo is a tool specifically designed for copying container images between registries and supports multi-arch images.
 
 ## Security recommendations
 
@@ -175,4 +187,43 @@ The following example will dump the credentials to stdout to copy/paste into con
 --client-id <FALCON_CLIENT_ID> \
 --client-secret <FALCON_CLIENT_SECRET> \
 --dump-credentials
+```
+
+#### Example copying multi-arch image to a different registry
+
+The following example will copy the `falcon-sensor` multi-arch image to a different registry using Skopeo.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-sensor \
+--copy myregistry.com/mynamespace
+--runtime skopeo
+```
+
+#### Example copying multi-arch image for a specific platform
+
+The following example will copy the `falcon-sensor` multi-arch image for the `aarch64` platform to a different registry using Skopeo.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-sensor \
+--platform aarch64
+--copy myregistry.com/mynamespace
+--runtime skopeo
+```
+
+#### Example pulling the image for a specific platform from a multi-arch image
+
+The following example will pull the `falcon-sensor` image for the `x86_64` platform from the multi-arch image using Docker.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-sensor \
+--platform x86_64
 ```
