@@ -16,7 +16,7 @@ The following **API scopes** are required:
 
 ## Auto-Discovery of Falcon Cloud Region
 
-The scripts support auto-discovery of the Falcon cloud region. If the `[New|Old]FalconCloud` parameter is not set, the script will attempt to auto-discover the cloud region. If you want to set the cloud region manually, or if your region does not support auto-discovery, you can set the `[New|Old]FalconCloud` parameter.
+The script supports auto-discovery of the Falcon cloud region. If the `[New|Old]FalconCloud` parameter is not set, the script will attempt to auto-discover the cloud region. If you want to set the cloud region manually, or if your region does not support auto-discovery, you can set the `[New|Old]FalconCloud` parameter.
 
 > [!IMPORTANT]
 > Auto-discovery is only available for [us-1, us-2, eu-1] regions.
