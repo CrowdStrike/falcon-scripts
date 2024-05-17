@@ -278,7 +278,13 @@ format_tags() {
     else
         echo "$all_tags" |
             sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
-            awk -F',' -v keyword="$SENSOR_PLATFORM" '{for (i=1; i<=NF; i++) if ($i ~ keyword && $i !~ /sha256/) print $i}'
+            awk -F',' -v keyword="$SENSOR_PLATFORM" '{
+                for (i=1; i<=NF; i++) {
+                    if (($i ~ keyword || $i !~ /x86_64|aarch64/) && $i !~ /sha256/) {
+                        print $i
+                    }
+                }
+            }'
     fi
 }
 
@@ -304,6 +310,66 @@ list_tags() {
     formatted_tags=$(format_tags "$all_tags")
 
     print_formatted_tags "$formatted_tags"
+}
+
+platform_override() {
+    # Allow platform/arch override when dealing with multi-arch images
+    case "${SENSOR_PLATFORM}" in
+        x86_64) echo "amd64" ;;
+        aarch64) echo "arm64" ;;
+        *) die "Unrecognized platform option: ${SENSOR_PLATFORM}" ;;
+    esac
+}
+
+is_multi_arch() {
+    # if x86_64 or aarch64 is in the LATESTSENSOR, then false
+    if echo "$LATESTSENSOR" | grep -q "x86_64\|aarch64"; then
+        echo false
+    else
+        echo true
+    fi
+}
+
+pull_image() {
+    local image_path="$1"
+    local platform_override="$2"
+    if [ -n "$platform_override" ]; then
+        "$CONTAINER_TOOL" pull --platform "$platform_override" "$image_path"
+    else
+        "$CONTAINER_TOOL" pull "$image_path"
+    fi
+}
+
+copy_image() {
+    local source_path="$1"
+    local destination_path="$2"
+    local multi_arch_copy="$3"
+    if [ "$multi_arch_copy" = "true" ]; then
+        case "${CONTAINER_TOOL}" in
+            *skopeo)
+                "$CONTAINER_TOOL" copy --all "docker://$source_path" "docker://$destination_path"
+                ;;
+            *podman)
+                "$CONTAINER_TOOL" manifest create --all "$destination_path" "$source_path" >/dev/null
+                "$CONTAINER_TOOL" manifest push --all "$destination_path"
+                "$CONTAINER_TOOL" manifest rm "$destination_path" >/dev/null
+                ;;
+            *docker)
+                if ! "$CONTAINER_TOOL" buildx version >/dev/null 2>&1; then
+                    die "Docker buildx is not installed/enabled. Please install/enable buildx before continuing."
+                else
+                    "$CONTAINER_TOOL" buildx imagetools create --tag "$destination_path" "$source_path"
+                fi
+                ;;
+            *)
+                die "Unrecognized option: ${CONTAINER_TOOL}"
+                ;;
+        esac
+    else
+        # Copy the image to the desired registry
+        "$CONTAINER_TOOL" tag "$source_path" "$destination_path"
+        "$CONTAINER_TOOL" push "$destination_path"
+    fi
 }
 
 # shellcheck disable=SC2086
@@ -530,15 +596,50 @@ if [ "$GETIMAGEPATH" ]; then
     exit 0
 fi
 
-if grep -qw "skopeo" "$CONTAINER_TOOL"; then
-    "$CONTAINER_TOOL" copy "docker://$FULLIMAGEPATH" "docker://$COPY/$repository_name:$LATESTSENSOR"
-else
-    #Pull the container image locally
-    "$CONTAINER_TOOL" pull "$FULLIMAGEPATH"
+# Construct destination path
+COPYPATH="$COPY/$IMAGE_NAME:$LATESTSENSOR"
 
-    # For those that don't want to use skopeo to copy
-    if [ -n "$COPY" ]; then
-        "$CONTAINER_TOOL" tag "$FULLIMAGEPATH" "$COPY/$IMAGE_NAME:$LATESTSENSOR"
-        "$CONTAINER_TOOL" push "$COPY/$IMAGE_NAME:$LATESTSENSOR"
+# Handle multi-arch images first
+if [ "$(is_multi_arch)" = "true" ]; then
+    # If a platform has been specified, pull the specific platform for the container tool
+    if [ -n "$SENSOR_PLATFORM" ]; then
+        # If Skopeo is being used, the platform must be overridden
+        if grep -qw "skopeo" "$CONTAINER_TOOL"; then
+            "$CONTAINER_TOOL" copy --override-arch "$(platform_override)" "docker://$FULLIMAGEPATH" "docker://$COPYPATH"
+        else
+            # Podman/Docker can pull the specific platform
+            pf_override="linux/$(platform_override)"
+            pull_image "$FULLIMAGEPATH" "$pf_override"
+            # Copy the image to the desired registry
+            if [ -n "$COPY" ]; then
+                # At this point, treat the image as a single arch image
+                copy_image "$FULLIMAGEPATH" "$COPYPATH" "false"
+            fi
+        fi
+    else
+        if [ -n "$COPY" ]; then
+            # Copy the multi-arch image to the desired registry
+            copy_image "$FULLIMAGEPATH" "$COPYPATH" "true"
+        else
+            # Pulling the multi-arch image locally is not supported. Either specify a platform or
+            # copy the image to a registry.
+            die "Pulling multi-arch images locally is not supported.
+
+You can either:
+    - Pull a specific platform from the multi-arch image using the -p, --platform flag
+    - Copy the multi-arch image to a registry using the -c, --copy flag
+            "
+        fi
+    fi
+else
+    # Handle non-multi-arch images
+    if grep -qw "skopeo" "$CONTAINER_TOOL"; then
+        "$CONTAINER_TOOL" copy "docker://$FULLIMAGEPATH" "docker://$COPYPATH"
+    else
+        pull_image "$FULLIMAGEPATH"
+
+        if [ -n "$COPY" ]; then
+            copy_image "$FULLIMAGEPATH" "$COPYPATH" "false"
+        fi
     fi
 fi
