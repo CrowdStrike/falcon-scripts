@@ -50,6 +50,13 @@ To check your version of cURL, run the following command: `curl --version`
     - For `falcon-snapshot` only
 - If you are using Docker, make sure that Docker is running locally.
 
+## Auto-Discovery of Falcon Cloud Region
+
+The scripts support auto-discovery of the Falcon cloud region. If the cloud region is not requested, the script will attempt to auto-discover it. If you want to set the cloud region manually, or if your region does not support auto-discovery, you set the `FALCON_CLOUD` environment variable or use the `-r, --region` flag.
+
+> [!IMPORTANT]
+> Auto-discovery is only available for [us-1, us-2, eu-1] regions.
+
 ## Usage
 
 ```terminal
@@ -61,7 +68,7 @@ Required Flags:
 
 Optional Flags:
     -f, --cid <FALCON_CID>            Falcon Customer ID
-    -r, --region <FALCON_REGION>      Falcon Cloud Region
+    -r, --region <FALCON_CLOUD>       Falcon Cloud Region
     -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64

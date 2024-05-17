@@ -36,15 +36,15 @@ export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 ```
 
-#### Using Falcon Cloud Region
+#### Auto-Discovery of Falcon Cloud Region
 
-By default, the script will attemp to auto-discover the cloud region if `FALCON_CLOUD` is not set. If you want to set the cloud region manually, or if your region does not support auto-discovery, you can set the `FALCON_CLOUD` environment variable:
+The scripts support auto-discovery of the Falcon cloud region. If the `FALCON_CLOUD` environment variable is not set, the script will attempt to auto-discover it. If you want to set the cloud region manually, or if your region does not support auto-discovery, you can set the `FALCON_CLOUD` environment variable:
 
 ```bash
 export FALCON_CLOUD="us-gov-1"
 ```
 
->[!NOTE]
+> [!IMPORTANT]
 > Auto-discovery is only available for [us-1, us-2, eu-1] regions.
 
 #### Using AWS SSM
