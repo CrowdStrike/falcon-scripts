@@ -985,7 +985,7 @@ function Get-FalconCloud ([string] $xCsRegion) {
 
 function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
     $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
-    $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.3.4')
+    $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.4.0')
     try {
         $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
         $content = ConvertFrom-Json -InputObject $response.Content
