@@ -14,6 +14,13 @@ The following **API scopes** are required:
 - **Host** [read,write]
 - **Sensor update policies** [read,write]
 
+## Auto-Discovery of Falcon Cloud Region
+
+> [!IMPORTANT]
+> Auto-discovery is only available for [us-1, us-2, eu-1] regions.
+
+The script supports auto-discovery of the Falcon cloud region. If the `[New|Old]FalconCloud` parameter is not set, the script will attempt to auto-discover the cloud region. If you want to set the cloud region manually, or if your region does not support auto-discovery, you can set the `[New|Old]FalconCloud` parameter.
+
 ## What Does It Do?
 
 This script streamlines the process of migrating a sensor from one CrowdStrike Falcon cloud tenant to another, such as transitioning from US-1 to US-2. It handles the removal and installation of the sensor in the new cloud while maintaining Falcon and Sensor tags throughout the migration. If an error arises during the migration, a recovery log is available to track the process and facilitate resumption of the migration.

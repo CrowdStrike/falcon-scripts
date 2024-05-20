@@ -12,6 +12,10 @@ The script recognizes the following environmental variables:
     - FALCON_CLIENT_SECRET              (default: unset)
         Your CrowdStrike Falcon API client secret. Required if FALCON_REMOVE_HOST is 'true'.
 
+    - FALCON_CLOUD                      (default: 'us-1')
+        The CrowdStrike cloud region to use.
+        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1'].
+
     - FALCON_REMOVE_HOST                (default: unset)
         Determines whether the host should be removed from the Falcon console after uninstalling the sensor.
         Accepted values are ['true', 'false'].
@@ -216,7 +220,7 @@ if [ "${FALCON_REMOVE_HOST}" = "true" ]; then
 
         token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
         if [ -z "$token" ]; then
-            die "Unable to obtain CrowdStrike Falcon OAuth Token. Response was $token_result"
+            die "Unable to obtain CrowdStrike Falcon OAuth Token. Double check your credentials and/or ensure you set the correct cloud region."
         fi
 
         echo "$token"

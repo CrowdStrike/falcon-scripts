@@ -712,7 +712,7 @@ cs_falcon_oauth_token=$(
 
     token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
     if [ -z "$token" ]; then
-        die "Unable to obtain CrowdStrike Falcon OAuth Token. Response was $token_result"
+        die "Unable to obtain CrowdStrike Falcon OAuth Token. Double check your credentials and/or ensure you set the correct cloud region."
     fi
     echo "$token"
 )

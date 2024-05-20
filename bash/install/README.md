@@ -36,6 +36,17 @@ export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 ```
 
+#### Auto-Discovery of Falcon Cloud Region
+
+> [!IMPORTANT]
+> Auto-discovery is only available for [us-1, us-2, eu-1] regions.
+
+The scripts support auto-discovery of the Falcon cloud region. If the `FALCON_CLOUD` environment variable is not set, the script will attempt to auto-discover it. If you want to set the cloud region manually, or if your region does not support auto-discovery, you can set the `FALCON_CLOUD` environment variable:
+
+```bash
+export FALCON_CLOUD="us-gov-1"
+```
+
 #### Using AWS SSM
 
 The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET` are not provided AND the script is running on an AWS instance, the script will try to get API credentials from the SSM store of the region.
@@ -99,6 +110,10 @@ The script recognizes the following environmental variables:
 
     - FALCON_CLIENT_SECRET              (default: unset)
         Your CrowdStrike Falcon API client secret. Required if FALCON_REMOVE_HOST is 'true'.
+
+    - FALCON_CLOUD                      (default: 'us-1')
+        The CrowdStrike cloud region to use.
+        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1'].
 
     - FALCON_REMOVE_HOST                (default: unset)
         Determines whether the host should be removed from the Falcon console after uninstalling the sensor.

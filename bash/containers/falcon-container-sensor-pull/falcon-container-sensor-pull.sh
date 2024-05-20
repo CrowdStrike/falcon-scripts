@@ -15,7 +15,7 @@ Required Flags:
 
 Optional Flags:
     -f, --cid <FALCON_CID>            Falcon Customer ID
-    -r, --region <FALCON_REGION>      Falcon Cloud
+    -r, --region <FALCON_CLOUD>       Falcon Cloud Region
     -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
@@ -447,7 +447,7 @@ cs_falcon_oauth_token=$(
             --data @-)
     token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
     if [ -z "$token" ]; then
-        die "Unable to obtain CrowdStrike Falcon OAuth Token. Response was $token_result"
+        die "Unable to obtain CrowdStrike Falcon OAuth Token. Double check your credentials and/or ensure you set the correct cloud region."
     fi
     echo "$token"
 )

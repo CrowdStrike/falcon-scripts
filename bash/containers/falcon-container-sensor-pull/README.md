@@ -50,6 +50,13 @@ To check your version of cURL, run the following command: `curl --version`
     - For `falcon-snapshot` only
 - If you are using Docker, make sure that Docker is running locally.
 
+## Auto-Discovery of Falcon Cloud Region
+
+> [!IMPORTANT]
+> Auto-discovery is only available for [us-1, us-2, eu-1] regions.
+
+The script supports auto-discovery of the Falcon cloud region. If the cloud region is not provided, the script will attempt to auto-discover it. If you want to set the cloud region manually, or if your region does not support auto-discovery, you set the `FALCON_CLOUD` environment variable or use the `-r, --region` flag.
+
 ## Usage
 
 ```terminal
@@ -61,7 +68,7 @@ Required Flags:
 
 Optional Flags:
     -f, --cid <FALCON_CID>            Falcon Customer ID
-    -r, --region <FALCON_REGION>      Falcon Cloud
+    -r, --region <FALCON_CLOUD>       Falcon Cloud Region
     -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
@@ -89,7 +96,7 @@ Help Options:
 | `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID`           | `None` (Optional)          | CrowdStrike Customer ID (CID)                                                            |
 | `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)          | CrowdStrike API Client ID                                                                |
 | `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)          | CrowdStrike API Client Secret                                                            |
-| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)          | CrowdStrike Region                                                                       |
+| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)          | CrowdStrike Region. \**Auto-discovery is only available for [`us-1, us-2, eu-1`] regions.* |
 | `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`     |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)          | Specify sensor version to retrieve from the registry                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)          | Specify sensor platform to retrieve from the registry                                    |
