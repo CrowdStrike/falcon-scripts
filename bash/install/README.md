@@ -77,7 +77,7 @@ FALCON_REMOVE_HOST                (default: true)
 To download and run the script:
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.3.4/bash/install/falcon-linux-install.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.4.0/bash/install/falcon-linux-install.sh | bash
 ```
 
 Alternatively, you can run the script by cloning the repo:
@@ -131,7 +131,7 @@ The script recognizes the following environmental variables:
 To download and run the script:
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.3.4/bash/install/falcon-linux-uninstall.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.4.0/bash/install/falcon-linux-uninstall.sh | bash
 ```
 
 Uninstall and remove the host from the Falcon console:
@@ -140,7 +140,7 @@ Uninstall and remove the host from the Falcon console:
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 export FALCON_REMOVE_HOST="true"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.3.4/bash/install/falcon-linux-uninstall.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.4.0/bash/install/falcon-linux-uninstall.sh | bash
 ```
 
 ## Troubleshooting
@@ -154,5 +154,5 @@ bash -x falcon-linux-install.sh
 or
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.3.4/bash/install/falcon-linux-install.sh | bash -x
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.4.0/bash/install/falcon-linux-install.sh | bash -x
 ```

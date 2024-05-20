@@ -212,7 +212,7 @@ if [ "${FALCON_REMOVE_HOST}" = "true" ]; then
         token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" |
             curl -X POST -s -x "$proxy" -L "https://$(cs_cloud)/oauth2/token" \
                 -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
-                -H 'User-Agent: crowdstrike-falcon-scripts/1.3.4' \
+                -H 'User-Agent: crowdstrike-falcon-scripts/1.4.0' \
                 --dump-header "${response_headers}" \
                 --data @-)
 
