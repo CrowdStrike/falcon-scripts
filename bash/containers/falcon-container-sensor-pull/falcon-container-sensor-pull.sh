@@ -322,13 +322,29 @@ platform_override() {
 }
 
 is_multi_arch() {
-    # if x86_64 or aarch64 is in the LATESTSENSOR, then false
-    if echo "$LATESTSENSOR" | grep -q "x86_64\|aarch64"; then
-        echo false
-    else
+    local image_path="$1"
+    local container_tool="$2"
+    local manifest_output
+
+    case "$container_tool" in
+        *docker|*podman)
+            manifest_output=$($container_tool manifest inspect "$image_path" 2>/dev/null)
+            ;;
+        *skopeo)
+            manifest_output=$(skopeo inspect "docker://$image_path" --raw 2>/dev/null)
+            ;;
+        *)
+            die "Unsupported container tool: $container_tool"
+            ;;
+    esac
+
+    if echo "$manifest_output" | grep -q '"manifests"'; then
         echo true
+    else
+        echo false
     fi
 }
+
 
 pull_image() {
     local image_path="$1"
@@ -600,7 +616,7 @@ fi
 COPYPATH="$COPY/$IMAGE_NAME:$LATESTSENSOR"
 
 # Handle multi-arch images first
-if [ "$(is_multi_arch)" = "true" ]; then
+if [ "$(is_multi_arch "$FULLIMAGEPATH" "$CONTAINER_TOOL")" = "true" ]; then
     # If a platform has been specified, pull the specific platform for the container tool
     if [ -n "$SENSOR_PLATFORM" ]; then
         # If Skopeo is being used, the platform must be overridden
