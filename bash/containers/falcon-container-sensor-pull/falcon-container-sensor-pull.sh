@@ -456,7 +456,7 @@ cs_falcon_oauth_token=$(
     token_result=$(echo "client_id=$FALCON_CLIENT_ID&client_secret=$FALCON_CLIENT_SECRET" |
         curl -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
             -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
-            -H 'User-Agent: crowdstrike-falcon-scripts/1.4.0' \
+            -H 'User-Agent: crowdstrike-falcon-scripts/1.4.1' \
             --dump-header "$response_headers" \
             --data @-)
     token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
