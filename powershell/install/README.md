@@ -73,7 +73,7 @@ Enable verbose logging
 To download the script:
 
 ```pwsh
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.4.0/powershell/install/falcon_windows_install.ps1 -OutFile falcon_windows_install.ps1
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.4.1/powershell/install/falcon_windows_install.ps1 -OutFile falcon_windows_install.ps1
 ```
 
 Basic example that will install the sensor with the provided provisioning token
@@ -125,7 +125,7 @@ Enable verbose logging
 To download the script:
 
 ```pwsh
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.4.0/powershell/install/falcon_windows_uninstall.ps1 -OutFile falcon_windows_uninstall.ps1
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.4.1/powershell/install/falcon_windows_uninstall.ps1 -OutFile falcon_windows_uninstall.ps1
 ```
 
 Basic example that will uninstall the sensor with the provided maintenance token
