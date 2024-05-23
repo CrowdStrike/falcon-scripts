@@ -1,9 +1,4 @@
 on:
-  push:
-    paths:
-      - 'bash/**'
-      - '.github/workflows/shell_format.yml'
-
   pull_request:
     paths:
       - 'bash/**'
@@ -12,6 +7,8 @@ on:
 jobs:
   shfmt:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
     - uses: actions/checkout@v4
     - name: Run shfmt with reviewdog
