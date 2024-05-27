@@ -268,24 +268,27 @@ format_tags() {
     # Formats tags and handles sorting for KPA
     local all_tags=$1
 
-    if [ "${SENSOR_TYPE}" = "kpagent" ] || [ "${SENSOR_TYPE}" = "falcon-snapshot" ]; then
-        echo "$all_tags" |
-            sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
-            tr -d '"' | tr ',' '\n' |
-            awk -F. '{ printf "%05d.%05d.%05d\n", $1, $2, $3 }' |
-            sort |
-            awk -F. '{ printf "\"%d.%d.%d\"\n", $1+0, $2+0, $3+0 }'
-    else
-        echo "$all_tags" |
-            sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
-            awk -F',' -v keyword="$SENSOR_PLATFORM" '{
-                for (i=1; i<=NF; i++) {
-                    if (($i ~ keyword || $i !~ /x86_64|aarch64/) && $i !~ /sha256/) {
-                        print $i
+    case "${SENSOR_TYPE}" in
+        "kpagent" | "falcon-snapshot" | "falcon-imageanalyzer")
+            echo "$all_tags" |
+                sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
+                tr -d '"' | tr ',' '\n' |
+                awk -F. '{ printf "%05d.%05d.%05d\n", $1, $2, $3 }' |
+                sort |
+                awk -F. '{ printf "\"%d.%d.%d\"\n", $1+0, $2+0, $3+0 }'
+            ;;
+        *)
+            echo "$all_tags" |
+                sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
+                awk -F',' -v keyword="$SENSOR_PLATFORM" '{
+                    for (i=1; i<=NF; i++) {
+                        if (($i ~ keyword || $i !~ /x86_64|aarch64/) && $i !~ /sha256/) {
+                            print $i
+                        }
                     }
-                }
-            }'
-    fi
+                }'
+            ;;
+    esac
 }
 
 print_formatted_tags() {
