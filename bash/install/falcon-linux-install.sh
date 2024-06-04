@@ -15,7 +15,7 @@ Authentication:
 
     - FALCON_ACCESS_TOKEN               (default: unset)
         Your CrowdStrike Falcon API access token.
-        If used, FALCON_CLIENT_ID and FALCON_CLIENT_SECRET are not needed.
+        If used, FALCON_CLOUD must also be set.
 
     - FALCON_CLOUD                      (default: unset)
         The cloud region where your CrowdStrike Falcon instance is hosted.
@@ -25,50 +25,49 @@ Authentication:
 Other Options
     - FALCON_CID                        (default: auto)
         The customer ID that should be associated with the sensor.
-    
+        By default, the CID is automatically determined by your authentication credentials.
+
     - FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
         The number of versions prior to the current release to install.
 
-    
     - FALCON_PROVISIONING_TOKEN         (default: unset)
         Theprovisioning token to use for installing the sensor.
-    
+
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
-    
+
     - FALCON_TAGS                       (default: unset)
         A comma seperated list of tags for sensor grouping.
-    
+
     - FALCON_APD                        (default: unset)
         Configures if the proxy should be enabled or disabled.
-    
+
     - FALCON_APH                        (default: unset)
         The proxy host for the sensor to use when communicating with CrowdStrike.
 
     - FALCON_APP                        (default: unset)
         The proxy port for the sensor to use when communicating with CrowdStrike.
-    
+
     - FALCON_BILLING                    (default: default)
         To configure the sensor billing type.
         Accepted values are [default|metered].
-    
+
     - FALCON_BACKEND                    (default: auto)
         For sensor backend.
-        Accepted values are values: [auto|bpf|kernel].    
-    
+        Accepted values are values: [auto|bpf|kernel].
+
     - FALCON_TRACE                      (default: none)
         To configure the trace level.
         Accepted values are [none|err|warn|info|debug]
-    
+
     - FALCON_UNINSTALL                  (default: false)
         To unsinstall the falcon sensor.
-        
-    
+
     - FALCON_INSTALL_ONLY               (default: false)
         To install the falcon sensor without registering it with crowdstrike.
-    
+
     - ALLOW_LEGACY_CURL                 (default: false)
         To use the legacy version of curl; version < 7.55.0.
-    
+
     - GET_ACCESS_TOKEN                  (default: unset)
         Prints an access token and exits.
         Requires FALCON_CLIENT_ID and FALCON_CLIENT_SECRET.
@@ -84,8 +83,9 @@ main() {
     fi
 
     if [ "$GET_ACCESS_TOKEN" = "true" ]; then
+        get_oauth_token
         echo "$cs_falcon_oauth_token"
-        exit 1
+        exit 0
     fi
 
     echo -n 'Check if Falcon Sensor is running ... '
@@ -107,9 +107,8 @@ main() {
 }
 
 cs_sensor_register() {
-    if [ -z "$cs_falcon_cid" ]; then
-        die "Could not find FALCON CID!"
-    fi
+    # Get the falcon cid
+    cs_falcon_cid="$(get_falcon_cid)"
 
     # add the cid to the params
     cs_falcon_args=--cid="${cs_falcon_cid}"
@@ -180,6 +179,7 @@ cs_sensor_install() {
     tempdir_cleanup() { rm -rf "$tempdir"; }
     trap tempdir_cleanup EXIT
 
+    get_oauth_token
     package_name=$(cs_sensor_download "$tempdir")
     os_install_package "$package_name"
 
@@ -578,6 +578,93 @@ check_aws_instance() {
     echo "$aws_instance"
 }
 
+get_falcon_credentials() {
+    if [ -z "$FALCON_ACCESS_TOKEN" ]; then
+        aws_instance=$(check_aws_instance)
+        cs_falcon_client_id=$(
+            if [ -n "$FALCON_CLIENT_ID" ]; then
+                echo "$FALCON_CLIENT_ID"
+            elif [ -n "$aws_instance" ]; then
+                aws_ssm_parameter "FALCON_CLIENT_ID" | json_value Value 1
+            else
+                die "Missing FALCON_CLIENT_ID environment variable. Please provide your OAuth2 API Client ID for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
+            fi
+        )
+
+        cs_falcon_client_secret=$(
+            if [ -n "$FALCON_CLIENT_SECRET" ]; then
+                echo "$FALCON_CLIENT_SECRET"
+            elif [ -n "$aws_instance" ]; then
+                aws_ssm_parameter "FALCON_CLIENT_SECRET" | json_value Value 1
+            else
+                die "Missing FALCON_CLIENT_SECRET environment variable. Please provide your OAuth2 API Client Secret for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
+            fi
+        )
+    else
+        if [ -z "$FALCON_CLOUD" ]; then
+            die "If setting the FALCON_ACCESS_TOKEN manually, you must also specify the FALCON_CLOUD"
+        fi
+    fi
+}
+
+get_oauth_token() {
+    # Get credentials first
+    get_falcon_credentials
+
+    cs_falcon_oauth_token=$(
+        if [ -n "$FALCON_ACCESS_TOKEN" ]; then
+            token=$FALCON_ACCESS_TOKEN
+        else
+            token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" |
+                curl -X POST -s -x "$proxy" -L "https://$(cs_cloud)/oauth2/token" \
+                    -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
+                    -H 'User-Agent: crowdstrike-falcon-scripts/1.4.1' \
+                    --dump-header "${response_headers}" \
+                    --data @-)
+
+            handle_curl_error $?
+
+            token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
+            if [ -z "$token" ]; then
+                die "Unable to obtain CrowdStrike Falcon OAuth Token. Double check your credentials and/or ensure you set the correct cloud region."
+            fi
+        fi
+        echo "$token"
+    )
+
+    if [ -z "$FALCON_ACCESS_TOKEN" ]; then
+        region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
+
+        if [ -z "${FALCON_CLOUD}" ]; then
+            if [ -z "${region_hint}" ]; then
+                die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
+            fi
+            cs_falcon_cloud="${region_hint}"
+        else
+            if [ "x${FALCON_CLOUD}" != "x${region_hint}" ]; then
+                echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
+            fi
+        fi
+    fi
+
+    rm "${response_headers}"
+}
+
+get_falcon_cid() {
+    if [ -n "$FALCON_CID" ]; then
+        echo "$FALCON_CID"
+    else
+        cs_target_cid=$(curl_command "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
+
+        handle_curl_error $?
+
+        if [ -z "$cs_target_cid" ]; then
+            die "Unable to obtain CrowdStrike Falcon CID. Response was $cs_target_cid"
+        fi
+        echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}'
+    fi
+}
+
 # shellcheck disable=SC2034
 cs_uninstall=$(
     if [ "$FALCON_UNINSTALL" ]; then
@@ -683,33 +770,6 @@ cs_os_version=$(
     echo "$version"
 )
 
-if [ -z "$FALCON_ACCESS_TOKEN" ]; then
-    aws_instance=$(check_aws_instance)
-    cs_falcon_client_id=$(
-        if [ -n "$FALCON_CLIENT_ID" ]; then
-            echo "$FALCON_CLIENT_ID"
-        elif [ -n "$aws_instance" ]; then
-            aws_ssm_parameter "FALCON_CLIENT_ID" | json_value Value 1
-        else
-            die "Missing FALCON_CLIENT_ID environment variable. Please provide your OAuth2 API Client ID for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
-        fi
-    )
-
-    cs_falcon_client_secret=$(
-        if [ -n "$FALCON_CLIENT_SECRET" ]; then
-            echo "$FALCON_CLIENT_SECRET"
-        elif [ -n "$aws_instance" ]; then
-            aws_ssm_parameter "FALCON_CLIENT_SECRET" | json_value Value 1
-        else
-            die "Missing FALCON_CLIENT_SECRET environment variable. Please provide your OAuth2 API Client Secret for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
-        fi
-    )
-else
-    if [ -z "$FALCON_CLOUD" ]; then
-        die "If setting the FALCON_ACCESS_TOKEN manually, you must also specify the FALCON_CLOUD"
-    fi
-fi
-
 cs_falcon_token=$(
     if [ -n "$FALCON_PROVISIONING_TOKEN" ]; then
         echo "$FALCON_PROVISIONING_TOKEN"
@@ -767,59 +827,6 @@ proxy=$(
         proxy="http://$proxy"
     fi
     echo "$proxy"
-)
-
-cs_falcon_oauth_token=$(
-    if [ -n "$FALCON_ACCESS_TOKEN" ]; then
-        token=$FALCON_ACCESS_TOKEN
-    else
-        token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" |
-            curl -X POST -s -x "$proxy" -L "https://$(cs_cloud)/oauth2/token" \
-                -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
-                -H 'User-Agent: crowdstrike-falcon-scripts/1.4.1' \
-                --dump-header "${response_headers}" \
-                --data @-)
-
-        handle_curl_error $?
-
-        token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
-        if [ -z "$token" ]; then
-            die "Unable to obtain CrowdStrike Falcon OAuth Token. Double check your credentials and/or ensure you set the correct cloud region."
-        fi
-    fi
-    echo "$token"
-)
-
-if [ -z "$FALCON_ACCESS_TOKEN" ]; then
-    region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
-
-    if [ -z "${FALCON_CLOUD}" ]; then
-        if [ -z "${region_hint}" ]; then
-            die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
-        fi
-        cs_falcon_cloud="${region_hint}"
-    else
-        if [ "x${FALCON_CLOUD}" != "x${region_hint}" ]; then
-            echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
-        fi
-    fi
-fi
-
-rm "${response_headers}"
-
-cs_falcon_cid=$(
-    if [ -n "$FALCON_CID" ]; then
-        echo "$FALCON_CID"
-    else
-        cs_target_cid=$(curl_command "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
-
-        handle_curl_error $?
-
-        if [ -z "$cs_target_cid" ]; then
-            die "Unable to obtain CrowdStrike Falcon CID. Response was $cs_target_cid"
-        fi
-        echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}'
-    fi
 )
 
 if [ -n "$FALCON_APD" ]; then
