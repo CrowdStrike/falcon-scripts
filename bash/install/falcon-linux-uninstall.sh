@@ -15,7 +15,7 @@ Authentication:
 
     - FALCON_ACCESS_TOKEN               (default: unset)
         Your CrowdStrike Falcon API access token.
-        If used, FALCON_CLIENT_ID and FALCON_CLIENT_SECRET are not needed.
+        If used, FALCON_CLOUD must also be set.
 
     - FALCON_CLOUD                      (default: unset)
         The cloud region where your CrowdStrike Falcon instance is hosted.
