@@ -28,12 +28,13 @@ Other Options
         By default, the CID is automatically determined by your authentication credentials.
 
     - FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
-        The number of versions prior to the current release to install.
+        The number of versions prior to the latest release to install.
 
     - FALCON_PROVISIONING_TOKEN         (default: unset)
-        Theprovisioning token to use for installing the sensor.
+        The provisioning token to use for installing the sensor.
 
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
+        The name of the sensor update policy to use for installing the sensor.
 
     - FALCON_TAGS                       (default: unset)
         A comma seperated list of tags for sensor grouping.
@@ -60,10 +61,11 @@ Other Options
         Accepted values are [none|err|warn|info|debug]
 
     - FALCON_UNINSTALL                  (default: false)
-        To unsinstall the falcon sensor.
+        To uninstall the falcon sensor.
+        **LEGACY** Please use the falcon-linux-uninstall.sh script instead.
 
     - FALCON_INSTALL_ONLY               (default: false)
-        To install the falcon sensor without registering it with crowdstrike.
+        To install the falcon sensor without registering it with CrowdStrike.
 
     - ALLOW_LEGACY_CURL                 (default: false)
         To use the legacy version of curl; version < 7.55.0.
