@@ -91,15 +91,7 @@ jobs:
             instance_type: t2.micro
         collection_role:
           - bash_install_decrement
-        exclude:
-          # Exclude until more sensor versions are available
-          - molecule:
-              distro: amazon-2023
-              image_owner: '137112412989'
-              image_arch: x86_64
-              image_name: al2023-ami-2023*
-              instance_type: t2.micro
-            collection_role: bash_install_decrement
+
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -121,7 +113,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.11'
           cache: 'pip'
           cache-dependency-path: '.github/workflows/bash_install_decrement.yml'
 
