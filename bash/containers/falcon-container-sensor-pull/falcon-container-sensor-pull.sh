@@ -6,8 +6,11 @@ Description: Bash script to copy Falcon DaemonSet Sensor, Container Sensor, Kube
 
 set -e
 
+VERSION="1.4.1"
+
 usage() {
     echo "usage: $0
+version: $VERSION
 
 Required Flags:
     -u, --client-id <FALCON_CLIENT_ID>             Falcon API OAUTH Client ID
@@ -219,49 +222,13 @@ curl_command() {
     fi
 }
 
-# Formats tags into a JSON array (Podman/Skopeo Only)
-format_tags_to_json() {
-    local raw_tags=$1
-
-    tags_json=$(
-        echo "$raw_tags" |
-            sed -n '/"Tags": \[/,/\]/p' |
-            sed '1d;$d' |
-            tr -d ' ,' |
-            awk 'ORS=", "' |
-            sed 's/, $/\n/' |
-            sed 's/^/"tags" : [ /;s/$/ ]/'
-    )
-    # The output should mimic the same format as the Docker (curl) output
-    echo "{
-  \"name\": \"${IMAGE_NAME}\",
-  ${tags_json}
-}"
-}
-
 fetch_tags() {
-    local container_tool=$1
-
-    case "${container_tool}" in
-        *podman)
-            podman_tags=$($container_tool image search --list-tags --format json --limit 100 "$cs_registry/$registry_opts/$repository_name")
-            format_tags_to_json "$podman_tags"
-            ;;
-        *docker)
-            registry_bearer=$(echo "-u $ART_USERNAME:$ART_PASSWORD" |
-                curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- |
-                json_value "token" |
-                sed 's/ *$//g' | sed 's/^ *//g')
-            curl_command "$registry_bearer" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list"
-            ;;
-        *skopeo)
-            skopeo_tags=$($container_tool list-tags "docker://$cs_registry/$registry_opts/$repository_name")
-            format_tags_to_json "$skopeo_tags"
-            ;;
-        *)
-            die "Unrecognized option: ${container_tool}"
-            ;;
-    esac
+    # Fetches tags from the CrowdStrike registry
+    registry_bearer=$(echo "-u $ART_USERNAME:$ART_PASSWORD" |
+        curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- |
+        json_value "token" |
+        sed 's/ *$//g' | sed 's/^ *//g')
+    curl_command "$registry_bearer" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list"
 }
 
 format_tags() {
@@ -309,7 +276,7 @@ print_formatted_tags() {
 }
 
 list_tags() {
-    all_tags=$(fetch_tags "${CONTAINER_TOOL}")
+    all_tags=$(fetch_tags)
     formatted_tags=$(format_tags "$all_tags")
 
     print_formatted_tags "$formatted_tags"
@@ -459,7 +426,7 @@ cs_falcon_oauth_token=$(
     token_result=$(echo "client_id=$FALCON_CLIENT_ID&client_secret=$FALCON_CLIENT_SECRET" |
         curl -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
             -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
-            -H 'User-Agent: crowdstrike-falcon-scripts/1.4.1' \
+            -H "User-Agent: crowdstrike-falcon-script/$VERSION" \
             --dump-header "$response_headers" \
             --data @-)
     token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
