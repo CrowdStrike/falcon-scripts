@@ -24,6 +24,33 @@ The scripts support auto-discovery of the Falcon cloud region. If the `FalconClo
 
 ## Configuration
 
+### Setting up Authentication
+
+#### Using Client ID and Client Secret
+
+Provide the required parameters:
+
+```powershell
+.\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string>
+```
+
+#### Using an Access Token
+
+You can also specify a Falcon access token if doing a batch install across multiple machines to prevent the need to call the token endpoint multiple times. If using an access token to authenticate, you ***MUST*** also provide `FALCON_CLOUD`:
+
+```powershell
+.\falcon_windows_install.ps1 -FalconCloud us-2 -FalconAccessToken <string>
+```
+
+> [!NOTE]
+> If you need to retrieve an access token, run the script with the `GET_ACCESS_TOKEN` parameter set. The Falcon sensor will NOT be installed while this parameter is provided.
+>
+> ```powershell
+> .\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string> -GetAccessToken
+> ```
+>
+> The script will output the access token to the console.
+
 ### Install
 
 Uses the CrowdStrike Falcon APIs to check the sensor version assigned to a ***Windows Sensor Update policy***,
@@ -37,23 +64,28 @@ to complete.
 Script options can be passed as parameters or defined in the param() block. Default values are listed in
 the parameter descriptions:
 
-```terminal
+```pwsh
+<#
 .PARAMETER FalconCloud
 CrowdStrike Falcon OAuth2 API Hostname [default: autodiscover]
 .PARAMETER FalconClientId
-CrowdStrike Falcon OAuth2 API Client Id [Required]
+CrowdStrike Falcon OAuth2 API Client Id [Required if FalconAccessToken is not provided]
 .PARAMETER FalconClientSecret
-CrowdStrike Falcon OAuth2 API Client Secret [Required]
+CrowdStrike Falcon OAuth2 API Client Secret [Required if FalconAccessToken is not provided]
 .PARAMETER FalconCid
 Manually specify CrowdStrike Customer ID (CID) [default: $null]
+.PARAMETER FalconAccessToken
+Manually set the access token for the Falcon API. Used to bypass the OAuth2 authentication process to cut down on rate limiting. [default: $null]
+.PARAMETER GetAccessToken
+Returns an access token from the API credentials provided. Used to manually set the FalconAccessToken parameter.
 .PARAMETER MemberCid
-Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID.
+Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID [default: $null]
 .PARAMETER SensorUpdatePolicyName
-Sensor Update Policy name to check for assigned sensor version ['platform_default' if left undefined]
+Sensor Update Policy name to check for assigned sensor version [default: 'platform_default']
 .PARAMETER InstallParams
-Sensor installation parameters, without your CID value ['/install /quiet /noreboot' if left undefined]
+Additional Sensor installation parameters. Script parameters should be used instead when supported. [default: '/install /quiet /noreboot' ]
 .PARAMETER LogPath
-Script log location ['Windows\Temp\InstallFalcon.log' if left undefined]
+Script log location [default: 'Windows\Temp\InstallFalcon.log']
 .PARAMETER DeleteInstaller
 Delete sensor installer package when complete [default: $true]
 .PARAMETER DeleteScript
@@ -64,8 +96,16 @@ Provisioning token to use for sensor installation [default: $null]
 Time to wait, in seconds, for sensor to provision [default: 1200]
 .PARAMETER Tags
 A comma-separated list of tags to apply to the host after sensor installation [default: $null]
+.PARAMETER ProxyHost
+The proxy host for the sensor to use when communicating with CrowdStrike [default: $null]
+.PARAMETER ProxyPort
+The proxy port for the sensor to use when communicating with CrowdStrike [default: $null]
+.PARAMETER ProxyDisable
+By default, the Falcon sensor for Windows automatically attempts to use any available proxy connections when it connects to the CrowdStrike cloud.
+This parameter forces the sensor to skip those attempts and ignore any proxy configuration, including Windows Proxy Auto Detection.
 .PARAMETER Verbose
 Enable verbose logging
+#>
 ```
 
 ***Examples***:
@@ -93,7 +133,8 @@ to complete.
 Script options can be passed as parameters or defined in the param() block. Default values are listed in
 the parameter descriptions:
 
-```terminal
+```pwsh
+<#
 .PARAMETER MaintenanceToken
 Sensor uninstall maintenance token. If left undefined, the script will attempt to retrieve the token from the API assuming the FalconClientId|FalconClientSecret are defined.
 .PARAMETER UninstallParams
@@ -107,17 +148,26 @@ Delete sensor uninstaller package when complete [default: $true]
 .PARAMETER DeleteScript
 Delete script when complete [default: $false]
 .PARAMETER RemoveHost
-Remove host from CrowdStrike Falcon
+Remove host from CrowdStrike Falcon [requires either FalconClientId|FalconClientSecret or FalconAccessToken]
 .PARAMETER FalconCloud
 CrowdStrike Falcon OAuth2 API Hostname [default: autodiscover]
 .PARAMETER FalconClientId
-CrowdStrike Falcon OAuth2 API Client Id [Required if RemoveHost is $true]
+CrowdStrike Falcon OAuth2 API Client Id
 .PARAMETER FalconClientSecret
-CrowdStrike Falcon OAuth2 API Client Secret [Required if RemoveHost is $true]
+CrowdStrike Falcon OAuth2 API Client Secret
+.PARAMETER FalconAccessToken
+Manually set the access token for the Falcon API. Used to bypass the OAuth2 authentication process to cut down on rate limiting. [default: $null]
+.PARAMETER GetAccessToken
+Returns an access token from the API credentials provided. Used to manually set the FalconAccessToken parameter.
 .PARAMETER MemberCid
 Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID.
+.PARAMETER ProxyHost
+The proxy host for the sensor to use when communicating with CrowdStrike [default: $null]
+.PARAMETER ProxyPort
+The proxy port for the sensor to use when communicating with CrowdStrike [default: $null]
 .PARAMETER Verbose
 Enable verbose logging
+#>
 ```
 
 ***Examples***:

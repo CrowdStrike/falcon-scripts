@@ -12,6 +12,7 @@ the parameter descriptions.
 The script must be run as an administrator on the local machine in order for the Falcon Sensor to
 uninstall and the OAuth2 API Client being used requires 'sensor-update-policies:write' and
 'host:write' permissions.
+
 .PARAMETER MaintenanceToken
 Sensor uninstall maintenance token. If left undefined, the script will attempt to retrieve the token from the API assuming the FalconClientId|FalconClientSecret are defined.
 .PARAMETER UninstallParams
@@ -25,13 +26,17 @@ Delete sensor uninstaller package when complete [default: $true]
 .PARAMETER DeleteScript
 Delete script when complete [default: $false]
 .PARAMETER RemoveHost
-Remove host from CrowdStrike Falcon
+Remove host from CrowdStrike Falcon [requires either FalconClientId|FalconClientSecret or FalconAccessToken]
 .PARAMETER FalconCloud
 CrowdStrike Falcon OAuth2 API Hostname [default: autodiscover]
 .PARAMETER FalconClientId
-CrowdStrike Falcon OAuth2 API Client Id [Required if RemoveHost is $true]
+CrowdStrike Falcon OAuth2 API Client Id
 .PARAMETER FalconClientSecret
-CrowdStrike Falcon OAuth2 API Client Secret [Required if RemoveHost is $true]
+CrowdStrike Falcon OAuth2 API Client Secret
+.PARAMETER FalconAccessToken
+Manually set the access token for the Falcon API. Used to bypass the OAuth2 authentication process to cut down on rate limiting. [default: $null]
+.PARAMETER GetAccessToken
+Returns an access token from the API credentials provided. Used to manually set the FalconAccessToken parameter.
 .PARAMETER MemberCid
 Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID.
 .PARAMETER ProxyHost
@@ -40,6 +45,7 @@ The proxy host for the sensor to use when communicating with CrowdStrike [defaul
 The proxy port for the sensor to use when communicating with CrowdStrike [default: $null]
 .PARAMETER Verbose
 Enable verbose logging
+
 .EXAMPLE
 PS>.\falcon_windows_uninstall.ps1 -MaintenanceToken <string>
 
@@ -95,9 +101,24 @@ param(
     [string] $ProxyHost,
 
     [Parameter(Position = 13)]
-    [int] $ProxyPort
+    [int] $ProxyPort,
+
+    [Parameter(Position = 14)]
+    [switch] $GetAccessToken,
+
+    [Parameter(Position = 15)]
+    [string] $FalconAccessToken
 )
 begin {
+
+    if ($FalconAccessToken){
+        if ($FalconCloud -eq "autodiscover"){
+            $Message = 'Unable to auto discover Falcon region using access token, please provide FalconCloud'
+            throw $Message
+        }
+
+    }
+
     $ScriptName = $MyInvocation.MyCommand.Name
     $ScriptPath = if (!$PSScriptRoot) {
         Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
@@ -157,56 +178,66 @@ begin {
     function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
         $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.4.1')
-        try {
-            $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
-            $content = ConvertFrom-Json -InputObject $response.Content
-            Write-VerboseLog -VerboseInput $content -PreMessage 'Invoke-FalconAuth - $content:'
-
-            if ([string]::IsNullOrEmpty($content.access_token)) {
-                $Message = 'Unable to authenticate to the CrowdStrike Falcon API. Please check your credentials and try again.'
-                throw $Message
-            }
-
-            $Headers.Add('Authorization', "bearer $($content.access_token)")
+        if ($FalconAccessToken){
+            $Headers.Add('Authorization', "bearer $($FalconAccessToken)")
         }
-        catch {
-            # Handle redirects
-            Write-Verbose "Invoke-FalconAuth - CAUGHT EXCEPTION - `$_.Exception.Message`r`n$($_.Exception.Message)"
-            $response = $_.Exception.Response
+        else{
+            try {
+                $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
+                $content = ConvertFrom-Json -InputObject $response.Content
+                Write-VerboseLog -VerboseInput $content -PreMessage 'Invoke-FalconAuth - $content:'
 
-            if (!$response) {
-                $Message = "Unhandled error occurred while authenticating to the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
-                Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
-                throw $Message
-            }
-
-            if ($response.StatusCode -in @(301, 302, 303, 307, 308)) {
-                # If autodiscover is enabled, try to get the correct cloud
-                if ($FalconCloud -eq 'autodiscover') {
-                    if ($response.Headers.Contains('X-Cs-Region')) {
-                        $region = $response.Headers.GetValues('X-Cs-Region')[0]
-                        Write-Verbose "Received a redirect to $region. Setting FalconCloud to $region"
-                    }
-                    else {
-                        $Message = 'Received a redirect but no X-Cs-Region header was provided. Unable to autodiscover the FalconCloud. Please set FalconCloud to the correct region.'
-                        Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
-                        throw $Message
-                    }
-
-                    $BaseUrl = Get-FalconCloud($region)
-                    $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
-
+                if ([string]::IsNullOrEmpty($content.access_token)) {
+                    $Message = 'Unable to authenticate to the CrowdStrike Falcon API. Please check your credentials and try again.'
+                    throw $Message
                 }
-                else {
-                    $Message = "Received a redirect. Please set FalconCloud to 'autodiscover' or the correct region."
+
+                if ($GetAccessToken -eq $true){
+                    Write-Output $content.access_token | out-host
+                    exit
+                }
+
+                $Headers.Add('Authorization', "bearer $($content.access_token)")
+            }
+            catch {
+                # Handle redirects
+                Write-Verbose "Invoke-FalconAuth - CAUGHT EXCEPTION - `$_.Exception.Message`r`n$($_.Exception.Message)"
+                $response = $_.Exception.Response
+
+                if (!$response) {
+                    $Message = "Unhandled error occurred while authenticating to the CrowdStrike Falcon API. Error: $($_.Exception.Message)"
                     Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
                     throw $Message
                 }
-            }
-            else {
-                $Message = "Received a $($response.StatusCode) response from $($BaseUrl)oauth2/token. Please check your credentials and try again. Error: $($response.StatusDescription)"
-                Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
-                throw $Message
+
+                if ($response.StatusCode -in @(301, 302, 303, 307, 308)) {
+                    # If autodiscover is enabled, try to get the correct cloud
+                    if ($FalconCloud -eq 'autodiscover') {
+                        if ($response.Headers.Contains('X-Cs-Region')) {
+                            $region = $response.Headers.GetValues('X-Cs-Region')[0]
+                            Write-Verbose "Received a redirect to $region. Setting FalconCloud to $region"
+                        }
+                        else {
+                            $Message = 'Received a redirect but no X-Cs-Region header was provided. Unable to autodiscover the FalconCloud. Please set FalconCloud to the correct region.'
+                            Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
+                            throw $Message
+                        }
+
+                        $BaseUrl = Get-FalconCloud($region)
+                        $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
+
+                    }
+                    else {
+                        $Message = "Received a redirect. Please set FalconCloud to 'autodiscover' or the correct region."
+                        Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
+                        throw $Message
+                    }
+                }
+                else {
+                    $Message = "Received a $($response.StatusCode) response from $($BaseUrl)oauth2/token. Please check your credentials and try again. Error: $($response.StatusDescription)"
+                    Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
+                    throw $Message
+                }
             }
         }
 
@@ -374,9 +405,9 @@ process {
 
     # Verify creds are provided if using the API
     $credsProvided = Test-FalconCredential $FalconClientId $FalconClientSecret
-    if (!$credsProvided) {
+    if (!$credsProvided -and !$FalconAccessToken) {
         if ($RemoveHost) {
-            $Message = 'Unable to remove host without credentials, please provide FalconClientId and FalconClientSecret'
+            $Message = 'Unable to remove host without credentials, please provide FalconClientId and FalconClientSecret or FalconAccessToken'
             throw $Message
         }
     }
@@ -422,7 +453,7 @@ process {
         $WebRequestParams.Add('Proxy', $proxy)
     }
 
-    if ($credsProvided) {
+    if ($credsProvided -or $FalconAccessToken) {
         $BaseUrl = Get-FalconCloud $FalconCloud
 
         $Body = @{}
