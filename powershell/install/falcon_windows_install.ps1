@@ -13,14 +13,19 @@ the parameter descriptions.
 The script must be run as an administrator on the local machine in order for the Falcon Sensor installation
 to complete, and the OAuth2 API Client being used requires 'sensor-update-policies:read' and
 'sensor-download:read' permissions.
+
 .PARAMETER FalconCloud
 CrowdStrike Falcon OAuth2 API Hostname [default: autodiscover]
 .PARAMETER FalconClientId
-CrowdStrike Falcon OAuth2 API Client Id [Required]
+CrowdStrike Falcon OAuth2 API Client Id [Required if FalconAccessToken is not provided]
 .PARAMETER FalconClientSecret
-CrowdStrike Falcon OAuth2 API Client Secret [Required]
+CrowdStrike Falcon OAuth2 API Client Secret [Required if FalconAccessToken is not provided]
 .PARAMETER FalconCid
 Manually specify CrowdStrike Customer ID (CID) [default: $null]
+.PARAMETER FalconAccessToken
+Manually set the access token for the Falcon API. Used to bypass the OAuth2 authentication process to cut down on rate limiting. [default: $null]
+.PARAMETER GetAccessToken
+Returns an access token from the API credentials provided. Used to manually set the FalconAccessToken parameter.
 .PARAMETER MemberCid
 Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID [default: $null]
 .PARAMETER SensorUpdatePolicyName
@@ -48,10 +53,7 @@ By default, the Falcon sensor for Windows automatically attempts to use any avai
 This parameter forces the sensor to skip those attempts and ignore any proxy configuration, including Windows Proxy Auto Detection.
 .PARAMETER Verbose
 Enable verbose logging
-.PARAMETER GetAccessToken
-Flag to return API credential access token
-.PARAMETER FalconAccessToken
-Manually set Falcon access token. Used to reduce number of requests to the token endpoint when performing batch installs.
+
 .EXAMPLE
 PS>.\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string>
 
@@ -122,7 +124,7 @@ param(
     [switch] $ProxyDisable,
 
     [Parameter(Position = 17)]
-    [bool] $GetAccessToken = $false,
+    [switch] $GetAccessToken,
 
     [Parameter(Position = 18)]
     [string] $FalconAccessToken
