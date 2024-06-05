@@ -12,6 +12,7 @@ the parameter descriptions.
 The script must be run as an administrator on the local machine in order for the Falcon Sensor to
 uninstall and the OAuth2 API Client being used requires 'sensor-update-policies:write' and
 'host:write' permissions.
+
 .PARAMETER MaintenanceToken
 Sensor uninstall maintenance token. If left undefined, the script will attempt to retrieve the token from the API assuming the FalconClientId|FalconClientSecret are defined.
 .PARAMETER UninstallParams
@@ -25,13 +26,17 @@ Delete sensor uninstaller package when complete [default: $true]
 .PARAMETER DeleteScript
 Delete script when complete [default: $false]
 .PARAMETER RemoveHost
-Remove host from CrowdStrike Falcon
+Remove host from CrowdStrike Falcon [requires either FalconClientId|FalconClientSecret or FalconAccessToken]
 .PARAMETER FalconCloud
 CrowdStrike Falcon OAuth2 API Hostname [default: autodiscover]
 .PARAMETER FalconClientId
-CrowdStrike Falcon OAuth2 API Client Id [Required if RemoveHost is $true]
+CrowdStrike Falcon OAuth2 API Client Id
 .PARAMETER FalconClientSecret
-CrowdStrike Falcon OAuth2 API Client Secret [Required if RemoveHost is $true]
+CrowdStrike Falcon OAuth2 API Client Secret
+.PARAMETER FalconAccessToken
+Manually set the access token for the Falcon API. Used to bypass the OAuth2 authentication process to cut down on rate limiting. [default: $null]
+.PARAMETER GetAccessToken
+Returns an access token from the API credentials provided. Used to manually set the FalconAccessToken parameter.
 .PARAMETER MemberCid
 Member CID, used only in multi-CID ("Falcon Flight Control") configurations and with a parent management CID.
 .PARAMETER ProxyHost
@@ -40,10 +45,7 @@ The proxy host for the sensor to use when communicating with CrowdStrike [defaul
 The proxy port for the sensor to use when communicating with CrowdStrike [default: $null]
 .PARAMETER Verbose
 Enable verbose logging
-.PARAMETER GetAccessToken
-Flag to return API credential access token
-.PARAMETER FalconAccessToken
-Manually set Falcon access token. Used to reduce number of requests to the token endpoint when performing batch installs.
+
 .EXAMPLE
 PS>.\falcon_windows_uninstall.ps1 -MaintenanceToken <string>
 
@@ -102,7 +104,7 @@ param(
     [int] $ProxyPort,
 
     [Parameter(Position = 14)]
-    [bool] $GetAccessToken = $false,
+    [switch] $GetAccessToken,
 
     [Parameter(Position = 15)]
     [string] $FalconAccessToken
@@ -403,7 +405,7 @@ process {
 
     # Verify creds are provided if using the API
     $credsProvided = Test-FalconCredential $FalconClientId $FalconClientSecret
-    if (!$credsProvided -or !$FalconAccessToken) {
+    if (!$credsProvided -and !$FalconAccessToken) {
         if ($RemoveHost) {
             $Message = 'Unable to remove host without credentials, please provide FalconClientId and FalconClientSecret or FalconAccessToken'
             throw $Message
