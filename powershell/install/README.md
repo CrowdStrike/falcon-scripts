@@ -65,6 +65,7 @@ Script options can be passed as parameters or defined in the param() block. Defa
 the parameter descriptions:
 
 ```pwsh
+<#
 .PARAMETER FalconCloud
 CrowdStrike Falcon OAuth2 API Hostname [default: autodiscover]
 .PARAMETER FalconClientId
@@ -104,6 +105,7 @@ By default, the Falcon sensor for Windows automatically attempts to use any avai
 This parameter forces the sensor to skip those attempts and ignore any proxy configuration, including Windows Proxy Auto Detection.
 .PARAMETER Verbose
 Enable verbose logging
+#>
 ```
 
 ***Examples***:
@@ -132,6 +134,7 @@ Script options can be passed as parameters or defined in the param() block. Defa
 the parameter descriptions:
 
 ```pwsh
+<#
 .PARAMETER MaintenanceToken
 Sensor uninstall maintenance token. If left undefined, the script will attempt to retrieve the token from the API assuming the FalconClientId|FalconClientSecret are defined.
 .PARAMETER UninstallParams
@@ -164,6 +167,7 @@ The proxy host for the sensor to use when communicating with CrowdStrike [defaul
 The proxy port for the sensor to use when communicating with CrowdStrike [default: $null]
 .PARAMETER Verbose
 Enable verbose logging
+#>
 ```
 
 ***Examples***:
