@@ -286,8 +286,10 @@ cs_sensor_download() {
         fi
     fi
 
-    existing_installers=$(curl_command -G "https://$(cs_cloud)/sensors/combined/installers/v1?sort=version|desc" \
-        --data-urlencode "filter=os:\"$cs_os_name\"+os_version:\"*$cs_os_version*\"$cs_api_version_filter$cs_os_arch_filter")
+    existing_installers=$(
+        curl_command -G "https://$(cs_cloud)/sensors/combined/installers/v1?sort=version|desc" \
+            --data-urlencode "filter=os:\"$cs_os_name\"+os_version:\"*$cs_os_version*\"$cs_api_version_filter$cs_os_arch_filter"
+    )
 
     handle_curl_error $?
 
@@ -503,7 +505,7 @@ json_value() {
 }
 
 die() {
-    printf "Fatal error: %s\n" "$*" >&2
+    echo "Fatal error: $*" >&2
     exit 1
 }
 
@@ -703,7 +705,6 @@ cs_uninstall=$(
 os_name=$(
     # returns either: Amazon, Ubuntu, CentOS, RHEL, or SLES
     # lsb_release is not always present
-
     name=$(cat /etc/*release | grep ^NAME= | awk -F'=' '{ print $2 }' | sed "s/\"//g;s/Red Hat.*/RHEL/g;s/ Linux$//g;s/ GNU\/Linux$//g;s/Oracle.*/Oracle/g;s/Amazon.*/Amazon/g")
     if [ -z "$name" ]; then
         if lsb_release -s -i | grep -q ^RedHat; then
@@ -805,6 +806,7 @@ cs_falcon_cloud=$(
     if [ -n "$FALCON_CLOUD" ]; then
         echo "$FALCON_CLOUD"
     else
+        # Auto-discovery is using us-1 initially
         echo "us-1"
     fi
 )
