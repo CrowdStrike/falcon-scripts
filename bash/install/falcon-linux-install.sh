@@ -70,6 +70,9 @@ Other Options
     - FALCON_DOWNLOAD_ONLY              (default: false)
         To download the falcon sensor without installing it.
 
+    - FALCON_DOWNLOAD_PATH              (default: \$PWD)
+        The path to download the falcon sensor to.
+
     - ALLOW_LEGACY_CURL                 (default: false)
         To use the legacy version of curl; version < 7.55.0.
 
@@ -95,9 +98,10 @@ main() {
 
     if [ "${FALCON_DOWNLOAD_ONLY}" = "true" ]; then
         echo -n 'Downloading Falcon Sensor ... '
-        cs_sensor_download_only
+        local download_destination
+        download_destination=$(cs_sensor_download_only)
         echo '[ Ok ]'
-        echo 'Falcon Sensor downloaded successfully.'
+        echo "Falcon Sensor downloaded to: $download_destination"
         exit 0
     fi
     echo -n 'Check if Falcon Sensor is running ... '
@@ -199,17 +203,11 @@ cs_sensor_install() {
 }
 
 cs_sensor_download_only() {
-    local tempdir package_name
-    tempdir=$(mktemp -d)
+    local destination_dir
 
-    tempdir_cleanup() { rm -rf "$tempdir"; }
-    trap tempdir_cleanup EXIT
-
+    destination_dir="${FALCON_DOWNLOAD_PATH:-$PWD}"
     get_oauth_token
-    package_name=$(cs_sensor_download "$tempdir")
-    cp "$package_name" .
-
-    tempdir_cleanup
+    cs_sensor_download "$destination_dir"
 }
 
 cs_sensor_remove() {
@@ -276,10 +274,6 @@ cs_sensor_download() {
         cs_sensor_version=$(cs_sensor_policy_version "$cs_sensor_policy_name")
         cs_api_version_filter="+version:\"$cs_sensor_version\""
 
-        exit_status=$?
-        if [ $exit_status -ne 0 ]; then
-            exit $exit_status
-        fi
         if [ "$cs_falcon_sensor_version_dec" -gt 0 ]; then
             echo "WARNING: Disabling FALCON_SENSOR_VERSION_DECREMENT because it conflicts with FALCON_SENSOR_UPDATE_POLICY_NAME"
             cs_falcon_sensor_version_dec=0
@@ -551,6 +545,15 @@ fi
 
 # Handle error codes returned by curl
 handle_curl_error() {
+    local err_msg
+
+    # Failed to download the file to destination
+    if [ "$1" -eq 23 ]; then
+        err_msg="Failed writing received data to disk/destination (exit code 23). Please check the destination path and permissions."
+        die "$err_msg"
+    fi
+
+    # Proxy related errors
     if [ "$1" = "28" ]; then
         err_msg="Operation timed out (exit code 28)."
         if [ -n "$proxy" ]; then
