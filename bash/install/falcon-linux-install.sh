@@ -67,6 +67,12 @@ Other Options
     - FALCON_INSTALL_ONLY               (default: false)
         To install the falcon sensor without registering it with CrowdStrike.
 
+    - FALCON_DOWNLOAD_ONLY              (default: false)
+        To download the falcon sensor without installing it.
+
+    - FALCON_DOWNLOAD_PATH              (default: \$PWD)
+        The path to download the falcon sensor to.
+
     - ALLOW_LEGACY_CURL                 (default: false)
         To use the legacy version of curl; version < 7.55.0.
 
@@ -90,13 +96,20 @@ main() {
         exit 0
     fi
 
+    if [ "${FALCON_DOWNLOAD_ONLY}" = "true" ]; then
+        echo -n 'Downloading Falcon Sensor ... '
+        local download_destination
+        download_destination=$(cs_sensor_download_only)
+        echo '[ Ok ]'
+        echo "Falcon Sensor downloaded to: $download_destination"
+        exit 0
+    fi
     echo -n 'Check if Falcon Sensor is running ... '
     cs_sensor_is_running
     echo '[ Not present ]'
     echo -n 'Falcon Sensor Install  ... '
     cs_sensor_install
     echo '[ Ok ]'
-    # Run if FALCON_INSTALL_ONLY is not set or is set to false
     if [ -z "$FALCON_INSTALL_ONLY" ] || [ "${FALCON_INSTALL_ONLY}" = "false" ]; then
         echo -n 'Falcon Sensor Register ... '
         cs_sensor_register
@@ -176,6 +189,7 @@ cs_sensor_restart() {
 }
 
 cs_sensor_install() {
+    local tempdir package_name
     tempdir=$(mktemp -d)
 
     tempdir_cleanup() { rm -rf "$tempdir"; }
@@ -188,9 +202,17 @@ cs_sensor_install() {
     tempdir_cleanup
 }
 
+cs_sensor_download_only() {
+    local destination_dir
+
+    destination_dir="${FALCON_DOWNLOAD_PATH:-$PWD}"
+    get_oauth_token
+    cs_sensor_download "$destination_dir"
+}
+
 cs_sensor_remove() {
     remove_package() {
-        pkg="$1"
+        local pkg="$1"
 
         if type dnf >/dev/null 2>&1; then
             dnf remove -q -y "$pkg" || rpm -e --nodeps "$pkg"
@@ -209,7 +231,7 @@ cs_sensor_remove() {
 }
 
 cs_sensor_policy_version() {
-    cs_policy_name="$1"
+    local cs_policy_name="$1" sensor_update_policy sensor_update_versions
 
     sensor_update_policy=$(
         curl_command -G "https://$(cs_cloud)/policy/combined/sensor-update/v2" \
@@ -246,16 +268,12 @@ cs_sensor_policy_version() {
 }
 
 cs_sensor_download() {
-    destination_dir="$1"
+    local destination_dir="$1" existing_installers sha_list INDEX sha file_type installer
 
     if [ -n "$cs_sensor_policy_name" ]; then
         cs_sensor_version=$(cs_sensor_policy_version "$cs_sensor_policy_name")
         cs_api_version_filter="+version:\"$cs_sensor_version\""
 
-        exit_status=$?
-        if [ $exit_status -ne 0 ]; then
-            exit $exit_status
-        fi
         if [ "$cs_falcon_sensor_version_dec" -gt 0 ]; then
             echo "WARNING: Disabling FALCON_SENSOR_VERSION_DECREMENT because it conflicts with FALCON_SENSOR_UPDATE_POLICY_NAME"
             cs_falcon_sensor_version_dec=0
@@ -300,10 +318,10 @@ cs_sensor_download() {
 }
 
 os_install_package() {
-    pkg="$1"
+    local pkg="$1"
 
     rpm_install_package() {
-        pkg="$1"
+        local pkg="$1"
 
         cs_falcon_gpg_import
 
@@ -328,7 +346,7 @@ os_install_package() {
         Ubuntu)
             # If this is ubuntu 14, we need to use dpkg instead
             if [ "${cs_os_version}" -eq 14 ]; then
-                DEBIAN_FRONTEND=noninteractive dpkg -i "$pkg" >/dev/null 2>&1 || true # ignore dep errors
+                DEBIAN_FRONTEND=noninteractive dpkg -i "$pkg" >/dev/null 2>&1 || true
                 DEBIAN_FRONTEND=noninteractive apt-get -qq install -f -y >/dev/null
             else
                 DEBIAN_FRONTEND=noninteractive apt-get -qq install -y "$pkg" >/dev/null
@@ -527,6 +545,15 @@ fi
 
 # Handle error codes returned by curl
 handle_curl_error() {
+    local err_msg
+
+    # Failed to download the file to destination
+    if [ "$1" -eq 23 ]; then
+        err_msg="Failed writing received data to disk/destination (exit code 23). Please check the destination path and permissions."
+        die "$err_msg"
+    fi
+
+    # Proxy related errors
     if [ "$1" = "28" ]; then
         err_msg="Operation timed out (exit code 28)."
         if [ -n "$proxy" ]; then

@@ -139,6 +139,12 @@ Other Options
     - FALCON_INSTALL_ONLY               (default: false)
         To install the falcon sensor without registering it with CrowdStrike.
 
+    - FALCON_DOWNLOAD_ONLY              (default: false)
+        To download the falcon sensor without installing it.
+
+    - FALCON_DOWNLOAD_PATH              (default: $PWD)
+        The path to download the falcon sensor to.
+
     - ALLOW_LEGACY_CURL                 (default: false)
         To use the legacy version of curl; version < 7.55.0.
 
