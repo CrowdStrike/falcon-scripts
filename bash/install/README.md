@@ -75,6 +75,7 @@ The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET`
 
 ```terminal
 Installs and configures the CrowdStrike Falcon Sensor for Linux.
+Version: 1.4.1
 
 The script recognizes the following environmental variables:
 
@@ -184,6 +185,7 @@ bash falcon-linux-install.sh
 
 ```terminal
 Uninstalls the CrowdStrike Falcon Sensor from Linux operating systems.
+Version: 1.4.1
 
 The script recognizes the following environmental variables:
 

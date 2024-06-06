@@ -9,32 +9,31 @@ set -e
 VERSION="1.4.1"
 
 usage() {
-    echo "usage: $0
-version: $VERSION
+    echo "Usage: $0 [options]
+Version: $VERSION
 
 Required Flags:
     -u, --client-id <FALCON_CLIENT_ID>             Falcon API OAUTH Client ID
     -s, --client-secret <FALCON_CLIENT_SECRET>     Falcon API OAUTH Client Secret
 
 Optional Flags:
-    -f, --cid <FALCON_CID>            Falcon Customer ID
-    -r, --region <FALCON_CLOUD>       Falcon Cloud Region
-    -c, --copy <REGISTRY/NAMESPACE>   registry to copy image e.g. myregistry.com/mynamespace
-    -v, --version <SENSOR_VERSION>    specify sensor version to retrieve from the registry
-    -p, --platform <SENSOR_PLATFORM>  specify sensor platform to retrieve e.g x86_64, aarch64
-    -t, --type <SENSOR_TYPE>          specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent]
-                                      Default is falcon-container.
+    -f, --cid <FALCON_CID>                         Falcon Customer ID
+    -r, --region <FALCON_CLOUD>                    Falcon Cloud Region [us-1|us-2|eu-1|us-gov-1] (Default: us-1)
+    -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
+    -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
+    -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
+    -t, --type <SENSOR_TYPE>                       Specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent] (Default: falcon-container)
 
-    --runtime                         use a different container runtime [docker, podman, skopeo]. Default is docker.
-    --dump-credentials                print registry credentials to stdout to copy/paste into container tools.
-    --get-image-path                  get the full image path including the registry, repository, and latest tag for the specified SENSOR_TYPE.
-    --get-pull-token                  get the pull token of the selected SENSOR_TYPE for Kubernetes.
-    --get-cid                         get the CID assigned to the API Credentials.
-    --list-tags                       list all tags available for the selected sensor type and platform(optional)
-    --allow-legacy-curl               allow the script to run with an older version of curl
+    --runtime <RUNTIME>                            Use a different container runtime [docker, podman, skopeo] (Default: docker)
+    --dump-credentials                             Print registry credentials to stdout to copy/paste into container tools
+    --get-image-path                               Get the full image path including the registry, repository, and latest tag for the specified SENSOR_TYPE
+    --get-pull-token                               Get the pull token of the selected SENSOR_TYPE for Kubernetes
+    --get-cid                                      Get the CID assigned to the API Credentials
+    --list-tags                                    List all tags available for the selected sensor type and platform(optional)
+    --allow-legacy-curl                            Allow the script to run with an older version of curl
 
 Help Options:
-    -h, --help display this help message"
+    -h, --help                                     Display this help message"
     exit 2
 }
 
