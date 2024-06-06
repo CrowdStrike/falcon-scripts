@@ -67,6 +67,9 @@ Other Options
     - FALCON_INSTALL_ONLY               (default: false)
         To install the falcon sensor without registering it with CrowdStrike.
 
+    - FALCON_DOWNLOAD_ONLY              (default: false)
+        To download the falcon sensor without installing it.
+
     - ALLOW_LEGACY_CURL                 (default: false)
         To use the legacy version of curl; version < 7.55.0.
 
@@ -90,13 +93,19 @@ main() {
         exit 0
     fi
 
+    if [ "${FALCON_DOWNLOAD_ONLY}" = "true" ]; then
+        echo -n 'Downloading Falcon Sensor ... '
+        cs_sensor_download_only
+        echo '[ Ok ]'
+        echo 'Falcon Sensor downloaded successfully.'
+        exit 0
+    fi
     echo -n 'Check if Falcon Sensor is running ... '
     cs_sensor_is_running
     echo '[ Not present ]'
     echo -n 'Falcon Sensor Install  ... '
     cs_sensor_install
     echo '[ Ok ]'
-    # Run if FALCON_INSTALL_ONLY is not set or is set to false
     if [ -z "$FALCON_INSTALL_ONLY" ] || [ "${FALCON_INSTALL_ONLY}" = "false" ]; then
         echo -n 'Falcon Sensor Register ... '
         cs_sensor_register
@@ -176,6 +185,7 @@ cs_sensor_restart() {
 }
 
 cs_sensor_install() {
+    local tempdir package_name
     tempdir=$(mktemp -d)
 
     tempdir_cleanup() { rm -rf "$tempdir"; }
@@ -188,9 +198,23 @@ cs_sensor_install() {
     tempdir_cleanup
 }
 
+cs_sensor_download_only() {
+    local tempdir package_name
+    tempdir=$(mktemp -d)
+
+    tempdir_cleanup() { rm -rf "$tempdir"; }
+    trap tempdir_cleanup EXIT
+
+    get_oauth_token
+    package_name=$(cs_sensor_download "$tempdir")
+    cp "$package_name" .
+
+    tempdir_cleanup
+}
+
 cs_sensor_remove() {
     remove_package() {
-        pkg="$1"
+        local pkg="$1"
 
         if type dnf >/dev/null 2>&1; then
             dnf remove -q -y "$pkg" || rpm -e --nodeps "$pkg"
@@ -209,7 +233,7 @@ cs_sensor_remove() {
 }
 
 cs_sensor_policy_version() {
-    cs_policy_name="$1"
+    local cs_policy_name="$1" sensor_update_policy sensor_update_versions
 
     sensor_update_policy=$(
         curl_command -G "https://$(cs_cloud)/policy/combined/sensor-update/v2" \
@@ -246,7 +270,7 @@ cs_sensor_policy_version() {
 }
 
 cs_sensor_download() {
-    destination_dir="$1"
+    local destination_dir="$1" existing_installers sha_list INDEX sha file_type installer
 
     if [ -n "$cs_sensor_policy_name" ]; then
         cs_sensor_version=$(cs_sensor_policy_version "$cs_sensor_policy_name")
@@ -262,10 +286,8 @@ cs_sensor_download() {
         fi
     fi
 
-    existing_installers=$(
-        curl_command -G "https://$(cs_cloud)/sensors/combined/installers/v1?sort=version|desc" \
-            --data-urlencode "filter=os:\"$cs_os_name\"+os_version:\"*$cs_os_version*\"$cs_api_version_filter$cs_os_arch_filter"
-    )
+    existing_installers=$(curl_command -G "https://$(cs_cloud)/sensors/combined/installers/v1?sort=version|desc" \
+        --data-urlencode "filter=os:\"$cs_os_name\"+os_version:\"*$cs_os_version*\"$cs_api_version_filter$cs_os_arch_filter")
 
     handle_curl_error $?
 
@@ -300,10 +322,10 @@ cs_sensor_download() {
 }
 
 os_install_package() {
-    pkg="$1"
+    local pkg="$1"
 
     rpm_install_package() {
-        pkg="$1"
+        local pkg="$1"
 
         cs_falcon_gpg_import
 
@@ -328,7 +350,7 @@ os_install_package() {
         Ubuntu)
             # If this is ubuntu 14, we need to use dpkg instead
             if [ "${cs_os_version}" -eq 14 ]; then
-                DEBIAN_FRONTEND=noninteractive dpkg -i "$pkg" >/dev/null 2>&1 || true # ignore dep errors
+                DEBIAN_FRONTEND=noninteractive dpkg -i "$pkg" >/dev/null 2>&1 || true
                 DEBIAN_FRONTEND=noninteractive apt-get -qq install -f -y >/dev/null
             else
                 DEBIAN_FRONTEND=noninteractive apt-get -qq install -y "$pkg" >/dev/null
@@ -481,7 +503,7 @@ json_value() {
 }
 
 die() {
-    echo "Fatal error: $*" >&2
+    printf "Fatal error: %s\n" "$*" >&2
     exit 1
 }
 
@@ -681,6 +703,7 @@ cs_uninstall=$(
 os_name=$(
     # returns either: Amazon, Ubuntu, CentOS, RHEL, or SLES
     # lsb_release is not always present
+
     name=$(cat /etc/*release | grep ^NAME= | awk -F'=' '{ print $2 }' | sed "s/\"//g;s/Red Hat.*/RHEL/g;s/ Linux$//g;s/ GNU\/Linux$//g;s/Oracle.*/Oracle/g;s/Amazon.*/Amazon/g")
     if [ -z "$name" ]; then
         if lsb_release -s -i | grep -q ^RedHat; then
@@ -782,7 +805,6 @@ cs_falcon_cloud=$(
     if [ -n "$FALCON_CLOUD" ]; then
         echo "$FALCON_CLOUD"
     else
-        # Auto-discovery is using us-1 initially
         echo "us-1"
     fi
 )
