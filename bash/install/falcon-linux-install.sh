@@ -284,7 +284,7 @@ cs_sensor_download() {
     fi
 
     existing_installers=$(
-        curl_command -G "https://$(cs_cloud)/sensors/combined/installers/v1?sort=version|desc" \
+        curl_command -G "https://$(cs_cloud)/sensors/combined/installers/v2?sort=version|desc" \
             --data-urlencode "filter=os:\"$cs_os_name\"+os_version:\"*$cs_os_version*\"$cs_api_version_filter$cs_os_arch_filter"
     )
 
@@ -777,13 +777,13 @@ cs_os_arch=$(
 cs_os_arch_filter=$(
     case "${cs_os_arch}" in
         x86_64)
-            echo "+os_version:!~\"arm64\"+os_version:!~\"zLinux\""
+            echo "+architectures:\"x86_64\""
             ;;
         aarch64)
-            echo "+os_version:~\"arm64\""
+            echo "+architectures:\"arm64\""
             ;;
         s390x)
-            echo "+os_version:~\"zLinux\""
+            echo "+architectures:\"s390x\""
             ;;
         *)
             die "Unrecognized OS architecture: ${cs_os_arch}"
