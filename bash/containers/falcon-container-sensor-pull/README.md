@@ -1,6 +1,6 @@
 # Falcon Container Sensor pull script
 
-Use this bash script to pull the latest **Falcon Container** sensor, **Node Kernel Mode DaemonSet** sensor, **Kubernetes Admission Controller** or **Kubernetes Protection Agent** from the CrowdStrike container registry and push it to your local Docker registry or remote registries.
+Use this bash script to pull the latest **Falcon Container** sensor, **Node DaemonSet** sensor, **Kubernetes Admission Controller** or **Kubernetes Protection Agent** from the CrowdStrike container registry and push it to your local Docker registry or remote registries.
 
 ## Deprecation Warning :warning:
 
