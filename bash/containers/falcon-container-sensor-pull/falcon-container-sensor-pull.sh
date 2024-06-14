@@ -19,6 +19,7 @@ Required Flags:
 Optional Flags:
     -f, --cid <FALCON_CID>                         Falcon Customer ID
     -r, --region <FALCON_CLOUD>                    Falcon Cloud Region [us-1|us-2|eu-1|us-gov-1] (Default: us-1)
+    -b, --build-stage <BUILD_STAGE>                Falcon Build Stage [release|stage] (Default: release)
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
@@ -80,6 +81,12 @@ while [ $# != 0 ]; do
         -r | --region)
             if [ -n "${2:-}" ]; then
                 FALCON_CLOUD="${2}"
+                shift
+            fi
+            ;;
+        -b | --build-stage)
+            if [ -n "${2:-}" ]; then
+                BUILD_STAGE="${2}"
                 shift
             fi
             ;;
@@ -473,6 +480,17 @@ if [ "$GETCID" ]; then
     exit 0
 fi
 
+if [ -z "$BUILD_STAGE" ]; then
+    BUILD_STAGE="release"
+fi
+# Check if BUILD_STAGE is set to a valid value
+case "${BUILD_STAGE}" in
+    release | stage) ;;
+    *) die """
+    Unrecognized sensor build stage: ${BUILD_STAGE}
+    Valid values are [release|stage]""" ;;
+esac
+
 if [ ! "$LISTTAGS" ] && [ ! "$PULLTOKEN" ] && [ ! "$GETIMAGEPATH" ]; then
     echo "Using the following settings:"
     echo "Falcon Region:   $(cs_cloud)"
@@ -481,23 +499,23 @@ fi
 
 ART_USERNAME="fc-$cs_falcon_cid"
 IMAGE_NAME="falcon-sensor"
-repository_name="release/falcon-sensor"
+repository_name="$BUILD_STAGE/falcon-sensor"
 registry_type="container-security"
 
 if [ "${SENSOR_TYPE}" = "falcon-kac" ]; then
     # overrides for KAC
     IMAGE_NAME="falcon-kac"
-    repository_name="release/falcon-kac"
+    repository_name="$BUILD_STAGE/falcon-kac"
 elif [ "${SENSOR_TYPE}" = "falcon-snapshot" ]; then
     # overrides for Snapshot
     ART_USERNAME="fs-$cs_falcon_cid"
     IMAGE_NAME="cs-snapshotscanner"
-    repository_name="release/cs-snapshotscanner"
+    repository_name="$BUILD_STAGE/cs-snapshotscanner"
     registry_type="snapshots"
 elif [ "${SENSOR_TYPE}" = "falcon-imageanalyzer" ]; then
     # overrides for Image Analyzer
     IMAGE_NAME="falcon-imageanalyzer"
-    repository_name="release/falcon-imageanalyzer"
+    repository_name="$BUILD_STAGE/falcon-imageanalyzer"
 elif [ "${SENSOR_TYPE}" = "kpagent" ]; then
     # overrides for KPA
     ART_USERNAME="kp-$cs_falcon_cid"

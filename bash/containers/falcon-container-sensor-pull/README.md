@@ -70,6 +70,7 @@ Required Flags:
 Optional Flags:
     -f, --cid <FALCON_CID>                         Falcon Customer ID
     -r, --region <FALCON_CLOUD>                    Falcon Cloud Region [us-1|us-2|eu-1|us-gov-1] (Default: us-1)
+    -b, --build-stage <BUILD_STAGE>                Falcon Build Stage [release|stage] (Default: release)
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
@@ -97,6 +98,7 @@ Help Options:
 | `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)          | CrowdStrike API Client ID                                                                |
 | `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)          | CrowdStrike API Client Secret                                                            |
 | `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)          | CrowdStrike Region. \**Auto-discovery is only available for [`us-1, us-2, eu-1`] regions.* |
+| `-b`, `--build-stage <BUILD_STAGE>`            | `$BUILD_STAGE`          | `release` (Optional)       | Sensor Build Stage. [`release, stage`] |
 | `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`     |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)          | Specify sensor version to retrieve from the registry                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)          | Specify sensor platform to retrieve from the registry                                    |
