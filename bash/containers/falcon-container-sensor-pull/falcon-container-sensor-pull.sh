@@ -355,11 +355,29 @@ copy_image() {
     fi
 }
 
+detect_container_tool() {
+    local container_tool
+    if command -v docker >/dev/null 2>&1; then
+        container_tool="docker"
+    elif command -v podman >/dev/null 2>&1; then
+        container_tool="podman"
+    elif command -v skopeo >/dev/null 2>&1; then
+        container_tool="skopeo"
+    else
+        die "No container runtime tool found. Please install either Docker, Podman, or Skopeo."
+    fi
+    echo $container_tool
+}
+
 # shellcheck disable=SC2086
 FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
 
-# shellcheck disable=SC2086
-CONTAINER_TOOL=$(echo ${CONTAINER_TOOL:-docker} | tr '[:upper:]' '[:lower:]')
+# Call the function to auto-detect the container tool if not specified
+if [ -z "${CONTAINER_TOOL}" ]; then
+    CONTAINER_TOOL=$(detect_container_tool)
+else
+    CONTAINER_TOOL=$(echo "${CONTAINER_TOOL}" | tr '[:upper:]' '[:lower:]')
+fi
 
 # Validate container tool
 case "${CONTAINER_TOOL}" in
