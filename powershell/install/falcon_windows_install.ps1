@@ -589,12 +589,7 @@ process {
                 $message = "Exit code 1244: Falcon was unable to communicate with the CrowdStrike cloud. Please check your installation token and try again."
                 Write-FalconLog 'InstallerProcess' $message
                 throw $message
-            } elseif ($process.ExitCode -eq 1232) {
-                $message = "Exit code 1232: A provisioning/installation token may be required to install the sensor. Please check your installation token settings and try again."
-                Write-FalconLog 'InstallerProcess' $message
-                throw $message
-            }
-            else {
+            } else {
                 if ($process.StandardError) {
                     $errOut = $process.StandardError.ReadToEnd()
                 } else {
