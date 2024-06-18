@@ -32,6 +32,9 @@ Optional Flags:
     --list-tags                                    List all tags available for the selected sensor type and platform(optional)
     --allow-legacy-curl                            Allow the script to run with an older version of curl
 
+Internal Flags:
+    --internal-build-stage <BUILD_STAGE>           (Internal only) Falcon Build Stage [release|stage] (Default: release)
+
 Help Options:
     -h, --help                                     Display this help message"
     exit 2
@@ -164,6 +167,12 @@ while [ $# != 0 ]; do
         -t | --type)
             if [ -n "${2}" ]; then
                 SENSOR_TYPE="${2}"
+                shift
+            fi
+            ;;
+        --internal-build-stage)
+            if [ -n "${2:-}" ]; then
+                BUILD_STAGE="${2}"
                 shift
             fi
             ;;
@@ -491,6 +500,17 @@ if [ "$GETCID" ]; then
     exit 0
 fi
 
+if [ -z "$BUILD_STAGE" ]; then
+    BUILD_STAGE="release"
+fi
+# Check if BUILD_STAGE is set to a valid value
+case "${BUILD_STAGE}" in
+    release | stage) ;;
+    *) die """
+    Unrecognized sensor build stage: ${BUILD_STAGE}
+    Valid values are [release|stage]""" ;;
+esac
+
 if [ ! "$LISTTAGS" ] && [ ! "$PULLTOKEN" ] && [ ! "$GETIMAGEPATH" ]; then
     echo "Using the following settings:"
     echo "Falcon Region:   $(cs_cloud)"
@@ -499,23 +519,23 @@ fi
 
 ART_USERNAME="fc-$cs_falcon_cid"
 IMAGE_NAME="falcon-sensor"
-repository_name="release/falcon-sensor"
+repository_name="$BUILD_STAGE/falcon-sensor"
 registry_type="container-security"
 
 if [ "${SENSOR_TYPE}" = "falcon-kac" ]; then
     # overrides for KAC
     IMAGE_NAME="falcon-kac"
-    repository_name="release/falcon-kac"
+    repository_name="$BUILD_STAGE/falcon-kac"
 elif [ "${SENSOR_TYPE}" = "falcon-snapshot" ]; then
     # overrides for Snapshot
     ART_USERNAME="fs-$cs_falcon_cid"
     IMAGE_NAME="cs-snapshotscanner"
-    repository_name="release/cs-snapshotscanner"
+    repository_name="$BUILD_STAGE/cs-snapshotscanner"
     registry_type="snapshots"
 elif [ "${SENSOR_TYPE}" = "falcon-imageanalyzer" ]; then
     # overrides for Image Analyzer
     IMAGE_NAME="falcon-imageanalyzer"
-    repository_name="release/falcon-imageanalyzer"
+    repository_name="$BUILD_STAGE/falcon-imageanalyzer"
 elif [ "${SENSOR_TYPE}" = "kpagent" ]; then
     # overrides for KPA
     ART_USERNAME="kp-$cs_falcon_cid"

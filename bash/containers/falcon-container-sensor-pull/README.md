@@ -83,6 +83,9 @@ Optional Flags:
     --list-tags                                    List all tags available for the selected sensor type and platform(optional)
     --allow-legacy-curl                            Allow the script to run with an older version of curl
 
+Internal Flags:
+    --internal-build-stage <BUILD_STAGE>           (Internal only) Falcon Build Stage [release|stage] (Default: release)
+
 Help Options:
     -h, --help                                     Display this help message
 ```
@@ -109,6 +112,15 @@ Help Options:
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)         | List all tags available for the selected sensor                                          |
 | `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)         | Allow the script to run with an older version of cURL                                    |
 | `-h`, `--help`                                 | N/A                     | `None`                     | Display help message                                                                     |
+
+---
+> **Note**: **Internal flags are for CrowdStrike internal use only. Internal flags do not provide any functionality to end customers.**
+
+| Internal Flags                                 | Environment Variables   | Default                    | Description                                                                              |
+|:-----------------------------------------------|-------------------------|----------------------------|------------------------------------------------------------------------------------------|
+| `--internal-build-stage <BUILD_STAGE>`         | `$BUILD_STAGE`          | `release` (Optional)       | Falcon Build Stage [`release, stage`]                                                    |
+
+---
 
 ### Sensor Types
 
