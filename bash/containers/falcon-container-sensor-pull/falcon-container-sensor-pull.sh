@@ -19,7 +19,6 @@ Required Flags:
 Optional Flags:
     -f, --cid <FALCON_CID>                         Falcon Customer ID
     -r, --region <FALCON_CLOUD>                    Falcon Cloud Region [us-1|us-2|eu-1|us-gov-1] (Default: us-1)
-    -b, --build-stage <BUILD_STAGE>                Falcon Build Stage [release|stage] (Default: release)
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
@@ -32,6 +31,9 @@ Optional Flags:
     --get-cid                                      Get the CID assigned to the API Credentials
     --list-tags                                    List all tags available for the selected sensor type and platform(optional)
     --allow-legacy-curl                            Allow the script to run with an older version of curl
+
+Internal Flags:
+    --internal-build-stage <BUILD_STAGE>           (Internal only) Falcon Build Stage [release|stage] (Default: release)
 
 Help Options:
     -h, --help                                     Display this help message"
@@ -81,12 +83,6 @@ while [ $# != 0 ]; do
         -r | --region)
             if [ -n "${2:-}" ]; then
                 FALCON_CLOUD="${2}"
-                shift
-            fi
-            ;;
-        -b | --build-stage)
-            if [ -n "${2:-}" ]; then
-                BUILD_STAGE="${2}"
                 shift
             fi
             ;;
@@ -171,6 +167,12 @@ while [ $# != 0 ]; do
         -t | --type)
             if [ -n "${2}" ]; then
                 SENSOR_TYPE="${2}"
+                shift
+            fi
+            ;;
+        --internal-build-stage)
+            if [ -n "${2:-}" ]; then
+                BUILD_STAGE="${2}"
                 shift
             fi
             ;;
