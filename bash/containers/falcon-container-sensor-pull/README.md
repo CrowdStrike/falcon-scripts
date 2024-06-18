@@ -114,7 +114,7 @@ Help Options:
 | `-h`, `--help`                                 | N/A                     | `None`                     | Display help message                                                                     |
 
 ---
-> **Note**: **Internal flags are for internal usage/development purposes only.**
+> **Note**: **Internal flags are for CrowdStrike internal use only. Internal flags do not provide any functionality to end customers.**
 
 | Internal Flags                                 | Environment Variables   | Default                    | Description                                                                              |
 |:-----------------------------------------------|-------------------------|----------------------------|------------------------------------------------------------------------------------------|
