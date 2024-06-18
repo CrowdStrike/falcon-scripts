@@ -41,7 +41,7 @@ Delete script when complete [default: $false]
 .PARAMETER ProvToken
 Provisioning token to use for sensor installation [default: $null]
 .PARAMETER ProvWaitTime
-Time to wait, in seconds, for sensor to provision [default: 1200]
+Time to wait, in milliseconds, for sensor to provision [default: 1200000]
 .PARAMETER Tags
 A comma-separated list of tags to apply to the host after sensor installation [default: $null]
 .PARAMETER ProxyHost
@@ -105,7 +105,7 @@ param(
     [string] $ProvToken,
 
     [Parameter(Position = 11)]
-    [int] $ProvWaitTime = 1200,
+    [int] $ProvWaitTime = 1200000,
 
     [Parameter(Position = 12)]
     [string] $Tags,
@@ -575,27 +575,34 @@ process {
     # Begin installation
     Write-FalconLog 'Installer' 'Installing Falcon Sensor...'
     Write-FalconLog 'StartProcess' "Starting installer with parameters: '$InstallParams'"
+    try {
+        $process = (Start-Process -FilePath $LocalFile -ArgumentList $InstallParams -PassThru -ErrorAction SilentlyContinue)
+        Write-FalconLog 'StartProcess' "Started '$LocalFile' ($($process.Id))"
+        Write-FalconLog 'StartProcess' "Waiting for the installer process to complete with PID ($($process.Id))"
+        Wait-Process -Id $process.Id
+        Write-FalconLog 'StartProcess' "Installer process with PID ($($process.Id)) has completed"
 
-    $process = (Start-Process -FilePath $LocalFile -ArgumentList $InstallParams -PassThru -ErrorAction SilentlyContinue)
-    Write-FalconLog 'StartProcess' "Started '$LocalFile' ($($process.Id))"
-    Write-FalconLog 'StartProcess' "Waiting for the installer process to complete with PID ($($process.Id))"
-    Wait-Process -Id $process.Id
-    Write-FalconLog 'StartProcess' "Installer process with PID ($($process.Id)) has completed"
-
-    # Check the exit code
-    if ($process.ExitCode -ne 0) {
-        Write-VerboseLog -VerboseInput $process -PreMessage 'PROCESS EXIT CODE ERROR - $process:'
-        if ($process.ExitCode -eq 1244) {
-            $message = "Exit code 1244: Falcon was unable to communicate with the CrowdStrike cloud. Please check your installation token and try again."
-            Write-FalconLog 'InstallerProcess' $message
-            throw $message
+        # Check the exit code
+        if ($process.ExitCode -ne 0) {
+            Write-VerboseLog -VerboseInput $process -PreMessage 'PROCESS EXIT CODE ERROR - $process:'
+            if ($process.ExitCode -eq 1244) {
+                $message = "Exit code 1244: Falcon was unable to communicate with the CrowdStrike cloud. Please check your installation token and try again."
+                Write-FalconLog 'InstallerProcess' $message
+                throw $message
+            } else {
+                if ($process.StandardError) {
+                    $errOut = $process.StandardError.ReadToEnd()
+                } else {
+                    $errOut = "No error output was provided by the process."
+                }
+                $message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
+                Write-FalconLog 'InstallerProcess' $message
+                throw $message
+            }
         }
-        else {
-            $errOut = $process.StandardError.ReadToEnd()
-            $message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
-            Write-FalconLog 'InstallerProcess' $message
-            throw $message
-        }
+    } catch {
+        Write-FalconLog 'InstallerProcess' "Caught exception: $_"
+        throw $_
     }
 
     @('DeleteInstaller', 'DeleteScript') | ForEach-Object {
