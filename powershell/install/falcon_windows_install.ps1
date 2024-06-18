@@ -41,7 +41,7 @@ Delete script when complete [default: $false]
 .PARAMETER ProvToken
 Provisioning token to use for sensor installation [default: $null]
 .PARAMETER ProvWaitTime
-Time to wait, in seconds, for sensor to provision [default: 1200]
+Time to wait, in milliseconds, for sensor to provision [default: 1200000]
 .PARAMETER Tags
 A comma-separated list of tags to apply to the host after sensor installation [default: $null]
 .PARAMETER ProxyHost
@@ -105,7 +105,7 @@ param(
     [string] $ProvToken,
 
     [Parameter(Position = 11)]
-    [int] $ProvWaitTime = 1200,
+    [int] $ProvWaitTime = 1200000,
 
     [Parameter(Position = 12)]
     [string] $Tags,
