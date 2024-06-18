@@ -575,27 +575,39 @@ process {
     # Begin installation
     Write-FalconLog 'Installer' 'Installing Falcon Sensor...'
     Write-FalconLog 'StartProcess' "Starting installer with parameters: '$InstallParams'"
+    try {
+        $process = (Start-Process -FilePath $LocalFile -ArgumentList $InstallParams -PassThru -ErrorAction SilentlyContinue)
+        Write-FalconLog 'StartProcess' "Started '$LocalFile' ($($process.Id))"
+        Write-FalconLog 'StartProcess' "Waiting for the installer process to complete with PID ($($process.Id))"
+        Wait-Process -Id $process.Id
+        Write-FalconLog 'StartProcess' "Installer process with PID ($($process.Id)) has completed"
 
-    $process = (Start-Process -FilePath $LocalFile -ArgumentList $InstallParams -PassThru -ErrorAction SilentlyContinue)
-    Write-FalconLog 'StartProcess' "Started '$LocalFile' ($($process.Id))"
-    Write-FalconLog 'StartProcess' "Waiting for the installer process to complete with PID ($($process.Id))"
-    Wait-Process -Id $process.Id
-    Write-FalconLog 'StartProcess' "Installer process with PID ($($process.Id)) has completed"
-
-    # Check the exit code
-    if ($process.ExitCode -ne 0) {
-        Write-VerboseLog -VerboseInput $process -PreMessage 'PROCESS EXIT CODE ERROR - $process:'
-        if ($process.ExitCode -eq 1244) {
-            $message = "Exit code 1244: Falcon was unable to communicate with the CrowdStrike cloud. Please check your installation token and try again."
-            Write-FalconLog 'InstallerProcess' $message
-            throw $message
+        # Check the exit code
+        if ($process.ExitCode -ne 0) {
+            Write-VerboseLog -VerboseInput $process -PreMessage 'PROCESS EXIT CODE ERROR - $process:'
+            if ($process.ExitCode -eq 1244) {
+                $message = "Exit code 1244: Falcon was unable to communicate with the CrowdStrike cloud. Please check your installation token and try again."
+                Write-FalconLog 'InstallerProcess' $message
+                throw $message
+            } elseif ($process.ExitCode -eq 1232) {
+                $message = "Exit code 1232: A provisioning/installation token may be required to install the sensor. Please check your installation token settings and try again."
+                Write-FalconLog 'InstallerProcess' $message
+                throw $message
+            }
+            else {
+                if ($process.StandardError) {
+                    $errOut = $process.StandardError.ReadToEnd()
+                } else {
+                    $errOut = "No error output was provided by the process."
+                }
+                $message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
+                Write-FalconLog 'InstallerProcess' $message
+                throw $message
+            }
         }
-        else {
-            $errOut = $process.StandardError.ReadToEnd()
-            $message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
-            Write-FalconLog 'InstallerProcess' $message
-            throw $message
-        }
+    } catch {
+        Write-FalconLog 'InstallerProcess' "Caught exception: $_"
+        throw $_
     }
 
     @('DeleteInstaller', 'DeleteScript') | ForEach-Object {
