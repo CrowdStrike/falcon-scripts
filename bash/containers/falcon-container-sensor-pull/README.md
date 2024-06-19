@@ -36,11 +36,12 @@ To check your version of cURL, run the following command: `curl --version`
 
 ## Prerequisites
 
-- Script requires the following commands to be installed:
+- Ensure the following are installed:
   - `curl`
   - `docker`, `podman`, or `skopeo`
-- CrowdStrike API Client created with scopes by sensor type:
-  - **falcon-sensor|falcon-container|falcon-kac**
+    > If using Docker, make sure it is running locally.
+- Create a CrowdStrike API Client with the appropriate scopes based on the sensor type:
+  - **falcon-sensor | falcon-container | falcon-kac**
     - `Sensor Download (read)`
     - `Falcon Images Download (read)`
   - **kpagent**
@@ -56,7 +57,6 @@ To check your version of cURL, run the following command: `curl --version`
     - `Sensor Download (read)`
     - `Snapshot Scanner Image Download (read)`
     - `Snapshot (read/write)`
-- If you are using Docker, make sure that Docker is running locally.
 
 ## Auto-Discovery of Falcon Cloud Region
 
