@@ -378,6 +378,27 @@ detect_container_tool() {
     echo $container_tool
 }
 
+display_api_scopes() {
+    local sensor_type=$1
+    case "${sensor_type}" in
+        falcon-sensor | falcon-container | falcon-kac)
+            echo "Sensor Download [read], Falcon Images Download [read]"
+            ;;
+        kpagent)
+            echo "Sensor Download [read], Falcon Images Download [read], Kubernetes Protection [read]"
+            ;;
+        falcon-imageanalyzer)
+            echo "Sensor Download [read], Falcon Container CLI [write], Falcon Container Image [read/write], Falcon Images Download [read]"
+            ;;
+        falcon-snapshot)
+            echo "Sensor Download [read], Snapshot Scanner Image Download [read], Snapshot [read/write]"
+            ;;
+        *)
+            die "Unknown sensor type: ${sensor_type}"
+            ;;
+    esac
+}
+
 # shellcheck disable=SC2086
 FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
 
@@ -486,9 +507,13 @@ cs_falcon_cid_with_checksum=$(
         echo "$FALCON_CID"
     else
         cs_target_cid=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
+        if echo "$cs_target_cid" | grep -q "403"; then
+            die "Failed to retrieve CID. Ensure the correct API Scopes are assigned: $(display_api_scopes "${SENSOR_TYPE}")"
+        fi
         echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}'
     fi
 )
+
 cs_falcon_cid=$(echo "$cs_falcon_cid_with_checksum" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]')
 
 if [ "$GETCID" ]; then
@@ -576,7 +601,8 @@ $raw_docker_api_token
 
 Ensure the following:
   - Credentials are valid.
-  - Correct API Scopes are assigned (Falcon Images Download [read], Sensor Download [read], Snapshot Scanner Image Download [read], Snapshot [read/write], Kubernetes Protection [read])
+  - Correct API Scopes assigned for sensor type: ${SENSOR_TYPE}
+        - $(display_api_scopes "${SENSOR_TYPE}")
   - Cloud Security is enabled in your tenant."
 fi
 
