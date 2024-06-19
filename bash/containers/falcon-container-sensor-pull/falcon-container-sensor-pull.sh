@@ -244,7 +244,7 @@ format_tags() {
     local all_tags=$1
 
     case "${SENSOR_TYPE}" in
-        "kpagent" | "falcon-snapshot" | "falcon-imageanalyzer")
+        "kpagent" | "falcon-snapshot" | "falcon-imageanalyzer" | "fcs")
             echo "$all_tags" |
                 sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
                 tr -d '"' | tr ',' '\n' |
@@ -434,10 +434,10 @@ fi
 
 # Check if SENSOR_TYPE is set to a valid value
 case "${SENSOR_TYPE}" in
-    falcon-container | falcon-sensor | falcon-kac | falcon-snapshot | falcon-imageanalyzer | kpagent) ;;
+    falcon-container | falcon-sensor | falcon-kac | falcon-snapshot | falcon-imageanalyzer | kpagent | fcs) ;;
     *) die """
     Unrecognized sensor type: ${SENSOR_TYPE}
-    Valid values are [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent]""" ;;
+    Valid values are [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent|fcs]""" ;;
 esac
 
 #Check all mandatory variables set
@@ -565,6 +565,12 @@ elif [ "${SENSOR_TYPE}" = "kpagent" ]; then
     repository_name="kpagent"
     registry_type="kubernetes-protection"
     registry_opts="kubernetes_protection"
+elif [ "${SENSOR_TYPE}" = "fcs" ]; then
+    # overrides for FCS
+    ART_USERNAME="fh-$cs_falcon_cid"
+    IMAGE_NAME="fcs"
+    repository_name="$BUILD_STAGE/cs-fcs"
+    registry_type="iac"
 fi
 
 #Set Docker token using the BEARER token captured earlier
