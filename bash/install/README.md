@@ -75,7 +75,7 @@ The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET`
 
 ```terminal
 Installs and configures the CrowdStrike Falcon Sensor for Linux.
-Version: 1.4.2
+Version: 1.5.0
 
 The script recognizes the following environmental variables:
 
@@ -160,7 +160,7 @@ Other Options
 To download and run the script:
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.4.2/bash/install/falcon-linux-install.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.0/bash/install/falcon-linux-install.sh | bash
 ```
 
 Alternatively, you can run the script by cloning the repo:
@@ -185,7 +185,7 @@ bash falcon-linux-install.sh
 
 ```terminal
 Uninstalls the CrowdStrike Falcon Sensor from Linux operating systems.
-Version: 1.4.2
+Version: 1.5.0
 
 The script recognizes the following environmental variables:
 
@@ -228,7 +228,7 @@ Other Options:
 To download and run the script:
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.4.2/bash/install/falcon-linux-uninstall.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.0/bash/install/falcon-linux-uninstall.sh | bash
 ```
 
 Uninstall and remove the host from the Falcon console:
@@ -237,7 +237,7 @@ Uninstall and remove the host from the Falcon console:
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 export FALCON_REMOVE_HOST="true"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.4.2/bash/install/falcon-linux-uninstall.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.0/bash/install/falcon-linux-uninstall.sh | bash
 ```
 
 ## Troubleshooting
@@ -251,5 +251,5 @@ bash -x falcon-linux-install.sh
 or
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.4.2/bash/install/falcon-linux-install.sh | bash -x
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.0/bash/install/falcon-linux-install.sh | bash -x
 ```
