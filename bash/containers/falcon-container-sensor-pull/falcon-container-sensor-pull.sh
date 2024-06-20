@@ -381,17 +381,14 @@ detect_container_tool() {
 display_api_scopes() {
     local sensor_type=$1
     case "${sensor_type}" in
-        falcon-sensor | falcon-container | falcon-kac)
+        falcon-sensor | falcon-container | falcon-kac | falcon-imageanalyzer)
             echo "Sensor Download [read], Falcon Images Download [read]"
             ;;
         kpagent)
             echo "Sensor Download [read], Falcon Images Download [read], Kubernetes Protection [read]"
             ;;
-        falcon-imageanalyzer)
-            echo "Sensor Download [read], Falcon Container CLI [write], Falcon Container Image [read/write], Falcon Images Download [read]"
-            ;;
         falcon-snapshot)
-            echo "Sensor Download [read], Snapshot Scanner Image Download [read], Snapshot [read/write]"
+            echo "Sensor Download [read], Snapshot Scanner Image Download [read]"
             ;;
         *)
             die "Unknown sensor type: ${sensor_type}"

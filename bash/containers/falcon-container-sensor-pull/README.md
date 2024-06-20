@@ -41,22 +41,18 @@ To check your version of cURL, run the following command: `curl --version`
   - `docker`, `podman`, or `skopeo`
     > If using Docker, make sure it is running locally.
 - Create a CrowdStrike API Client with the appropriate scopes based on the sensor type:
-  - **falcon-sensor | falcon-container | falcon-kac**
+  > [!NOTE]
+  > To retrieve the container images, you must have at least the following scopes granted depending on the sensor type. If you need to perform other operations post-retrieval, please refer to the CrowdStrike documentation to identify any additional scopes that may be required.
+  - **falcon-sensor | falcon-container | falcon-kac | falcon-imageanalyzer**
     - `Sensor Download (read)`
     - `Falcon Images Download (read)`
   - **kpagent**
     - `Sensor Download (read)`
     - `Falcon Images Download (read)`
     - `Kubernetes Protection (read)`
-  - **falcon-imageanalyzer**
-    - `Sensor Download (read)`
-    - `Falcon Images Download (read)`
-    - `Falcon Container CLI (write)`
-    - `Falcon Container Image (read/write)`
   - **falcon-snapshot**
     - `Sensor Download (read)`
     - `Snapshot Scanner Image Download (read)`
-    - `Snapshot (read/write)`
 
 ## Auto-Discovery of Falcon Cloud Region
 
