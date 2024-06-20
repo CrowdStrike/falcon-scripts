@@ -43,7 +43,7 @@ Other Options:
 EOF
 }
 
-VERSION="1.5.0"
+VERSION="1.5.1"
 
 main() {
     if [ -n "$1" ]; then
