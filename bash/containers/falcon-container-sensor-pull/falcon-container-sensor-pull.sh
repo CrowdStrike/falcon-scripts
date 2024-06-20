@@ -22,7 +22,7 @@ Optional Flags:
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
-    -t, --type <SENSOR_TYPE>                       Specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent] (Default: falcon-container)
+    -t, --type <SENSOR_TYPE>                       Specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent|fcs] (Default: falcon-container)
 
     --runtime <RUNTIME>                            Use a different container runtime [docker, podman, skopeo] (Default: docker)
     --dump-credentials                             Print registry credentials to stdout to copy/paste into container tools
@@ -244,7 +244,7 @@ format_tags() {
     local all_tags=$1
 
     case "${SENSOR_TYPE}" in
-        "kpagent" | "falcon-snapshot" | "falcon-imageanalyzer")
+        "kpagent" | "falcon-snapshot" | "falcon-imageanalyzer" | "fcs")
             echo "$all_tags" |
                 sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
                 tr -d '"' | tr ',' '\n' |
@@ -390,6 +390,9 @@ display_api_scopes() {
         falcon-snapshot)
             echo "Sensor Download [read], Snapshot Scanner Image Download [read]"
             ;;
+        fcs)
+            echo "Sensor Download [read], Infrastructure as Code [read]"
+            ;;
         *)
             die "Unknown sensor type: ${sensor_type}"
             ;;
@@ -434,10 +437,10 @@ fi
 
 # Check if SENSOR_TYPE is set to a valid value
 case "${SENSOR_TYPE}" in
-    falcon-container | falcon-sensor | falcon-kac | falcon-snapshot | falcon-imageanalyzer | kpagent) ;;
+    falcon-container | falcon-sensor | falcon-kac | falcon-snapshot | falcon-imageanalyzer | kpagent | fcs) ;;
     *) die """
     Unrecognized sensor type: ${SENSOR_TYPE}
-    Valid values are [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent]""" ;;
+    Valid values are [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent|fcs]""" ;;
 esac
 
 #Check all mandatory variables set
@@ -565,6 +568,12 @@ elif [ "${SENSOR_TYPE}" = "kpagent" ]; then
     repository_name="kpagent"
     registry_type="kubernetes-protection"
     registry_opts="kubernetes_protection"
+elif [ "${SENSOR_TYPE}" = "fcs" ]; then
+    # overrides for FCS
+    ART_USERNAME="fh-$cs_falcon_cid"
+    IMAGE_NAME="fcs"
+    repository_name="$BUILD_STAGE/cs-fcs"
+    registry_type="iac"
 fi
 
 #Set Docker token using the BEARER token captured earlier

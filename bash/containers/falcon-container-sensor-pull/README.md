@@ -80,7 +80,7 @@ Optional Flags:
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
-    -t, --type <SENSOR_TYPE>                       Specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent] (Default: falcon-container)
+    -t, --type <SENSOR_TYPE>                       Specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent|fcs] (Default: falcon-container)
 
     --runtime <RUNTIME>                            Use a different container runtime [docker, podman, skopeo] (Default: docker)
     --dump-credentials                             Print registry credentials to stdout to copy/paste into container tools
@@ -110,7 +110,7 @@ Help Options:
 | `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)          | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`     |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)          | Specify sensor version to retrieve from the registry                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)          | Specify sensor platform to retrieve from the registry                                    |
-| `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`          | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-kac`, `falcon-snapshot`, `falcon-imageanalyzer`, `kpagent`] ([see more details below](#sensor-types)) |
+| `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`          | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-kac`, `falcon-snapshot`, `falcon-imageanalyzer`, `kpagent`, `fcs`] ([see more details below](#sensor-types)) |
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)        | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.       |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)         | Print registry credentials to stdout to copy/paste into container tools                  |
 | `--get-image-path`                             | N/A                     | `None`                     | Get the full image path including the registry, repository, and latest tag for the specified `SENSOR_TYPE`. |
@@ -141,6 +141,7 @@ The following sensor types are available to download:
 | `falcon-snapshot` | The Falcon Snapshot scanner |
 | `falcon-imageanalyzer` | The Falcon Image Assessment at Runtime |
 | `kpagent` | The Falcon Kubernetes Protection Agent |
+| `fcs` | The Falcon Cloud Security CLI tool |
 
 ### Examples
 
