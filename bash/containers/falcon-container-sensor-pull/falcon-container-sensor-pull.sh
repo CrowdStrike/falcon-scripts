@@ -390,6 +390,9 @@ display_api_scopes() {
         falcon-snapshot)
             echo "Sensor Download [read], Snapshot Scanner Image Download [read]"
             ;;
+        fcs)
+            echo "Sensor Download [read], Infrastructure as Code [read]"
+            ;;
         *)
             die "Unknown sensor type: ${sensor_type}"
             ;;
