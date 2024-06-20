@@ -22,7 +22,7 @@ Optional Flags:
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
-    -t, --type <SENSOR_TYPE>                       Specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent] (Default: falcon-container)
+    -t, --type <SENSOR_TYPE>                       Specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent|fcs] (Default: falcon-container)
 
     --runtime <RUNTIME>                            Use a different container runtime [docker, podman, skopeo] (Default: docker)
     --dump-credentials                             Print registry credentials to stdout to copy/paste into container tools
