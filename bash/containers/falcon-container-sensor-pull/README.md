@@ -36,19 +36,26 @@ To check your version of cURL, run the following command: `curl --version`
 
 ## Prerequisites
 
-- Script requires the following commands to be installed:
-  - `curl`
-  - `docker`, `podman`, or `skopeo`
-- CrowdStrike API Client created with these scopes:
-  - `Falcon Images Download (read)`
+**Ensure the following are installed:**
+
+- `curl`
+- `docker`, `podman`, or `skopeo`
+  > If using Docker, make sure it is running locally.
+
+**Create a CrowdStrike API Client with the appropriate scopes based on the sensor type:**
+> [!IMPORTANT]
+> The following API scopes are the minimum required to retrieve the images. If you need to perform other operations post-retrieval, please refer to the CrowdStrike documentation to identify any additional scopes that may be required.
+
+- **falcon-sensor | falcon-container | falcon-kac | falcon-imageanalyzer**
   - `Sensor Download (read)`
+  - `Falcon Images Download (read)`
+- **kpagent**
+  - `Sensor Download (read)`
+  - `Falcon Images Download (read)`
   - `Kubernetes Protection (read)`
-    - For `kpagent` only
+- **falcon-snapshot**
+  - `Sensor Download (read)`
   - `Snapshot Scanner Image Download (read)`
-    - For `falcon-snapshot` only
-  - `Snapshot (read/write)`
-    - For `falcon-snapshot` only
-- If you are using Docker, make sure that Docker is running locally.
 
 ## Auto-Discovery of Falcon Cloud Region
 
@@ -96,7 +103,7 @@ Help Options:
 
 | Flags                                          | Environment Variables   | Default                    | Description                                                                              |
 |:-----------------------------------------------|-------------------------|----------------------------|------------------------------------------------------------------------------------------|
-| `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID`           | `None` (Optional)          | CrowdStrike Customer ID (CID)                                                            |
+| `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID`           | `None` (Optional)          | CrowdStrike Customer ID (CID). *If not provided, CID will be auto-detected.*                                                            |
 | `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)          | CrowdStrike API Client ID                                                                |
 | `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)          | CrowdStrike API Client Secret                                                            |
 | `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)          | CrowdStrike Region. \**Auto-discovery is only available for [`us-1, us-2, eu-1`] regions.* |
