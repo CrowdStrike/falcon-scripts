@@ -56,6 +56,9 @@ To check your version of cURL, run the following command: `curl --version`
 - **falcon-snapshot**
   - `Sensor Download (read)`
   - `Snapshot Scanner Image Download (read)`
+- **fcs**
+  - `Sensor Download (read)`
+  - `Infrastructure as Code (read)`
 
 ## Auto-Discovery of Falcon Cloud Region
 
