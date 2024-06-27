@@ -257,7 +257,7 @@ format_tags() {
                 sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
                 awk -F',' -v keyword="$SENSOR_PLATFORM" '{
                     for (i=1; i<=NF; i++) {
-                        if (($i ~ keyword || $i !~ /x86_64|aarch64/) && $i !~ /sha256/) {
+                        if (($i ~ keyword || $i !~ /x86_64|aarch64/) && $i !~ /sha256/ && $i !~ /arm64|amd64/) {
                             print $i
                         }
                     }
