@@ -85,7 +85,7 @@ Other Options
 EOF
 }
 
-VERSION="1.5.1"
+VERSION="1.5.2"
 
 main() {
     if [ -n "$1" ]; then
