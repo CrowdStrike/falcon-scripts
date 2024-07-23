@@ -219,14 +219,45 @@ To bypass this warning, set the optional flag --allow-legacy-curl
     fi
 fi
 
+# Handle error codes returned by curl
+handle_curl_error() {
+    local err_msg
+
+    if [ "$1" = "28" ]; then
+        err_msg="Operation timed out (exit code 28). If using a proxy, please check your proxy settings."
+        die "$err_msg"
+    fi
+
+    if [ "$1" = "22" ]; then
+        err_msg="Operation with (exit code 22). The requested URL was not found or returned another error with the HTTP error code being 400 or above."
+        die "$err_msg"
+    fi
+
+    if [ "$1" = "5" ]; then
+        err_msg="Couldn't resolve proxy (exit code 5). The address of the given proxy host could not be resolved. Please check your proxy settings."
+        die "$err_msg"
+    fi
+
+    if [ "$1" = "7" ]; then
+        err_msg="Failed to connect to host (exit code 7). Host found, but unable to open connection with host. If using a proxy, please check your proxy settings"
+        die "$err_msg"
+    fi
+
+    # Generic catch-all
+    if [ "$1" -ne 0 ]; then
+        err_msg="Curl command failed with exit code: $1."
+        die "$err_msg"
+    fi
+}
+
 curl_command() {
     # Dash does not support arrays, so we have to pass the args as separate arguments
     local token="$1"
     set -- "$@"
     if [ "$old_curl" -eq 0 ]; then
-        curl -s -L -H "Authorization: Bearer ${token}" "$@"
+        curl -f -s -L -H "Authorization: Bearer ${token}" "$@"
     else
-        echo "Authorization: Bearer ${token}" | curl -s -L -H @- "$@"
+        echo "Authorization: Bearer ${token}" | curl -f -s -L -H @- "$@"
     fi
 }
 
@@ -237,6 +268,8 @@ fetch_tags() {
         json_value "token" |
         sed 's/ *$//g' | sed 's/^ *//g')
     curl_command "$registry_bearer" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list"
+
+    handle_curl_error $?
 }
 
 format_tags() {
@@ -507,6 +540,7 @@ cs_falcon_cid_with_checksum=$(
         echo "$FALCON_CID"
     else
         cs_target_cid=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
+        handle_curl_error $?
         if echo "$cs_target_cid" | grep -q "403"; then
             die "Failed to retrieve CID. Ensure the correct API Scopes are assigned: $(display_api_scopes "${SENSOR_TYPE}")"
         fi
@@ -579,9 +613,11 @@ fi
 #Set Docker token using the BEARER token captured earlier
 if [ "${SENSOR_TYPE}" = "kpagent" ]; then
     raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/$registry_type/entities/integration/agent/v1?cluster_name=clustername&is_self_managed_cluster=true")
+    handle_curl_error $?
     docker_api_token=$(echo "$raw_docker_api_token" | awk '/dockerAPIToken:/ {print $2}')
 else
     raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/$registry_type/entities/image-registry-credentials/v1")
+    handle_curl_error $?
     docker_api_token=$(echo "$raw_docker_api_token" | json_value "token")
 fi
 ART_PASSWORD=$(echo "$docker_api_token" | sed 's/ *$//g' | sed 's/^ *//g')
