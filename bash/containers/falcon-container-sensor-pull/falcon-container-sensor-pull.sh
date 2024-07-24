@@ -229,7 +229,7 @@ handle_curl_error() {
     fi
 
     if [ "$1" = "22" ]; then
-        err_msg="Operation with (exit code 22). The requested URL was not found or returned another error with the HTTP error code being 400 or above."
+        err_msg="Operation failed with (exit code 22). The requested URL was not found or returned another error with the HTTP error code being 400 or above."
         die "$err_msg"
     fi
 
