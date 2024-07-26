@@ -23,15 +23,15 @@ jobs:
           # Create a list of files to upload
           list_of_files=$(find . -type f \( -name "*.sh" -o -name "*.ps1" -o -name "*.zip" \))
 
-          # Create sha256sums.txt
+          # Create checksum.txt
           for file in $list_of_files; do
             pushd $(dirname $file) > /dev/null
             sha256sum $(basename $file)
             popd > /dev/null
-          done > sha256sums.txt
+          done > checksum.txt
 
           # Upload the files to GitHub release
-          gh release upload $TAG $list_of_files sha256sums.txt
+          gh release upload $TAG $list_of_files checksum.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
