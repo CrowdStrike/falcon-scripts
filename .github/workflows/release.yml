@@ -20,7 +20,7 @@ jobs:
           zip -r ../../falcon_windows_install_scripts.zip *.ps1
           popd
 
-          # Create a list of .sh and .ps1 files for upload
+          # Create a list of files to upload
           list_of_files=$(find . -type f \( -name "*.sh" -o -name "*.ps1" -o -name "*.zip" \))
 
           # Create sha256sums.txt
