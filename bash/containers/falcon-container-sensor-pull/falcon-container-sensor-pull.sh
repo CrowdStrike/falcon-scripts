@@ -262,13 +262,15 @@ curl_command() {
 }
 
 fetch_tags() {
-    # Fetches tags from the CrowdStrike registry
-    registry_bearer=$(echo "-u $ART_USERNAME:$ART_PASSWORD" |
-        curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K- |
-        json_value "token" |
-        sed 's/ *$//g' | sed 's/^ *//g')
-    curl_command "$registry_bearer" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list"
+    bearer_result=$(echo "-u $ART_USERNAME:$ART_PASSWORD" |
+        curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K-)
     handle_curl_error $?
+    registry_bearer=$(echo "$bearer_result" | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
+    # Check if registry_bearer is not empty
+    if [ -z "$registry_bearer" ]; then
+        die "Failed to retrieve the registry bearer token."
+    fi
+    curl_command "$registry_bearer" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list"
 }
 
 format_tags() {
@@ -503,7 +505,7 @@ cs_falcon_oauth_token=$(
     fi
 
     token_result=$(echo "client_id=$FALCON_CLIENT_ID&client_secret=$FALCON_CLIENT_SECRET" |
-        curl -f -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
+        curl -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
             -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
             -H "User-Agent: crowdstrike-falcon-script/$VERSION" \
             --dump-header "$response_headers" \
@@ -540,6 +542,7 @@ cs_falcon_cid_with_checksum=$(
         echo "$FALCON_CID"
     else
         cs_target_cid=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
+        handle_curl_error $?
         if echo "$cs_target_cid" | grep -q "403"; then
             die "Failed to retrieve CID. Ensure the correct API Scopes are assigned: $(display_api_scopes "${SENSOR_TYPE}")"
         fi
@@ -619,7 +622,17 @@ else
     handle_curl_error $?
     docker_api_token=$(echo "$raw_docker_api_token" | json_value "token")
 fi
+
 ART_PASSWORD=$(echo "$docker_api_token" | sed 's/ *$//g' | sed 's/^ *//g')
+if [ -z "$ART_PASSWORD" ]; then
+    die "Failed to retrieve the CrowdStrike registry password. Response from API:
+$raw_docker_api_token
+
+Ensure the following:
+  - Correct API Scopes assigned for sensor type: ${SENSOR_TYPE}
+        - $(display_api_scopes "${SENSOR_TYPE}")
+  - Cloud Security is enabled in your tenant."
+fi
 
 if [ "$PULLTOKEN" ]; then
     # Determine if base64 supports the -w option
@@ -634,17 +647,6 @@ if [ "$PULLTOKEN" ]; then
     IMAGE_PULL_TOKEN=$(printf '{"auths": { "%s": { "auth": "%s" } } }' "${cs_registry}" "$PARTIALPULLTOKEN" | base64 $BASE64_OPT)
     echo "${IMAGE_PULL_TOKEN}"
     exit 0
-fi
-
-if [ -z "$ART_PASSWORD" ]; then
-    die "Failed to retrieve the CrowdStrike registry password. Response from API:
-$raw_docker_api_token
-
-Ensure the following:
-  - Credentials are valid.
-  - Correct API Scopes assigned for sensor type: ${SENSOR_TYPE}
-        - $(display_api_scopes "${SENSOR_TYPE}")
-  - Cloud Security is enabled in your tenant."
 fi
 
 if [ "$CREDS" ]; then
