@@ -255,9 +255,9 @@ curl_command() {
     local token="$1"
     set -- "$@"
     if [ "$old_curl" -eq 0 ]; then
-        curl -f -s -L -H "Authorization: Bearer ${token}" "$@"
+        curl -s -L -H "Authorization: Bearer ${token}" "$@"
     else
-        echo "Authorization: Bearer ${token}" | curl -f -s -L -H @- "$@"
+        echo "Authorization: Bearer ${token}" | curl -s -L -H @- "$@"
     fi
 }
 
@@ -268,7 +268,6 @@ fetch_tags() {
         json_value "token" |
         sed 's/ *$//g' | sed 's/^ *//g')
     curl_command "$registry_bearer" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list"
-
     handle_curl_error $?
 }
 
@@ -504,11 +503,12 @@ cs_falcon_oauth_token=$(
     fi
 
     token_result=$(echo "client_id=$FALCON_CLIENT_ID&client_secret=$FALCON_CLIENT_SECRET" |
-        curl -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
+        curl -f -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
             -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
             -H "User-Agent: crowdstrike-falcon-script/$VERSION" \
             --dump-header "$response_headers" \
             --data @-)
+    handle_curl_error $?
     token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
     if [ -z "$token" ]; then
         die "Unable to obtain CrowdStrike Falcon OAuth Token. Double check your credentials and/or ensure you set the correct cloud region."
@@ -540,7 +540,6 @@ cs_falcon_cid_with_checksum=$(
         echo "$FALCON_CID"
     else
         cs_target_cid=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
-        handle_curl_error $?
         if echo "$cs_target_cid" | grep -q "403"; then
             die "Failed to retrieve CID. Ensure the correct API Scopes are assigned: $(display_api_scopes "${SENSOR_TYPE}")"
         fi
