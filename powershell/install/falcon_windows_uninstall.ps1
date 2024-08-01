@@ -234,7 +234,7 @@ begin {
                     }
                 }
                 else {
-                    $Message = "Received a $($response.StatusCode) response from $($BaseUrl)oauth2/token. Please check your credentials and try again. Error: $($response.StatusDescription)"
+                    $Message = "Received a $($response.StatusCode) response from $($BaseUrl)/oauth2/token. Please check your credentials and try again. Error: $($response.StatusDescription)"
                     Write-FalconLog -Source 'Invoke-FalconAuth' -Message $Message
                     throw $Message
                 }
