@@ -676,7 +676,7 @@ if [ "$LISTTAGS" ]; then
 fi
 
 #Get latest sensor version
-LATESTSENSOR=$(list_tags | awk -v RS=" " '{print}' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1)
+LATESTSENSOR=$(list_tags | jq -r '.tags' | grep "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | sort --version-sort | tail -1)
 
 #Construct full image path
 FULLIMAGEPATH="${REPOSITORY}:${LATESTSENSOR}"
