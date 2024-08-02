@@ -400,7 +400,7 @@ function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $Uninst
             throw $Message
         }
 
-        if (Test-Path -Path"${env:SYSTEMROOT}\System32\drivers\CrowdStrike") {
+        if (Test-Path -Path "${env:SYSTEMROOT}\System32\drivers\CrowdStrike") {
             $Message = 'Driver removal failed...'
             Write-FalconLog -Source 'Invoke-FalconUninstall' -Message $Message
             throw $Message
@@ -476,7 +476,7 @@ function Invoke-FalconInstall ([hashtable] $WebRequestParams, [string] $InstallP
         $message = "Retrieving sensor policy details for '$($SensorUpdatePolicyName)'"
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
         $filter = "platform_name:'Windows'+name.raw:'$($SensorUpdatePolicyName)'"
-        $url = "${newBaseUrl}/policy/combined/sensor-update/v2?filter=$([System.Web.HttpUtility]::UrlEncode($filter)))"
+        $url = "${newBaseUrl}/policy/combined/sensor-update/v2?filter=$([System.Web.HttpUtility]::UrlEncode($filter))"
         $policy_scope = @{
             'Sensor update policies' = @('Read')
         }
