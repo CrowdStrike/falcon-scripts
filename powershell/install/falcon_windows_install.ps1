@@ -108,7 +108,7 @@ param(
     [int] $ProvWaitTime = 1200000,
 
     [Parameter(Position = 12)]
-    [string] $Tags,
+    [string[]] $Tags,
 
     [Parameter(Position = 13)]
     [ValidatePattern('\w{32}-\w{2}')]
@@ -554,7 +554,7 @@ process {
     }
 
     if ($Tags) {
-        $InstallParams += " GROUPING_TAGS=$Tags"
+        $InstallParams += " GROUPING_TAGS=$($Tags -join ',')"
     }
 
     if ($ProxyHost) {
