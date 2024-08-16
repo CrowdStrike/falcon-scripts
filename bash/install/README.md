@@ -3,7 +3,7 @@
 Bash script to install Falcon Sensor through the Falcon APIs on a Linux endpoint. By default,
 this script will install, register the sensor, and start the service. If you would like to simply
 install the sensor without any additional configurations, configure the `FALCON_INSTALL_ONLY`
-environment variable.
+environment variable. Consult the Environment Variables for each script for more information.
 
 ## Security Recommendations
 
@@ -12,6 +12,20 @@ environment variable.
 We have identified a security concern related to cURL versions prior to 7.55, which required request headers to be set using the `-H` option, thus allowing potential secrets to be exposed via the command line. In newer versions of cURL, you can pass headers from stdin using the `@-` syntax, which addresses this security concern. Although our script offers compatibility with the older method by allowing you to set the environment variable `ALLOW_LEGACY_CURL=true`, we strongly urge you to upgrade cURL if your environment permits.
 
 To check your version of cURL, run the following command: `curl --version`
+
+## Table of Contents
+
+- [Falcon API Permissions](#falcon-api-permissions)
+- [Configuration](#configuration)
+  - [Setting up Authentication](#setting-up-authentication)
+- [Install Script](#install-script)
+  - [Usage](#usage)
+  - [Examples](#examples)
+- [Uninstall Script](#uninstall-script)
+  - [Usage](#usage-1)
+  - [Examples](#examples-1)
+- [Troubleshooting](#troubleshooting)
+
 
 ## Falcon API Permissions
 
@@ -71,7 +85,7 @@ export FALCON_CLOUD="us-1"
 
 The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET` are not provided AND the script is running on an AWS instance, the script will try to get API credentials from the SSM store of the region.
 
-### Install
+## Install Script
 
 ```terminal
 Installs and configures the CrowdStrike Falcon Sensor for Linux.
@@ -153,35 +167,66 @@ Other Options
         Prints an access token and exits.
         Requires FALCON_CLIENT_ID and FALCON_CLIENT_SECRET.
         Accepted values are ['true', 'false'].
+
+    - PREP_GOLDEN_IMAGE                 (default: false)
+        To prepare the sensor to be used in a golden image.
+        Accepted values are ['true', 'false'].
 ```
 
-***Examples***:
+### Usage
 
-To download and run the script:
+To download and run the script directly:
 
 ```bash
+export FALCON_CLIENT_ID="XXXXXXX"
+export FALCON_CLIENT_SECRET="YYYYYYYYY"
 curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.4/bash/install/falcon-linux-install.sh | bash
 ```
 
-Alternatively, you can run the script by cloning the repo:
+Alternatively, download the script and run it locally:
 
 ```bash
-git clone https://github.com/crowdstrike/falcon-scripts
-```
-
-Then, run the following command:
-
-```bash
-./falcon-linux-install.sh
-```
-
-or
-
-```bash
+export FALCON_CLIENT_ID="XXXXXXX"
+export FALCON_CLIENT_SECRET="YYYYYYYYY"
+curl -O https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.4/bash/install/falcon-linux-install.sh
 bash falcon-linux-install.sh
 ```
 
-### Uninstall
+Or pass the environment variables directly to the script:
+
+```bash
+FALCON_CLIENT_ID="XXXXXXX" FALCON_CLIENT_SECRET="YYYYYYYYY" bash falcon-linux-install.sh
+```
+
+### Examples
+
+#### Install the latest Falcon Sensor with the default settings
+
+```bash
+export FALCON_CLIENT_ID="XXXXXXX"
+export FALCON_CLIENT_SECRET="YYYYYYYYY"
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.4/bash/install/falcon-linux-install.sh | bash
+```
+
+#### Install the Falcon Sensor with the previous version (n-1)
+
+```bash
+export FALCON_CLIENT_ID="XXXXXXX"
+export FALCON_CLIENT_SECRET="YYYYYYYYY"
+export FALCON_SENSOR_VERSION_DECREMENT=1
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.4/bash/install/falcon-linux-install.sh | bash
+```
+
+#### Create a Golden Image
+
+```bash
+export FALCON_CLIENT_ID="XXXXXXX"
+export FALCON_CLIENT_SECRET="YYYYYYYYY"
+export PREP_GOLDEN_IMAGE="true"
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.4/bash/install/falcon-linux-install.sh | bash
+```
+
+## Uninstall Script
 
 ```terminal
 Uninstalls the CrowdStrike Falcon Sensor from Linux operating systems.
@@ -223,15 +268,30 @@ Other Options:
         The proxy port for the sensor to use when communicating with CrowdStrike.
 ```
 
-***Examples***:
+### Usage
 
-To download and run the script:
+#### To download and run the script directly
 
 ```bash
 curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.4/bash/install/falcon-linux-uninstall.sh | bash
 ```
 
-Uninstall and remove the host from the Falcon console:
+#### Alternatively, download the script and run it locally
+
+```bash
+curl -O https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.4/bash/install/falcon-linux-uninstall.sh
+bash falcon-linux-uninstall.sh
+```
+
+### Examples
+
+#### Uninstall the Falcon Sensor
+
+```bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.4/bash/install/falcon-linux-uninstall.sh | bash
+```
+
+#### Uninstall and remove the host from the Falcon console
 
 ```bash
 export FALCON_CLIENT_ID="XXXXXXX"

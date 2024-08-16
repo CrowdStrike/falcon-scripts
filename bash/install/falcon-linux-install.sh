@@ -77,9 +77,13 @@ Other Options
     - ALLOW_LEGACY_CURL                 (default: false)
         To use the legacy version of curl; version < 7.55.0.
 
-    - GET_ACCESS_TOKEN                  (default: unset)
+    - GET_ACCESS_TOKEN                  (default: false)
         Prints an access token and exits.
         Requires FALCON_CLIENT_ID and FALCON_CLIENT_SECRET.
+        Accepted values are ['true', 'false'].
+
+    - PREP_GOLDEN_IMAGE                 (default: false)
+        To prepare the sensor to be used in a golden image.
         Accepted values are ['true', 'false'].
 
 EOF
@@ -121,7 +125,14 @@ main() {
         cs_sensor_restart
         echo '[ Ok ]'
     fi
-    echo 'Falcon Sensor installed successfully.'
+    if [ "${PREP_GOLDEN_IMAGE}" = "true" ]; then
+        echo -n 'Prepping Golden Image  ... '
+        cs_golden_image_prep
+        echo '[ Ok ]'
+        echo 'Falcon Sensor is ready for golden image creation.'
+    else
+        echo 'Falcon Sensor installed successfully.'
+    fi
 }
 
 cs_sensor_register() {
@@ -171,7 +182,7 @@ cs_sensor_register() {
     fi
     # run the configuration command
     # shellcheck disable=SC2086
-    /opt/CrowdStrike/falconctl -s -f ${cs_falcon_args}
+    /opt/CrowdStrike/falconctl -s -f ${cs_falcon_args} >/dev/null
 }
 
 cs_sensor_is_running() {
@@ -188,6 +199,35 @@ cs_sensor_restart() {
         service falcon-sensor restart
     else
         die "Could not restart falcon sensor"
+    fi
+}
+
+cs_golden_image_prep() {
+    local wait_time=60
+    local sleep_interval=5
+    local aid
+
+    get_aid() {
+        /opt/CrowdStrike/falconctl -g --aid | awk -F '"' '{print $2}'
+    }
+
+    aid=$(get_aid)
+    while [ -z "$aid" ]; do
+        if [ "$wait_time" -le 0 ]; then
+            echo '[ Failed ]'
+            die "Failed to retrieve existing AID. Please check the sensor status."
+        fi
+        sleep "$sleep_interval"
+        wait_time=$((wait_time - sleep_interval))
+        aid=$(get_aid)
+    done
+
+    # Remove the aid
+    /opt/CrowdStrike/falconctl -d -f --aid >/dev/null
+
+    # Check if a provisioning token was used, if so add it back
+    if [ -n "$cs_falcon_token" ]; then
+        /opt/CrowdStrike/falconctl -s -f --provisioning-token="$cs_falcon_token" >/dev/null
     fi
 }
 
