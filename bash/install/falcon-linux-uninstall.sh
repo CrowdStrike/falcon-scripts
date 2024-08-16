@@ -66,7 +66,7 @@ main() {
         echo -n 'Removing host from console ... '
         get_oauth_token
         cs_remove_host_from_console
-        echo '[ Ok ] '
+        echo '[ Ok ]'
     fi
     echo 'Falcon Sensor removed successfully.'
 }
@@ -119,7 +119,9 @@ cs_sensor_installed() {
         echo "Falcon sensor is already uninstalled." && exit 0
     fi
     # Get AID if FALCON_REMOVE_HOST is set to true and sensor is installed
-    [ "${FALCON_REMOVE_HOST}" = "true" ] && get_aid
+    if [ "${FALCON_REMOVE_HOST}" = "true" ]; then
+        get_aid
+    fi
 }
 
 old_curl=$(
