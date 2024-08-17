@@ -729,18 +729,19 @@ get_oauth_token() {
 }
 
 get_provisioning_token() {
-    local check_settings is_required token_query token_value token_id token_result
+    local check_settings is_required token_value
     # First, let's check if installation tokens are required
     check_settings=$(curl_command "https://$(cs_cloud)/installation-tokens/entities/customer-settings/v1")
     handle_curl_error $?
 
-    if echo "$check_settings" | grep "authorization failed"; then
-        echo "Access denied: Skipping installation token retrieval."
-        echo "Please make sure that your Falcon API credentials allow access to installation tokens (scope Installation Tokens [read])"
+    if echo "$check_settings" | grep "authorization failed" >/dev/null; then
+        # For now we just return. We can error out once more people get a chance to update their API keys
+        return
     fi
 
     is_required=$(echo "$check_settings" | json_value "tokens_required" | xargs)
     if [ "$is_required" = "true" ]; then
+        local token_query token_id token_result
         # Get the token ID
         token_query=$(curl_command "https://$(cs_cloud)/installation-tokens/queries/tokens/v1")
         token_id=$(echo "$token_query" | tr -d '\n" ' | awk -F'[][]' '{print $2}' | cut -d',' -f1)
@@ -755,6 +756,7 @@ get_provisioning_token() {
             die "Could not obtain installation token value."
         fi
     fi
+
     echo "$token_value"
 }
 
