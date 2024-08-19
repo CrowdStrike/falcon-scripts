@@ -34,7 +34,7 @@ Other Options
     - FALCON_PROVISIONING_TOKEN         (default: unset)
         The provisioning token to use for installing the sensor.
         If the provisioning token is unset, the script will attempt to retrieve it from
-        the API using your authentication credentials and CID requirements.
+        the API using your authentication credentials and token requirements.
 
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
         The name of the sensor update policy to use for installing the sensor.

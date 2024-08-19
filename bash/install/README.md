@@ -1,13 +1,5 @@
 # Falcon Linux Bash Installation Scripts
 
-> [!IMPORTANT]
-> **Non-Breaking Change:**
->
-> API Scope addition: ***Installation Tokens***
->
-> This scope allows the installation script to retrieve the provisioning token from the API if it is required.
-> For more information, see [Falcon API Permissions](#falcon-api-permissions).
-
 Bash script to install Falcon Sensor through the Falcon APIs on a Linux endpoint. By default,
 this script will install, register the sensor, and start the service. If you would like to simply
 install the sensor without any additional configurations, configure the `FALCON_INSTALL_ONLY`
@@ -41,16 +33,12 @@ API clients are granted one or more API scopes. Scopes allow access to specific 
 Ensure the following API scopes are enabled:
 
 - **Sensor Download** [read]
-- **Installation Tokens** [read]
+- (optional) **Installation Tokens** [read]
+  > This scope allows the installation script to retrieve a provisioning token from the API, but only if installation tokens are required in your environment.
 - (optional) **Sensor update policies** [read]
   > Use this scope when configuring the `FALCON_SENSOR_UPDATE_POLICY_NAME` environment variable.
 - (optional) **Hosts** [write]
   > Use this scope when configuring the `FALCON_REMOVE_HOST` environment variable for the uninstall script.
-
-> [!IMPORTANT]
-> Installation/provisioning tokens prevent unauthorized hosts from being accidentally or maliciously added to your customer ID (CID).
-> Its best practice to keep these tokens secure which is why the script will attempt to retrieve the token from the API if
-> they are required in your environment.
 
 ## Configuration
 
