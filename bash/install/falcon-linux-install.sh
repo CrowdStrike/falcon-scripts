@@ -338,7 +338,7 @@ cs_sensor_download() {
 
     sha_list=$(echo "$existing_installers" | json_value "sha256")
     if [ -z "$sha_list" ]; then
-        die "No sensor found for with OS Name: $cs_os_name"
+        die "No sensor found for OS: $cs_os_name, Version: $cs_os_version. Either the OS or the OS version is not yet supported."
     fi
 
     # Set the index accordingly (the json_value expects and index+1 value)
