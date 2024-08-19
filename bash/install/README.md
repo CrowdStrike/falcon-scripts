@@ -26,7 +26,6 @@ To check your version of cURL, run the following command: `curl --version`
   - [Examples](#examples-1)
 - [Troubleshooting](#troubleshooting)
 
-
 ## Falcon API Permissions
 
 API clients are granted one or more API scopes. Scopes allow access to specific CrowdStrike APIs and describe the actions that an API client can perform.
@@ -34,8 +33,12 @@ API clients are granted one or more API scopes. Scopes allow access to specific 
 Ensure the following API scopes are enabled:
 
 - **Sensor Download** [read]
+- (optional) **Installation Tokens** [read]
+  > This scope allows the installation script to retrieve a provisioning token from the API, but only if installation tokens are required in your environment.
 - (optional) **Sensor update policies** [read]
   > Use this scope when configuring the `FALCON_SENSOR_UPDATE_POLICY_NAME` environment variable.
+- (optional) **Hosts** [write]
+  > Use this scope when configuring the `FALCON_REMOVE_HOST` environment variable for the uninstall script.
 
 ## Configuration
 
@@ -119,6 +122,8 @@ Other Options
 
     - FALCON_PROVISIONING_TOKEN         (default: unset)
         The provisioning token to use for installing the sensor.
+        If the provisioning token is unset, the script will attempt to retrieve it from
+        the API using your authentication credentials and CID requirements.
 
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
         The name of the sensor update policy to use for installing the sensor.
@@ -270,13 +275,13 @@ Other Options:
 
 ### Usage
 
-#### To download and run the script directly
+To download and run the script directly
 
 ```bash
 curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.4/bash/install/falcon-linux-uninstall.sh | bash
 ```
 
-#### Alternatively, download the script and run it locally
+Alternatively, download the script and run it locally
 
 ```bash
 curl -O https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.4/bash/install/falcon-linux-uninstall.sh

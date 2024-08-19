@@ -33,6 +33,8 @@ Other Options
 
     - FALCON_PROVISIONING_TOKEN         (default: unset)
         The provisioning token to use for installing the sensor.
+        If the provisioning token is unset, the script will attempt to retrieve it from
+        the API using your authentication credentials and token requirements.
 
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
         The name of the sensor update policy to use for installing the sensor.
@@ -138,7 +140,10 @@ main() {
 cs_sensor_register() {
     # Get the falcon cid
     cs_falcon_cid="$(get_falcon_cid)"
-
+    # If cs_falcon_token is not set, try getting it from api
+    if [ -z "${cs_falcon_token}" ]; then
+        cs_falcon_token="$(get_provisioning_token)"
+    fi
     # add the cid to the params
     cs_falcon_args=--cid="${cs_falcon_cid}"
     if [ -n "${cs_falcon_token}" ]; then
@@ -721,6 +726,38 @@ get_oauth_token() {
     fi
 
     rm "${response_headers}"
+}
+
+get_provisioning_token() {
+    local check_settings is_required token_value
+    # First, let's check if installation tokens are required
+    check_settings=$(curl_command "https://$(cs_cloud)/installation-tokens/entities/customer-settings/v1")
+    handle_curl_error $?
+
+    if echo "$check_settings" | grep "authorization failed" >/dev/null; then
+        # For now we just return. We can error out once more people get a chance to update their API keys
+        return
+    fi
+
+    is_required=$(echo "$check_settings" | json_value "tokens_required" | xargs)
+    if [ "$is_required" = "true" ]; then
+        local token_query token_id token_result
+        # Get the token ID
+        token_query=$(curl_command "https://$(cs_cloud)/installation-tokens/queries/tokens/v1")
+        token_id=$(echo "$token_query" | tr -d '\n" ' | awk -F'[][]' '{print $2}' | cut -d',' -f1)
+        if [ -z "$token_id" ]; then
+            die "No installation token found in a required token environment."
+        fi
+
+        # Get the token value from ID
+        token_result=$(curl_command "https://$(cs_cloud)/installation-tokens/entities/tokens/v1?ids=$token_id")
+        token_value=$(echo "$token_result" | json_value "value" | xargs)
+        if [ -z "$token_value" ]; then
+            die "Could not obtain installation token value."
+        fi
+    fi
+
+    echo "$token_value"
 }
 
 get_falcon_cid() {
