@@ -2,10 +2,13 @@
 
 print_usage() {
     cat <<EOF
+
+Usage: $0 [-h|--help]
+
 Installs and configures the CrowdStrike Falcon Sensor for Linux.
 Version: $VERSION
 
-The script recognizes the following environmental variables:
+This script recognizes the following environmental variables:
 
 Authentication:
     - FALCON_CLIENT_ID                  (default: unset)
@@ -88,17 +91,22 @@ Other Options
         To prepare the sensor to be used in a golden image.
         Accepted values are ['true', 'false'].
 
+This script recognizes the following argument:
+    -h, --help
+        Print this help message and exit.
+
 EOF
 }
 
 VERSION="1.5.4"
 
-main() {
-    if [ -n "$1" ]; then
-        print_usage
-        exit 1
-    fi
+# If -h or --help is passed, print the usage and exit
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    print_usage
+    exit 0
+fi
 
+main() {
     if [ "$GET_ACCESS_TOKEN" = "true" ]; then
         get_oauth_token
         echo "$cs_falcon_oauth_token"

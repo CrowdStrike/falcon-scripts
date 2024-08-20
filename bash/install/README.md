@@ -91,10 +91,12 @@ The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET`
 ## Install Script
 
 ```terminal
+Usage: falcon-linux-install.sh [-h|--help]
+
 Installs and configures the CrowdStrike Falcon Sensor for Linux.
 Version: 1.5.4
 
-The script recognizes the following environmental variables:
+This script recognizes the following environmental variables:
 
 Authentication:
     - FALCON_CLIENT_ID                  (default: unset)
@@ -123,7 +125,7 @@ Other Options
     - FALCON_PROVISIONING_TOKEN         (default: unset)
         The provisioning token to use for installing the sensor.
         If the provisioning token is unset, the script will attempt to retrieve it from
-        the API using your authentication credentials and CID requirements.
+        the API using your authentication credentials and token requirements.
 
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
         The name of the sensor update policy to use for installing the sensor.
@@ -168,7 +170,7 @@ Other Options
     - ALLOW_LEGACY_CURL                 (default: false)
         To use the legacy version of curl; version < 7.55.0.
 
-    - GET_ACCESS_TOKEN                  (default: unset)
+    - GET_ACCESS_TOKEN                  (default: false)
         Prints an access token and exits.
         Requires FALCON_CLIENT_ID and FALCON_CLIENT_SECRET.
         Accepted values are ['true', 'false'].
@@ -176,6 +178,10 @@ Other Options
     - PREP_GOLDEN_IMAGE                 (default: false)
         To prepare the sensor to be used in a golden image.
         Accepted values are ['true', 'false'].
+
+This script recognizes the following argument:
+    -h, --help
+        Print this help message and exit.
 ```
 
 ### Usage
@@ -234,6 +240,8 @@ curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.5.4/bash
 ## Uninstall Script
 
 ```terminal
+Usage: falcon-linux-uninstall.sh [-h|--help]
+
 Uninstalls the CrowdStrike Falcon Sensor from Linux operating systems.
 Version: 1.5.4
 
@@ -271,6 +279,10 @@ Other Options:
 
     - FALCON_APP                        (default: unset)
         The proxy port for the sensor to use when communicating with CrowdStrike.
+
+This script recognizes the following argument:
+    -h, --help
+        Print this help message and exit.
 ```
 
 ### Usage
