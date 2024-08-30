@@ -543,7 +543,7 @@ cs_falcon_cid_with_checksum=$(
     else
         cs_target_cid=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
         handle_curl_error $?
-        if echo "$cs_target_cid" | grep -q "403"; then
+        if echo "$cs_target_cid" | grep -q "authorization failed"; then
             die "Failed to retrieve CID. Ensure the correct API Scopes are assigned: $(display_api_scopes "${SENSOR_TYPE}")"
         fi
         echo "$cs_target_cid" | tr -d '\n" ' | awk -F'[][]' '{print $2}'
