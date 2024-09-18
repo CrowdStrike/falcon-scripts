@@ -31,6 +31,7 @@ Optional Flags:
     --get-cid                                      Get the CID assigned to the API Credentials
     --list-tags                                    List all tags available for the selected sensor type and platform(optional)
     --allow-legacy-curl                            Allow the script to run with an older version of curl
+    --copy-result-path <PATH>                      When specified and the image is being copied, a json file with the keys source, destination and tag is written to the specified path
 
 Internal Flags:
     --internal-build-stage <BUILD_STAGE>           (Internal only) Falcon Build Stage [release|stage] (Default: release)
@@ -173,6 +174,12 @@ while [ $# != 0 ]; do
         --internal-build-stage)
             if [ -n "${2:-}" ]; then
                 BUILD_STAGE="${2}"
+                shift
+            fi
+            ;;
+        --copy-result-path)
+            if [ -n "${2}" ]; then
+                COPY_RESULT_PATH="${2}"
                 shift
             fi
             ;;
@@ -733,3 +740,11 @@ else
         fi
     fi
 fi
+
+cat > "$COPY_RESULT_PATH" <<EOF
+{
+  "source":"${FULLIMAGEPATH}",
+  "destination":"${COPYPATH}",
+  "tag":"${LATESTSENSOR}"
+}
+EOF
