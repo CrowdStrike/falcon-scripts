@@ -436,19 +436,6 @@ display_api_scopes() {
 # shellcheck disable=SC2086
 FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
 
-# Call the function to auto-detect the container tool if not specified
-if [ -z "${CONTAINER_TOOL}" ]; then
-    CONTAINER_TOOL=$(detect_container_tool)
-else
-    CONTAINER_TOOL=$(echo "${CONTAINER_TOOL}" | tr '[:upper:]' '[:lower:]')
-fi
-
-# Validate container tool
-case "${CONTAINER_TOOL}" in
-    skopeo | docker | podman) ;;
-    *) die "Unrecognized container runtime: ${CONTAINER_TOOL}" ;;
-esac
-
 # shellcheck disable=SC2005,SC2001
 cs_registry="registry.crowdstrike.com"
 if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
@@ -485,18 +472,6 @@ VARIABLES="FALCON_CLIENT_ID FALCON_CLIENT_SECRET"
     done
     [ -n "$VAR_UNSET" ] && usage
 }
-
-if ! command -v "$CONTAINER_TOOL" >/dev/null 2>&1; then
-    echo "The '$CONTAINER_TOOL' command is missing or invalid. Please install it before continuing. Aborting..."
-    exit 2
-else
-    CONTAINER_TOOL=$(command -v "$CONTAINER_TOOL")
-fi
-
-if grep -qw "skopeo" "$CONTAINER_TOOL" && [ -z "${COPY}" ] && [ -z "${LISTTAGS}" ]; then
-    echo "-c, --copy <REGISTRY/NAMESPACE> must also be set when using skopeo as a runtime"
-    exit 1
-fi
 
 response_headers=$(mktemp)
 cs_falcon_oauth_token=$(
@@ -656,6 +631,31 @@ if [ "$CREDS" ]; then
     exit 0
 fi
 
+if [ "$LISTTAGS" ]; then
+    list_tags
+    exit 0
+fi
+
+# Call the function to auto-detect the container tool if not specified
+if [ -z "${CONTAINER_TOOL}" ]; then
+    CONTAINER_TOOL=$(detect_container_tool)
+else
+    CONTAINER_TOOL=$(echo "${CONTAINER_TOOL}" | tr '[:upper:]' '[:lower:]')
+fi
+
+# Validate container tool
+case "${CONTAINER_TOOL}" in
+    skopeo | docker | podman) ;;
+    *) die "Unrecognized container runtime: ${CONTAINER_TOOL}" ;;
+esac
+
+CONTAINER_TOOL=$(command -v "$CONTAINER_TOOL")
+
+if grep -qw "skopeo" "$CONTAINER_TOOL" && [ -z "${COPY}" ] && [ -z "${LISTTAGS}" ]; then
+    echo "-c, --copy <REGISTRY/NAMESPACE> must also be set when using skopeo as a runtime"
+    exit 1
+fi
+
 #Set container login
 error_message=$(echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "$ART_USERNAME" "$cs_registry" --password-stdin 2>&1 >/dev/null) || ERROR=true
 if [ "${ERROR}" = "true" ]; then
@@ -669,11 +669,6 @@ fi
 
 #Construct repository path
 REPOSITORY="$cs_registry/$registry_opts/$repository_name"
-
-if [ "$LISTTAGS" ]; then
-    list_tags
-    exit 0
-fi
 
 #Get latest sensor version
 LATESTSENSOR=$(list_tags | awk -v RS=" " '{print}' | grep -i "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1)
