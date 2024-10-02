@@ -631,6 +631,9 @@ if [ "$CREDS" ]; then
     exit 0
 fi
 
+#Construct repository path
+REPOSITORY="$cs_registry/$registry_opts/$repository_name"
+
 if [ "$LISTTAGS" ]; then
     list_tags
     exit 0
@@ -666,9 +669,6 @@ if [ "${ERROR}" = "true" ]; then
     fi
     die "ERROR: ${CONTAINER_TOOL} login failed. Error message: ${error_message}"
 fi
-
-#Construct repository path
-REPOSITORY="$cs_registry/$registry_opts/$repository_name"
 
 #Get latest sensor version
 LATESTSENSOR=$(list_tags | awk -v RS=" " '{print}' | grep -i "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1)
