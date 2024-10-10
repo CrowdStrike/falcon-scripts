@@ -741,10 +741,12 @@ else
     fi
 fi
 
-cat > "$COPY_RESULT_PATH" <<EOF
-{
-  "source":"${FULLIMAGEPATH}",
-  "destination":"${COPYPATH}",
-  "tag":"${LATESTSENSOR}"
-}
+if [[ -n "$COPY_RESULT_PATH" ]]; then
+  cat > "$COPY_RESULT_PATH" <<EOF
+  {
+    "source":"${FULLIMAGEPATH}",
+    "destination":"${COPYPATH}",
+    "tag":"${LATESTSENSOR}"
+  }
 EOF
+fi
