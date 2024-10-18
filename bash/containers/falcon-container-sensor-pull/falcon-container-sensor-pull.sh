@@ -29,7 +29,7 @@ Optional Flags:
     --get-image-path                               Get the full image path including the registry, repository, and latest tag for the specified SENSOR_TYPE
     --get-pull-token                               Get the pull token of the selected SENSOR_TYPE for Kubernetes
     --get-cid                                      Get the CID assigned to the API Credentials
-    --list-tags                                    List all tags available for the selected sensor type and platform(optional)
+    --list-tags                                    List all tags available for the selected sensor type and platform, sorted in ascending order
     --allow-legacy-curl                            Allow the script to run with an older version of curl
 
 Internal Flags:
@@ -396,6 +396,7 @@ copy_image() {
         "$CONTAINER_TOOL" tag "$source_path" "$destination_path"
         "$CONTAINER_TOOL" push "$destination_path"
     fi
+    echo "Image copied to: $destination_path"
 }
 
 detect_container_tool() {
