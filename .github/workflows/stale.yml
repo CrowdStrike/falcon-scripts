@@ -21,9 +21,9 @@ jobs:
     - uses: actions/stale@v5
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
-        days-before-stale: 7
+        days-before-stale: 14
         stale-issue-message: |
-          This issue has been automatically marked as stale because it has had no activity in the last 7 days. 
+          This issue has been automatically marked as stale because it has had no activity in the last 14 days. 
           
           What happens next:
           • The issue will be closed in 7 days if no further activity occurs
@@ -32,7 +32,7 @@ jobs:
           
           Thank you for your contributions to this project!
         stale-pr-message: |
-          This pull request has been automatically marked as stale because it has had no activity in the last 7 days.
+          This pull request has been automatically marked as stale because it has had no activity in the last 14 days.
           
           Next steps:
           • Please update the PR to address any existing feedback
