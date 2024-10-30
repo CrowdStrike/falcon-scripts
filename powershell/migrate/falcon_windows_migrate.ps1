@@ -1033,7 +1033,7 @@ function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [ha
             }
         }
         else {
-            $message = "Received a $($response.StatusCode) response from $($BaseUrl)oauth2/token. Please check your credentials and try again. Error: $($response.StatusDescription)"
+            $message = "Received a $($response.StatusCode) response from $($BaseUrl)/oauth2/token. Please check your credentials and try again. Error: $($response.StatusDescription)"
             Write-FalconLog -Source 'Invoke-FalconAuth' -Message $message
             throw $message
         }
