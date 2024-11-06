@@ -267,13 +267,12 @@ function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $Uninst
         $UninstallerPath = $null
         switch ($UninstallTool) {
             'installcache' {
-                $UninstallerName = 'WindowsSensor*.exe'
+                $UninstallerName = '(WindowsSensor*.exe|FalconSensor_Windows*.exe)'
                 $UninstallerPathDir = 'C:\ProgramData\Package Cache'
 
                 if (Test-Path -Path $UninstallerPathDir) {
-                    $UninstallerPath = Get-ChildItem -Include $UninstallerName -Path $UninstallerPathDir -Recurse | ForEach-Object { $_.FullName } | Sort-Object -Descending | Select-Object -First 1
-                }
-                else {
+                    $UninstallerPath = Get-ChildItem -Path $UninstallerPathDir -Recurse | Where-Object { $_.Name -match $UninstallerName } | ForEach-Object { $_.FullName } | Sort-Object -Descending | Select-Object -First 1
+                } else {
                     $UninstallerPath = $null
                 }
             }
