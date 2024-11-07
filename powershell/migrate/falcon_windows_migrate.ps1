@@ -272,7 +272,8 @@ function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $Uninst
 
                 if (Test-Path -Path $UninstallerPathDir) {
                     $UninstallerPath = Get-ChildItem -Path $UninstallerPathDir -Recurse | Where-Object { $_.Name -match $UninstallerName } | ForEach-Object { $_.FullName } | Sort-Object -Descending | Select-Object -First 1
-                } else {
+                }
+                else {
                     $UninstallerPath = $null
                 }
             }
@@ -984,7 +985,7 @@ function Get-FalconCloud ([string] $xCsRegion) {
 
 function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
     $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
-    $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.7.0')
+    $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.7.1')
     try {
         $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
         $content = ConvertFrom-Json -InputObject $response.Content
