@@ -22,7 +22,19 @@ Optional Flags:
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
-    -t, --type <SENSOR_TYPE>                       Specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent|fcs] (Default: falcon-container)
+    -t, --type <SENSOR_TYPE>                       Specify which sensor to download (Default: falcon-container)
+
+                                                   Available sensor types:
+                                                   -----------------------
+                                                   falcon-container
+                                                   falcon-sensor
+                                                   falcon-kac
+                                                   falcon-snapshot
+                                                   falcon-imageanalyzer
+                                                   kpagent
+                                                   fcs
+                                                   falcon-jobcontroller
+                                                   falcon-registryassessmentexecutor
 
     --runtime <RUNTIME>                            Use a different container runtime [docker, podman, skopeo] (Default: docker)
     --dump-credentials                             Print registry credentials to stdout to copy/paste into container tools
@@ -278,7 +290,7 @@ format_tags() {
     local all_tags=$1
 
     case "${SENSOR_TYPE}" in
-        "kpagent" | "falcon-snapshot" | "falcon-imageanalyzer" | "fcs")
+        "kpagent" | "falcon-snapshot" | "falcon-imageanalyzer" | "fcs" | "falcon-jobcontroller" | "falcon-registryassessmentexecutor")
             echo "$all_tags" |
                 sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
                 tr -d '"' | tr ',' '\n' |
@@ -416,7 +428,7 @@ detect_container_tool() {
 display_api_scopes() {
     local sensor_type=$1
     case "${sensor_type}" in
-        falcon-sensor | falcon-container | falcon-kac | falcon-imageanalyzer)
+        falcon-sensor | falcon-container | falcon-kac | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor)
             echo "Sensor Download [read], Falcon Images Download [read]"
             ;;
         kpagent)
@@ -459,10 +471,19 @@ fi
 
 # Check if SENSOR_TYPE is set to a valid value
 case "${SENSOR_TYPE}" in
-    falcon-container | falcon-sensor | falcon-kac | falcon-snapshot | falcon-imageanalyzer | kpagent | fcs) ;;
+    falcon-container | falcon-sensor | falcon-kac | falcon-snapshot | falcon-imageanalyzer | kpagent | fcs | falcon-jobcontroller | falcon-registryassessmentexecutor) ;;
     *) die """
     Unrecognized sensor type: ${SENSOR_TYPE}
-    Valid values are [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent|fcs]""" ;;
+    Valid values are:
+        falcon-container
+        falcon-sensor
+        falcon-kac
+        falcon-snapshot
+        falcon-imageanalyzer
+        kpagent
+        fcs
+        falcon-jobcontroller
+        falcon-registryassessmentexecutor""" ;;
 esac
 
 #Check all mandatory variables set
@@ -586,6 +607,16 @@ elif [ "${SENSOR_TYPE}" = "fcs" ]; then
     IMAGE_NAME="fcs"
     repository_name="$BUILD_STAGE/cs-fcs"
     registry_type="iac"
+elif [ "${SENSOR_TYPE}" = "falcon-jobcontroller" ]; then
+    # overrides for Job Controller
+    IMAGE_NAME="falcon-jobcontroller"
+    repository_name="$BUILD_STAGE/falcon-jobcontroller"
+    registry_opts="falcon-selfhostedregistryassessment"
+elif [ "${SENSOR_TYPE}" = "falcon-registryassessmentexecutor" ]; then
+    # overrides for Registry Assessment Executor
+    IMAGE_NAME="falcon-registryassessmentexecutor"
+    repository_name="$BUILD_STAGE/falcon-registryassessmentexecutor"
+    registry_opts="falcon-selfhostedregistryassessment"
 fi
 
 #Set Docker token using the BEARER token captured earlier
