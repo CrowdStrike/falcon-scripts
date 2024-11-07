@@ -1,6 +1,6 @@
 # Falcon Container Sensor pull script
 
-Use this bash script to pull the latest **Falcon Container** sensor, **Node DaemonSet** sensor, **Kubernetes Admission Controller** or **Kubernetes Protection Agent** from the CrowdStrike container registry and push it to your local Docker registry or remote registries.
+A bash script for managing CrowdStrike Falcon container images. Pull from the official registry, copy to local/remote registries, generate Kubernetes pull tokens, retrieve image paths, manage credentials and more.
 
 ## Deprecation Warning :warning:
 
@@ -46,7 +46,7 @@ To check your version of cURL, run the following command: `curl --version`
 > [!IMPORTANT]
 > The following API scopes are the minimum required to retrieve the images. If you need to perform other operations post-retrieval, please refer to the CrowdStrike documentation to identify any additional scopes that may be required.
 
-- **falcon-sensor | falcon-container | falcon-kac | falcon-imageanalyzer**
+- **falcon-sensor | falcon-container | falcon-kac | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor**
   - `Sensor Download (read)`
   - `Falcon Images Download (read)`
 - **kpagent**
@@ -83,7 +83,19 @@ Optional Flags:
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
     -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
-    -t, --type <SENSOR_TYPE>                       Specify which sensor to download [falcon-container|falcon-sensor|falcon-kac|falcon-snapshot|falcon-imageanalyzer|kpagent|fcs] (Default: falcon-container)
+    -t, --type <SENSOR_TYPE>                       Specify which sensor to download (Default: falcon-container)
+
+                                                   Available sensor types:
+                                                   -----------------------
+                                                   falcon-container
+                                                   falcon-sensor
+                                                   falcon-kac
+                                                   falcon-snapshot
+                                                   falcon-imageanalyzer
+                                                   kpagent
+                                                   fcs
+                                                   falcon-jobcontroller
+                                                   falcon-registryassessmentexecutor
 
     --runtime <RUNTIME>                            Use a different container runtime [docker, podman, skopeo] (Default: docker)
     --dump-credentials                             Print registry credentials to stdout to copy/paste into container tools
@@ -104,24 +116,24 @@ Help Options:
 
 > **Note**: **Settings can be passed to the script via CLI flags or environment variables:**
 
-| Flags                                          | Environment Variables   | Default                       | Description                                                                                                                                                                                 |
-| :--------------------------------------------- | ----------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID`           | `None` (Optional)             | CrowdStrike Customer ID (CID). *If not provided, CID will be auto-detected.*                                                                                                                |
-| `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)             | CrowdStrike API Client ID                                                                                                                                                                   |
-| `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)             | CrowdStrike API Client Secret                                                                                                                                                               |
-| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)             | CrowdStrike Region. \**Auto-discovery is only available for [`us-1, us-2, eu-1`] regions.*                                                                                                  |
-| `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)             | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`                                                                                                        |
-| `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)             | Specify sensor version to retrieve from the registry                                                                                                                                        |
-| `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)             | Specify sensor platform to retrieve from the registry                                                                                                                                       |
-| `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`          | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-kac`, `falcon-snapshot`, `falcon-imageanalyzer`, `kpagent`, `fcs`] ([see more details below](#sensor-types)) |
-| `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)           | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.                                                                                                          |
-| `--dump-credentials`                           | `$CREDS`                | `False` (Optional)            | Print registry credentials to stdout to copy/paste into container tools                                                                                                                     |
-| `--get-image-path`                             | N/A                     | `None`                        | Get the full image path including the registry, repository, and latest tag for the specified `SENSOR_TYPE`.                                                                                 |
-| `--get-pull-token`                             | N/A                     | `None`                        | Get the pull token of the selected `SENSOR_TYPE` for Kubernetes.                                                                                                                            |
-| `--get-cid`                                    | N/A                     | `None`                        | Get the CID assigned to the API Credentials.                                                                                                                                                |
-| `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)            | List all tags available for the selected sensor                                                                                                                                             |
-| `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)            | Allow the script to run with an older version of cURL                                                                                                                                       |
-| `-h`, `--help`                                 | N/A                     | `None`                        | Display help message                                                                                                                                                                        |
+| Flags                                          | Environment Variables   | Default                       | Description                                                                                                                                                                                                                                              |
+| :--------------------------------------------- | ----------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID`           | `None` (Optional)             | CrowdStrike Customer ID (CID). *If not provided, CID will be auto-detected.*                                                                                                                                                                             |
+| `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)             | CrowdStrike API Client ID                                                                                                                                                                                                                                |
+| `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)             | CrowdStrike API Client Secret                                                                                                                                                                                                                            |
+| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)             | CrowdStrike Region. \**Auto-discovery is only available for [`us-1, us-2, eu-1`] regions.*                                                                                                                                                               |
+| `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)             | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`                                                                                                                                                                     |
+| `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)             | Specify sensor version to retrieve from the registry                                                                                                                                                                                                     |
+| `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)             | Specify sensor platform to retrieve from the registry                                                                                                                                                                                                    |
+| `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`          | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-kac`, `falcon-snapshot`, `falcon-imageanalyzer`, `kpagent`, `fcs`, `falcon-jobcontroller`, `falcon-registryassessmentexecutor`] ([see more details below](#sensor-types)) |
+| `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)           | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.                                                                                                                                                                       |
+| `--dump-credentials`                           | `$CREDS`                | `False` (Optional)            | Print registry credentials to stdout to copy/paste into container tools                                                                                                                                                                                  |
+| `--get-image-path`                             | N/A                     | `None`                        | Get the full image path including the registry, repository, and latest tag for the specified `SENSOR_TYPE`.                                                                                                                                              |
+| `--get-pull-token`                             | N/A                     | `None`                        | Get the pull token of the selected `SENSOR_TYPE` for Kubernetes.                                                                                                                                                                                         |
+| `--get-cid`                                    | N/A                     | `None`                        | Get the CID assigned to the API Credentials.                                                                                                                                                                                                             |
+| `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)            | List all tags available for the selected sensor                                                                                                                                                                                                          |
+| `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)            | Allow the script to run with an older version of cURL                                                                                                                                                                                                    |
+| `-h`, `--help`                                 | N/A                     | `None`                        | Display help message                                                                                                                                                                                                                                     |
 
 ---
 > **Note**: **Internal flags are for CrowdStrike internal use only. Internal flags do not provide any functionality to end customers.**
@@ -136,15 +148,17 @@ Help Options:
 
 The following sensor types are available to download:
 
-| Sensor Image Name                | Description                                           |
-| :------------------------------- | :---------------------------------------------------- |
-| `falcon-sensor`                  | The Falcon sensor for Linux as a DaemonSet deployment |
-| `falcon-container` **(default)** | The Falcon Container sensor for Linux                 |
-| `falcon-kac`                     | The Falcon Kubernetes Admission Controller            |
-| `falcon-snapshot`                | The Falcon Snapshot scanner                           |
-| `falcon-imageanalyzer`           | The Falcon Image Assessment at Runtime                |
-| `kpagent`                        | The Falcon Kubernetes Protection Agent                |
-| `fcs`                            | The Falcon Cloud Security CLI tool                    |
+| Sensor Image Name                   | Description                                           |
+| :---------------------------------- | :---------------------------------------------------- |
+| `falcon-sensor`                     | The Falcon sensor for Linux as a DaemonSet deployment |
+| `falcon-container` **(default)**    | The Falcon Container sensor for Linux                 |
+| `falcon-kac`                        | The Falcon Kubernetes Admission Controller            |
+| `falcon-snapshot`                   | The Falcon Snapshot scanner                           |
+| `falcon-imageanalyzer`              | The Falcon Image Assessment at Runtime                |
+| `kpagent`                           | The Falcon Kubernetes Protection Agent                |
+| `fcs`                               | The Falcon Cloud Security CLI tool                    |
+| `falcon-jobcontroller`              | The Self Hosted Registry Assessment Jobs Controller   |
+| `falcon-registryassessmentexecutor` | The Self Hosted Registry Assessment Executor          |
 
 ### Examples
 
