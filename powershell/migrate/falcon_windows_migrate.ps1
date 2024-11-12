@@ -267,7 +267,7 @@ function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $Uninst
         $UninstallerPath = $null
         switch ($UninstallTool) {
             'installcache' {
-                $UninstallerName = '(WindowsSensor*.exe|FalconSensor_Windows*.exe)'
+                $UninstallerName = '^((WindowsSensor|FalconSensor_Windows).*\.)(exe)$'
                 $UninstallerPathDir = 'C:\ProgramData\Package Cache'
 
                 if (Test-Path -Path $UninstallerPathDir) {
