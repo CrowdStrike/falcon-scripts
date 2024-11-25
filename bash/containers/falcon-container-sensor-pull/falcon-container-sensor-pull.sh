@@ -617,6 +617,9 @@ elif [ "${SENSOR_TYPE}" = "falcon-registryassessmentexecutor" ]; then
     IMAGE_NAME="falcon-registryassessmentexecutor"
     repository_name="$BUILD_STAGE/falcon-registryassessmentexecutor"
     registry_opts="falcon-selfhostedregistryassessment"
+elif [ "${SENSOR_TYPE}" = "falcon-container" ]; then
+    # overrides for falcon container
+    IMAGE_NAME="falcon-container"
 fi
 
 #Set Docker token using the BEARER token captured earlier
