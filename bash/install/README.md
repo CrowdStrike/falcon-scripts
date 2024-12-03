@@ -39,6 +39,11 @@ Ensure the following API scopes are enabled:
   > Use this scope when configuring the `FALCON_SENSOR_UPDATE_POLICY_NAME` environment variable.
 - (optional) **Hosts** [write]
   > Use this scope when configuring the `FALCON_REMOVE_HOST` environment variable for the uninstall script.
+  >
+  > :warning:
+  > It is recommended to use Host Retention Policies in the Falcon console instead.
+
+  
 
 ## Configuration
 
@@ -267,6 +272,7 @@ Other Options:
     - FALCON_REMOVE_HOST                (default: unset)
         Determines whether the host should be removed from the Falcon console after uninstalling the sensor.
         Requires API Authentication.
+        NOTE: It is recommended to use Host Retention Policies in the Falcon console instead.
         Accepted values are ['true', 'false'].
 
     - GET_ACCESS_TOKEN                  (default: unset)
@@ -305,15 +311,6 @@ bash falcon-linux-uninstall.sh
 #### Uninstall the Falcon Sensor
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.7.1/bash/install/falcon-linux-uninstall.sh | bash
-```
-
-#### Uninstall and remove the host from the Falcon console
-
-```bash
-export FALCON_CLIENT_ID="XXXXXXX"
-export FALCON_CLIENT_SECRET="YYYYYYYYY"
-export FALCON_REMOVE_HOST="true"
 curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.7.1/bash/install/falcon-linux-uninstall.sh | bash
 ```
 

@@ -30,6 +30,7 @@ Other Options:
     - FALCON_REMOVE_HOST                (default: unset)
         Determines whether the host should be removed from the Falcon console after uninstalling the sensor.
         Requires API Authentication.
+        NOTE: It is recommended to use Host Retention Policies in the Falcon console instead.
         Accepted values are ['true', 'false'].
 
     - GET_ACCESS_TOKEN                  (default: unset)
