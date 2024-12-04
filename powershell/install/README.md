@@ -148,7 +148,7 @@ Delete sensor uninstaller package when complete [default: $true]
 .PARAMETER DeleteScript
 Delete script when complete [default: $false]
 .PARAMETER RemoveHost
-Remove host from CrowdStrike Falcon [requires either FalconClientId|FalconClientSecret or FalconAccessToken]
+Remove host from CrowdStrike Falcon [requires either FalconClientId|FalconClientSecret or FalconAccessToken]. It is recommended to use Host Retention Policies to remove hosts from the Falcon console instead of this parameter.
 .PARAMETER FalconCloud
 CrowdStrike Falcon OAuth2 API Hostname [default: autodiscover]
 .PARAMETER FalconClientId
@@ -182,13 +182,6 @@ Basic example that will uninstall the sensor with the provided maintenance token
 
 ```pwsh
 .\falcon_windows_uninstall.ps1 -MaintenanceToken <string>
-```
-
-An example using the Falcon API to retrieve the maintenance token and remove the host from the Falcon console
-after uninstalling.
-
-```pwsh
-.\falcon_windows_uninstall.ps1 -FalconClientId <string> -FalconClientSecret <string> -RemoveHost
 ```
 
 ## Troubleshooting
