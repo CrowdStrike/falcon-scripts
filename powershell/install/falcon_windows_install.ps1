@@ -193,10 +193,10 @@ begin {
     function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
         $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.7.1')
-        if ($FalconAccessToken){
+        if ($FalconAccessToken) {
             $Headers.Add('Authorization', "bearer $($FalconAccessToken)")
         }
-        else{
+        else {
             try {
                 $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
                 $content = ConvertFrom-Json -InputObject $response.Content
@@ -207,9 +207,9 @@ begin {
                     throw $message
                 }
 
-                if ($GetAccessToken -eq $true){
+                if ($GetAccessToken -eq $true) {
                     Write-Output $content.access_token | out-host
-                    exit
+                    exit 0
                 }
 
                 $Headers.Add('Authorization', "bearer $($content.access_token)")
@@ -384,30 +384,34 @@ begin {
     }
 }
 process {
-    if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
-            [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {
-        $message = 'Unable to proceed without administrative privileges'
-        Write-FalconLog 'CheckAdmin' $message
-        throw $message
-    }
-    elseif (Get-Service | Where-Object { $_.Name -eq 'CSFalconService' }) {
-        $message = "'CSFalconService' running. Falcon sensor is already installed."
-        Write-FalconLog 'CheckService' $message
-        exit 0
-    }
-    else {
-        $credsProvided = Test-FalconCredential $FalconClientId $FalconClientSecret
-        if ([Net.ServicePointManager]::SecurityProtocol -notmatch 'Tls12') {
-            try {
-                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-            }
-            catch {
-                $message = $_
-                Write-FalconLog 'TlsCheck' $message
-                throw $message
-            }
+    # TLS check should be first since it's needed for all HTTPS communication
+    if ([Net.ServicePointManager]::SecurityProtocol -notmatch 'Tls12') {
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        }
+        catch {
+            $message = $_
+            Write-FalconLog 'TlsCheck' $message
+            throw $message
         }
     }
+    
+    if (!$GetAccessToken) {
+        if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+                [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {
+            $message = 'Unable to proceed without administrative privileges'
+            Write-FalconLog 'CheckAdmin' $message
+            throw $message
+        }
+        if (Get-Service | Where-Object { $_.Name -eq 'CSFalconService' }) {
+            $message = "'CSFalconService' running. Falcon sensor is already installed."
+            Write-FalconLog 'CheckService' $message
+            exit 0
+        }
+    }
+
+    # Check if credentials were provided
+    $AuthProvided = (Test-FalconCredential $FalconClientId $FalconClientSecret) -or $FalconAccessToken
 
     # Hashtable for common Invoke-WebRequest parameters
     $WebRequestParams = @{}
@@ -439,7 +443,7 @@ process {
     }
 
     # Configure OAuth2 authentication
-    if ($credsProvided -or $FalconAccessToken) {
+    if ($AuthProvided) {
         $BaseUrl = Get-FalconCloud $FalconCloud
 
         $Body = @{}
@@ -589,10 +593,12 @@ process {
                 $message = "Exit code 1244: Falcon was unable to communicate with the CrowdStrike cloud. Please check your installation token and try again."
                 Write-FalconLog 'InstallerProcess' $message
                 throw $message
-            } else {
+            }
+            else {
                 if ($process.StandardError) {
                     $errOut = $process.StandardError.ReadToEnd()
-                } else {
+                }
+                else {
                     $errOut = "No error output was provided by the process."
                 }
                 $message = "Falcon installer exited with code $($process.ExitCode). Error: $errOut"
@@ -600,7 +606,8 @@ process {
                 throw $message
             }
         }
-    } catch {
+    }
+    catch {
         Write-FalconLog 'InstallerProcess' "Caught exception: $_"
         throw $_
     }

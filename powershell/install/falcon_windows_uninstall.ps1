@@ -111,8 +111,8 @@ param(
 )
 begin {
 
-    if ($FalconAccessToken){
-        if ($FalconCloud -eq "autodiscover"){
+    if ($FalconAccessToken) {
+        if ($FalconCloud -eq "autodiscover") {
             $Message = 'Unable to auto discover Falcon region using access token, please provide FalconCloud'
             throw $Message
         }
@@ -178,10 +178,10 @@ begin {
     function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
         $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.7.1')
-        if ($FalconAccessToken){
+        if ($FalconAccessToken) {
             $Headers.Add('Authorization', "bearer $($FalconAccessToken)")
         }
-        else{
+        else {
             try {
                 $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
                 $content = ConvertFrom-Json -InputObject $response.Content
@@ -192,7 +192,7 @@ begin {
                     throw $Message
                 }
 
-                if ($GetAccessToken -eq $true){
+                if ($GetAccessToken -eq $true) {
                     Write-Output $content.access_token | out-host
                     exit
                 }
@@ -366,17 +366,86 @@ begin {
     }
 }
 process {
-    if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
-            [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {
-        $Message = 'Unable to proceed without administrative privileges'
+    if (!$GetAccessToken) {
+        if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+                [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {
+            $Message = 'Unable to proceed without administrative privileges'
+            throw $Message
+        }
+
+        $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
+        if (!$AgentService) {
+            $Message = "'CSFalconService' service not found, already uninstalled"
+            Write-FalconLog 'CheckService' $Message
+            break
+        }
+    }
+    # Check if credentials were provided
+    $AuthProvided = (Test-FalconCredential $FalconClientId $FalconClientSecret) -or $FalconAccessToken
+
+    if ($AuthProvided) {
+        # TLS check should be first since it's needed for all HTTPS communication
+        if ([Net.ServicePointManager]::SecurityProtocol -notmatch 'Tls12') {
+            try {
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            }
+            catch {
+                $message = $_
+                Write-FalconLog 'TlsCheck' $message
+                throw $message
+            }
+        }
+
+        # Hashtable for common Invoke-WebRequest parameters
+        $WebRequestParams = @{}
+
+        # Configure proxy based on arguments
+        $proxy = ""
+        if ($ProxyHost) {
+            Write-Output "Proxy settings detected in arguments, using proxy settings to communicate with the CrowdStrike api"
+
+            if ($ProxyHost) {
+                $proxy_host = $ProxyHost.Replace("http://", "").Replace("https://", "")
+                Write-FalconLog -Source "Proxy" -Message "Proxy host ${proxy_host} found in arguments" -stdout $true
+            }
+
+            if ($ProxyPort) {
+                Write-FalconLog -Source "Proxy" -Message "Proxy port ${ProxyPort} found in arguments" -stdout $true
+                $proxy = "http://${proxy_host}:${ProxyPort}"
+            }
+            else {
+                $proxy = "http://${proxy_host}"
+            }
+
+            $proxy = $proxy.Replace("'", "").Replace("`"", "")
+            Write-FalconLog -Source "Proxy" -Message "Using proxy ${proxy} to communicate with the CrowdStrike Apis" -stdout $true
+        }
+
+        if ($proxy) {
+            $WebRequestParams.Add('Proxy', $proxy)
+        }
+
+        $BaseUrl = Get-FalconCloud $FalconCloud
+
+        $Body = @{}
+        $Body['client_id'] = $FalconClientId
+        $Body['client_secret'] = $FalconClientSecret
+
+        if ($MemberCid) {
+            $Body['member_cid'] = $MemberCid
+        }
+
+        $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
+        $Headers['Content-Type'] = 'application/json'
+        $WebRequestParams.Add('Headers', $Headers)
+    }
+    elseif ($RemoveHost) {
+        $Message = 'Unable to remove host without credentials, please provide FalconClientId and FalconClientSecret or FalconAccessToken'
         throw $Message
     }
-
-    $AgentService = Get-Service -Name CSAgent -ErrorAction SilentlyContinue
-    if (!$AgentService) {
-        $Message = "'CSFalconService' service not found, already uninstalled"
-        Write-FalconLog 'CheckService' $Message
-        break
+    elseif ($GetAccessToken) {
+        $Message = 'Unable to get access token without credentials, please provide FalconClientId and FalconClientSecret'
+        throw $Message
     }
 
     $UninstallerPath = $null
@@ -387,7 +456,8 @@ process {
 
             if (Test-Path -Path $UninstallerPathDir) {
                 $UninstallerPath = Get-ChildItem -Path $UninstallerPathDir -Recurse | Where-Object { $_.Name -match $UninstallerName } | ForEach-Object { $_.FullName } | Sort-Object -Descending | Select-Object -First 1
-            } else {
+            }
+            else {
                 $UninstallerPath = $null
             }
         }
@@ -403,16 +473,8 @@ process {
         throw $Message
     }
 
-    # Verify creds are provided if using the API
-    $credsProvided = Test-FalconCredential $FalconClientId $FalconClientSecret
-    if (!$credsProvided -and !$FalconAccessToken) {
-        if ($RemoveHost) {
-            $Message = 'Unable to remove host without credentials, please provide FalconClientId and FalconClientSecret or FalconAccessToken'
-            throw $Message
-        }
-    }
-    else {
-        # Grab AID before uninstalling
+    # Grab AID before uninstalling. Only relevant if $RemoveHost or if $AuthProvided and !$MaintenanceToken
+    if ($RemoveHost -or ($AuthProvided -and !$MaintenanceToken)) {
         Write-FalconLog 'GetAID' 'Getting AID before uninstalling'
         $aid = Get-AID
         if (!$aid) {
@@ -422,51 +484,6 @@ process {
             $Message = "Found AID: $aid"
         }
         Write-FalconLog 'GetAID' $Message
-    }
-
-    # Hashtable for common Invoke-WebRequest parameters
-    $WebRequestParams = @{}
-
-    # Configure proxy based on arguments
-    $proxy = ""
-    if ($ProxyHost) {
-        Write-Output "Proxy settings detected in arguments, using proxy settings to communicate with the CrowdStrike api"
-
-        if ($ProxyHost) {
-            $proxy_host = $ProxyHost.Replace("http://", "").Replace("https://", "")
-            Write-FalconLog -Source "Proxy" -Message "Proxy host ${proxy_host} found in arguments" -stdout $true
-        }
-
-        if ($ProxyPort) {
-            Write-FalconLog -Source "Proxy" -Message "Proxy port ${ProxyPort} found in arguments" -stdout $true
-            $proxy = "http://${proxy_host}:${ProxyPort}"
-        }
-        else {
-            $proxy = "http://${proxy_host}"
-        }
-
-        $proxy = $proxy.Replace("'", "").Replace("`"", "")
-        Write-FalconLog -Source "Proxy" -Message "Using proxy ${proxy} to communicate with the CrowdStrike Apis" -stdout $true
-    }
-
-    if ($proxy) {
-        $WebRequestParams.Add('Proxy', $proxy)
-    }
-
-    if ($credsProvided -or $FalconAccessToken) {
-        $BaseUrl = Get-FalconCloud $FalconCloud
-
-        $Body = @{}
-        $Body['client_id'] = $FalconClientId
-        $Body['client_secret'] = $FalconClientSecret
-
-        if ($MemberCid) {
-            $Body['member_cid'] = $MemberCid
-        }
-
-        $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
-        $Headers['Content-Type'] = 'application/json'
-        $WebRequestParams.Add('Headers', $Headers)
     }
 
     if ($RemoveHost) {
