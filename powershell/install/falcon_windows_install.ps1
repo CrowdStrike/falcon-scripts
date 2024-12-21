@@ -192,7 +192,7 @@ begin {
 
     function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
-        $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.7.1')
+        $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.7.2')
         if ($FalconAccessToken) {
             $Headers.Add('Authorization', "bearer $($FalconAccessToken)")
         }
@@ -395,7 +395,7 @@ process {
             throw $message
         }
     }
-    
+
     if (!$GetAccessToken) {
         if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
                 [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {

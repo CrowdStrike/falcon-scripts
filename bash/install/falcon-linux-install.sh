@@ -98,7 +98,7 @@ This script recognizes the following argument:
 EOF
 }
 
-VERSION="1.7.1"
+VERSION="1.7.2"
 
 # If -h or --help is passed, print the usage and exit
 if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
