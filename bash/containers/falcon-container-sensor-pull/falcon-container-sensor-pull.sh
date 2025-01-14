@@ -275,7 +275,7 @@ curl_command() {
 
 fetch_tags() {
     bearer_result=$(echo "-u $ART_USERNAME:$ART_PASSWORD" |
-        curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=registry.crowdstrike.com" -K-)
+        curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=$cs_registry" -K-)
     handle_curl_error $?
     registry_bearer=$(echo "$bearer_result" | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
     # Check if registry_bearer is not empty
@@ -612,11 +612,17 @@ elif [ "${SENSOR_TYPE}" = "falcon-jobcontroller" ]; then
     IMAGE_NAME="falcon-jobcontroller"
     repository_name="$BUILD_STAGE/falcon-jobcontroller"
     registry_opts="falcon-selfhostedregistryassessment"
+    if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
+        registry_opts="${registry_opts}/gov1"
+    fi
 elif [ "${SENSOR_TYPE}" = "falcon-registryassessmentexecutor" ]; then
     # overrides for Registry Assessment Executor
     IMAGE_NAME="falcon-registryassessmentexecutor"
     repository_name="$BUILD_STAGE/falcon-registryassessmentexecutor"
     registry_opts="falcon-selfhostedregistryassessment"
+    if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
+        registry_opts="${registry_opts}/gov1"
+    fi
 fi
 
 #Set Docker token using the BEARER token captured earlier
