@@ -99,6 +99,7 @@ Optional Flags:
 
     --runtime <RUNTIME>                            Use a different container runtime [docker, podman, skopeo] (Default: docker)
     --dump-credentials                             Print registry credentials to stdout to copy/paste into container tools
+    --copy-omit-image-name                         Omit the image name from the destination path when copying
     --get-image-path                               Get the full image path including the registry, repository, and latest tag for the specified SENSOR_TYPE
     --get-pull-token                               Get the pull token of the selected SENSOR_TYPE for Kubernetes
     --get-cid                                      Get the CID assigned to the API Credentials
@@ -129,6 +130,7 @@ Help Options:
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)           | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.                                                                                                                                                                       |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)            | Print registry credentials to stdout to copy/paste into container tools                                                                                                                                                                                  |
 | `--get-image-path`                             | N/A                     | `None`                        | Get the full image path including the registry, repository, and latest tag for the specified `SENSOR_TYPE`.                                                                                                                                              |
+| `--copy-omit-image-name`                       | N/A                     | `None`                        | Omit the image name from the destination path when copying                                                                                                                                                                                               |
 | `--get-pull-token`                             | N/A                     | `None`                        | Get the pull token of the selected `SENSOR_TYPE` for Kubernetes.                                                                                                                                                                                         |
 | `--get-cid`                                    | N/A                     | `None`                        | Get the CID assigned to the API Credentials.                                                                                                                                                                                                             |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)            | List all tags available for the selected sensor                                                                                                                                                                                                          |
@@ -158,7 +160,7 @@ The following sensor types are available to download:
 | `kpagent`                           | The Falcon Kubernetes Protection Agent                |
 | `fcs`                               | The Falcon Cloud Security CLI tool                    |
 | `falcon-jobcontroller`              | The Self Hosted Registry Assessment Jobs Controller   |
-| `falcon-registryassessmentexecutor` | The Self Hosted Registry Assessment Executor          |
+| `falcon-registryassessmentexecutor` | The Self Hosted Registry **Assessment** Executor      |
 
 ### Examples
 
@@ -237,14 +239,32 @@ The following example will dump the credentials to stdout to copy/paste into con
 
 The following example will copy the `falcon-sensor` multi-arch image to a different registry using Skopeo.
 
+> Default behavior (appends image name to destination):
+
 ```shell
 ./falcon-container-sensor-pull.sh \
 --client-id <FALCON_CLIENT_ID> \
 --client-secret <FALCON_CLIENT_SECRET> \
 --type falcon-sensor \
---copy myregistry.com/mynamespace
+--copy myregistry.com/mynamespace \
 --runtime skopeo
 ```
+
+Results in: `myregistry.com/mynamespace/falcon-sensor:<tag>`
+
+> To copy to an exact destination path without appending the sensor type image name:
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-sensor \
+--copy myregistry.com/mynamespace \
+--copy-omit-image-name \
+--runtime skopeo
+```
+
+Results in: `myregistry.com/mynamespace:<tag>`
 
 #### Example copying multi-arch image for a specific platform
 
