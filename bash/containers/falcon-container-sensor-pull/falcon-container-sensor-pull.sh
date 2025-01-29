@@ -20,6 +20,7 @@ Optional Flags:
     -f, --cid <FALCON_CID>                         Falcon Customer ID
     -r, --region <FALCON_CLOUD>                    Falcon Cloud Region [us-1|us-2|eu-1|us-gov-1] (Default: us-1)
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
+                                                   By default, the image name is appended. Use --copy-omit-image-name to override behavior.
     -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
     -t, --type <SENSOR_TYPE>                       Specify which sensor to download (Default: falcon-container)
