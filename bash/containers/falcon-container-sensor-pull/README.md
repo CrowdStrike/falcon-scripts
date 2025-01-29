@@ -122,8 +122,8 @@ Help Options:
 | `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID`           | `None` (Optional)             | CrowdStrike Customer ID (CID). *If not provided, CID will be auto-detected.*                                                                                                                                                                             |
 | `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)             | CrowdStrike API Client ID                                                                                                                                                                                                                                |
 | `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)             | CrowdStrike API Client Secret                                                                                                                                                                                                                            |
-| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)             | CrowdStrike Region. \**Auto-discovery is only available for [`us-1, us-2, eu-1`] regions.*                                                                                                                                                               |
-| `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)             | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`                                                                                                                                                                     |
+| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)             | CrowdStrike Region. <br>\**Auto-discovery is only available for [`us-1, us-2, eu-1`] regions.*                                                                                                                                                               |
+| `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)             | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`. <br> *\*By default, the image name is appended. See `--copy-omit-image-name` to override behavior.*                                                                                                                                                                     |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)             | Specify sensor version to retrieve from the registry                                                                                                                                                                                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)             | Specify sensor platform to retrieve from the registry                                                                                                                                                                                                    |
 | `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`          | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-kac`, `falcon-snapshot`, `falcon-imageanalyzer`, `kpagent`, `fcs`, `falcon-jobcontroller`, `falcon-registryassessmentexecutor`] ([see more details below](#sensor-types)) |
@@ -160,7 +160,7 @@ The following sensor types are available to download:
 | `kpagent`                           | The Falcon Kubernetes Protection Agent                |
 | `fcs`                               | The Falcon Cloud Security CLI tool                    |
 | `falcon-jobcontroller`              | The Self Hosted Registry Assessment Jobs Controller   |
-| `falcon-registryassessmentexecutor` | The Self Hosted Registry **Assessment** Executor      |
+| `falcon-registryassessmentexecutor` | The Self Hosted Registry Assessment Executor          |
 
 ### Examples
 
@@ -259,12 +259,12 @@ Results in: `myregistry.com/mynamespace/falcon-sensor:<tag>`
 --client-id <FALCON_CLIENT_ID> \
 --client-secret <FALCON_CLIENT_SECRET> \
 --type falcon-sensor \
---copy myregistry.com/mynamespace \
+--copy myregistry.com/mynamespace/myfalcon-sensor \
 --copy-omit-image-name \
 --runtime skopeo
 ```
 
-Results in: `myregistry.com/mynamespace:<tag>`
+Results in: `myregistry.com/mynamespace/myfalcon-sensor:<tag>`
 
 #### Example copying multi-arch image for a specific platform
 
