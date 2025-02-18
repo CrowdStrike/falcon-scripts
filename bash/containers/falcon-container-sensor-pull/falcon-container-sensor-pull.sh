@@ -699,7 +699,7 @@ esac
 
 CONTAINER_TOOL=$(command -v "$CONTAINER_TOOL")
 
-if grep -qw "skopeo" "$CONTAINER_TOOL" && [ -z "${COPY}" ] && [ -z "${LISTTAGS}" ]; then
+if grep -qw "skopeo" "$CONTAINER_TOOL" && [ -z "${COPY}" ] && [ -z "${LISTTAGS}" ] && [ -z "${GETIMAGEPATH}" ]; then
     echo "-c, --copy <REGISTRY/NAMESPACE> must also be set when using skopeo as a runtime"
     exit 1
 fi
