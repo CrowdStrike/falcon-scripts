@@ -1,4 +1,4 @@
-Unit]
+[Unit]
 Description=Docker falcon.service
 After=docker.service
 Requires=docker.service
@@ -6,15 +6,24 @@ Requires=docker.service
 [Service]
 TimeoutStartSec=0
 Restart=always
-ExecStartPre=/bin/bash -c "/bin/mkdir -p /opt/CrowdStrike && /bin/touch /opt/CrowdStrike/falconstore"
-ExecStart=/usr/bin/docker run --rm --name falcon \
-        --userns=host \
+ExecStartPre=/usr/bin/docker run --rm \
         --privileged \
         --pid=host \
-        --network=host \
+        --net=host \
+        --ipc=host \
+        --entrypoint /opt/CrowdStrike/falcon-daemonset-init \
+        <falcon-sensor-container-image> -i
+ExecStart=/usr/bin/docker run --rm --name falcon \
+        --privileged \
+        --pid=host \
+        --net=host \
+        --ipc=host \
+        --userns=host \
+        -e FALCONCTL_OPT_BACKEND=bpf \
         -e FALCONCTL_OPT_CID=<CID> \
+        -e FALCONCTL_OPT_TAGS=<TAGS> \
         -v /opt/CrowdStrike/falconstore:/opt/CrowdStrike/falconstore \
-        <falcon-sensor-container-image>
+        <falcon-sensor-container-image>
 ExecStop=/usr/bin/docker stop falcon
 
 [Install]
