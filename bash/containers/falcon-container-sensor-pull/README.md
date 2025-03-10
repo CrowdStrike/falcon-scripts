@@ -280,7 +280,7 @@ The following example will copy the `falcon-container` image to a different regi
 --client-secret <FALCON_CLIENT_SECRET> \
 --type falcon-container \
 --copy myregistry.com/mynamespace \
---copy-custom-tag latest \
+--copy-custom-tag v1.2.3-custom \
 --runtime docker
 ```
 
