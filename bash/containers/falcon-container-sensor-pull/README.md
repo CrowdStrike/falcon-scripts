@@ -100,7 +100,8 @@ Optional Flags:
 
     --runtime <RUNTIME>                            Use a different container runtime [docker, podman, skopeo] (Default: docker)
     --dump-credentials                             Print registry credentials to stdout to copy/paste into container tools
-    --copy-omit-image-name                         Omit the image name from the destination path when copying
+    --copy-omit-image-name                         Omit the image name from the destination path when copying (requires -c, --copy)
+    --copy-custom-tag <TAG>                        Use custom tag when copying image (requires -c, --copy)
     --get-image-path                               Get the full image path including the registry, repository, and latest tag for the specified SENSOR_TYPE
     --get-pull-token                               Get the pull token of the selected SENSOR_TYPE for Kubernetes
     --get-cid                                      Get the CID assigned to the API Credentials
@@ -131,7 +132,8 @@ Help Options:
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)           | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.                                                                                                                                                                       |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)            | Print registry credentials to stdout to copy/paste into container tools                                                                                                                                                                                  |
 | `--get-image-path`                             | N/A                     | `None`                        | Get the full image path including the registry, repository, and latest tag for the specified `SENSOR_TYPE`.                                                                                                                                              |
-| `--copy-omit-image-name`                       | N/A                     | `None`                        | Omit the image name from the destination path when copying                                                                                                                                                                                               |
+| `--copy-omit-image-name`                       | N/A                     | `None`                        | Omit the image name from the destination path when copying (requires -c, --copy)                                                                                                                                                                                               |
+| `--copy-custom-tag <TAG>`                      | N/A                     | `None`                        | Use custom tag when copying image (requires -c, --copy)                                                                                                                                                                                               |
 | `--get-pull-token`                             | N/A                     | `None`                        | Get the pull token of the selected `SENSOR_TYPE` for Kubernetes.                                                                                                                                                                                         |
 | `--get-cid`                                    | N/A                     | `None`                        | Get the CID assigned to the API Credentials.                                                                                                                                                                                                             |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)            | List all tags available for the selected sensor                                                                                                                                                                                                          |
@@ -266,6 +268,37 @@ Results in: `myregistry.com/mynamespace/falcon-sensor:<tag>`
 ```
 
 Results in: `myregistry.com/mynamespace/myfalcon-sensor:<tag>`
+
+#### Example copying an image with a custom tag
+
+The following example will copy the `falcon-container` image to a different registry using a custom tag instead of the default version tag:
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-container \
+--copy myregistry.com/mynamespace \
+--copy-custom-tag latest \
+--runtime docker
+```
+
+Results in: `myregistry.com/mynamespace/falcon-container:latest`
+
+You can also combine this with other options:
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-sensor \
+--copy myregistry.com/mynamespace/custom-sensor \
+--copy-omit-image-name \
+--copy-custom-tag v1.2.3-production \
+--runtime skopeo
+```
+
+Results in: `myregistry.com/mynamespace/custom-sensor:v1.2.3-production`
 
 #### Example copying multi-arch image for a specific platform
 
