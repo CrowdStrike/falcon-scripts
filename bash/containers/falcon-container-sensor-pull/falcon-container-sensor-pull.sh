@@ -20,7 +20,8 @@ Optional Flags:
     -f, --cid <FALCON_CID>                         Falcon Customer ID
     -r, --region <FALCON_CLOUD>                    Falcon Cloud Region [us-1|us-2|eu-1|us-gov-1] (Default: us-1)
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
-                                                   By default, the image name is appended. Use --copy-omit-image-name to override behavior.
+                                                   By default, the image name and tag are appended. Use --copy-omit-image-name
+                                                   and/or --copy-custom-tag to change that behavior.
     -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
     -t, --type <SENSOR_TYPE>                       Specify which sensor to download (Default: falcon-container)
@@ -39,7 +40,8 @@ Optional Flags:
 
     --runtime <RUNTIME>                            Use a different container runtime [docker, podman, skopeo] (Default: docker)
     --dump-credentials                             Print registry credentials to stdout to copy/paste into container tools
-    --copy-omit-image-name                         Omit the image name from the destination path when copying
+    --copy-omit-image-name                         Omit the image name from the destination path when copying (requires -c, --copy)
+    --copy-custom-tag <TAG>                        Use custom tag when copying image (requires -c, --copy)
     --get-image-path                               Get the full image path including the registry, repository, and latest tag for the specified SENSOR_TYPE
     --get-pull-token                               Get the pull token of the selected SENSOR_TYPE for Kubernetes
     --get-cid                                      Get the CID assigned to the API Credentials
@@ -143,6 +145,12 @@ while [ $# != 0 ]; do
         --copy-omit-image-name)
             if [ -n "${1}" ]; then
                 COPY_OMIT_IMAGE_NAME=true
+            fi
+            ;;
+        --copy-custom-tag)
+            if [ -n "${1}" ]; then
+                CUSTOM_TAG="${2}"
+                shift
             fi
             ;;
         --get-pull-token)
@@ -415,7 +423,6 @@ copy_image() {
         "$CONTAINER_TOOL" tag "$source_path" "$destination_path"
         "$CONTAINER_TOOL" push "$destination_path"
     fi
-    echo "Image copied to: $destination_path"
 }
 
 detect_container_tool() {
@@ -730,11 +737,24 @@ if [ "${COPY_OMIT_IMAGE_NAME}" = "true" ] && [ -z "${COPY}" ]; then
     die "--copy-omit-image-name requires -c, --copy to be specified"
 fi
 
+if [ -n "${CUSTOM_TAG}" ] && [ -z "${COPY}" ]; then
+    die "--copy-custom-tag requires --copy to be specified"
+fi
+
 # Construct destination path
-if [ "${COPY_OMIT_IMAGE_NAME}" = "true" ]; then
-    COPYPATH="$COPY:$LATESTSENSOR"
+if [ -n "${CUSTOM_TAG}" ]; then
+    # Use custom tag if specified
+    if [ "${COPY_OMIT_IMAGE_NAME}" = "true" ]; then
+        COPYPATH="$COPY:$CUSTOM_TAG"
+    else
+        COPYPATH="$COPY/$IMAGE_NAME:$CUSTOM_TAG"
+    fi
 else
-    COPYPATH="$COPY/$IMAGE_NAME:$LATESTSENSOR"
+    if [ "${COPY_OMIT_IMAGE_NAME}" = "true" ]; then
+        COPYPATH="$COPY:$LATESTSENSOR"
+    else
+        COPYPATH="$COPY/$IMAGE_NAME:$LATESTSENSOR"
+    fi
 fi
 
 # Handle multi-arch images first
@@ -743,7 +763,7 @@ if [ "$(is_multi_arch "$FULLIMAGEPATH")" = "true" ]; then
     if [ -n "$SENSOR_PLATFORM" ]; then
         # If Skopeo is being used, the platform must be overridden
         if grep -qw "skopeo" "$CONTAINER_TOOL"; then
-            "$CONTAINER_TOOL" copy --override-arch "$(platform_override)" "docker://$FULLIMAGEPATH" "docker://$COPYPATH"
+            "$CONTAINER_TOOL" copy --override-arch "$(platform_override)" --override-os linux "docker://$FULLIMAGEPATH" "docker://$COPYPATH"
         else
             # Podman/Docker can pull the specific platform
             pf_override="linux/$(platform_override)"
@@ -780,4 +800,8 @@ else
             copy_image "$FULLIMAGEPATH" "$COPYPATH" "false"
         fi
     fi
+fi
+
+if [ -n "$COPY" ]; then
+    echo "Image copied to: $COPYPATH"
 fi

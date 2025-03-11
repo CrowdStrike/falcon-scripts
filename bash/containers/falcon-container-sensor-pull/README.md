@@ -81,7 +81,8 @@ Optional Flags:
     -f, --cid <FALCON_CID>                         Falcon Customer ID
     -r, --region <FALCON_CLOUD>                    Falcon Cloud Region [us-1|us-2|eu-1|us-gov-1] (Default: us-1)
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
-                                                   By default, the image name is appended. Use --copy-omit-image-name to override behavior.
+                                                   By default, the image name and tag are appended. Use --copy-omit-image-name
+                                                   and/or --copy-custom-tag to change that behavior.
     -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
     -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
     -t, --type <SENSOR_TYPE>                       Specify which sensor to download (Default: falcon-container)
@@ -100,7 +101,8 @@ Optional Flags:
 
     --runtime <RUNTIME>                            Use a different container runtime [docker, podman, skopeo] (Default: docker)
     --dump-credentials                             Print registry credentials to stdout to copy/paste into container tools
-    --copy-omit-image-name                         Omit the image name from the destination path when copying
+    --copy-omit-image-name                         Omit the image name from the destination path when copying (requires -c, --copy)
+    --copy-custom-tag <TAG>                        Use custom tag when copying image (requires -c, --copy)
     --get-image-path                               Get the full image path including the registry, repository, and latest tag for the specified SENSOR_TYPE
     --get-pull-token                               Get the pull token of the selected SENSOR_TYPE for Kubernetes
     --get-cid                                      Get the CID assigned to the API Credentials
@@ -123,15 +125,16 @@ Help Options:
 | `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID`           | `None` (Optional)             | CrowdStrike Customer ID (CID). *If not provided, CID will be auto-detected.*                                                                                                                                                                             |
 | `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)             | CrowdStrike API Client ID                                                                                                                                                                                                                                |
 | `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)             | CrowdStrike API Client Secret                                                                                                                                                                                                                            |
-| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)             | CrowdStrike Region. <br>\**Auto-discovery is only available for [`us-1, us-2, eu-1`] regions.*                                                                                                                                                               |
-| `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)             | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`. <br> *\*By default, the image name is appended. Use `--copy-omit-image-name` to override behavior.*                                                                                                                                                                     |
+| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)             | CrowdStrike Region. <br>\**Auto-discovery is only available for [`us-1, us-2, eu-1`] regions.*                                                                                                                                                           |
+| `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)             | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`. <br> *\*By default, the image name and tag are appended. Use `--copy-omit-image-name` and/or `--copy-custom-tag` to change that behavior.*           |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)             | Specify sensor version to retrieve from the registry                                                                                                                                                                                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)             | Specify sensor platform to retrieve from the registry                                                                                                                                                                                                    |
 | `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`          | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-kac`, `falcon-snapshot`, `falcon-imageanalyzer`, `kpagent`, `fcs`, `falcon-jobcontroller`, `falcon-registryassessmentexecutor`] ([see more details below](#sensor-types)) |
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)           | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.                                                                                                                                                                       |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)            | Print registry credentials to stdout to copy/paste into container tools                                                                                                                                                                                  |
 | `--get-image-path`                             | N/A                     | `None`                        | Get the full image path including the registry, repository, and latest tag for the specified `SENSOR_TYPE`.                                                                                                                                              |
-| `--copy-omit-image-name`                       | N/A                     | `None`                        | Omit the image name from the destination path when copying                                                                                                                                                                                               |
+| `--copy-omit-image-name`                       | N/A                     | `None`                        | Omit the image name from the destination path when copying (requires -c, --copy)                                                                                                                                                                         |
+| `--copy-custom-tag <TAG>`                      | N/A                     | `None`                        | Use custom tag when copying image (requires -c, --copy)                                                                                                                                                                                                  |
 | `--get-pull-token`                             | N/A                     | `None`                        | Get the pull token of the selected `SENSOR_TYPE` for Kubernetes.                                                                                                                                                                                         |
 | `--get-cid`                                    | N/A                     | `None`                        | Get the CID assigned to the API Credentials.                                                                                                                                                                                                             |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)            | List all tags available for the selected sensor                                                                                                                                                                                                          |
@@ -266,6 +269,37 @@ Results in: `myregistry.com/mynamespace/falcon-sensor:<tag>`
 ```
 
 Results in: `myregistry.com/mynamespace/myfalcon-sensor:<tag>`
+
+#### Example copying an image with a custom tag
+
+The following example will copy the `falcon-container` image to a different registry using a custom tag instead of the default version tag:
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-container \
+--copy myregistry.com/mynamespace \
+--copy-custom-tag v1.2.3-custom \
+--runtime docker
+```
+
+Results in: `myregistry.com/mynamespace/falcon-container:latest`
+
+You can also combine this with other options:
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-sensor \
+--copy myregistry.com/mynamespace/custom-sensor \
+--copy-omit-image-name \
+--copy-custom-tag v1.2.3-production \
+--runtime skopeo
+```
+
+Results in: `myregistry.com/mynamespace/custom-sensor:v1.2.3-production`
 
 #### Example copying multi-arch image for a specific platform
 
