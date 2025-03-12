@@ -192,7 +192,7 @@ begin {
 
     function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
-        $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.7.2')
+        $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.7.3')
         if ($FalconAccessToken) {
             $Headers.Add('Authorization', "bearer $($FalconAccessToken)")
         }
