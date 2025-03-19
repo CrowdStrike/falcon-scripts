@@ -31,7 +31,7 @@ Member CID, used only in multi-CID ("Falcon Flight Control") configurations and 
 .PARAMETER SensorUpdatePolicyName
 Sensor Update Policy name to check for assigned sensor version [default: 'platform_default']
 .PARAMETER InstallParams
-Additional Sensor installation parameters. Script parameters should be used instead when supported. [default: '/install /quiet /noreboot' ]
+Additional Sensor installation parameters. Script parameters should be used instead when supported. [default: '/install /quiet /norestart' ]
 .PARAMETER LogPath
 Script log location [default: 'Windows\Temp\InstallFalcon.log']
 .PARAMETER DeleteInstaller
@@ -380,7 +380,7 @@ begin {
         $SensorUpdatePolicyName = 'platform_default'
     }
     if (!$InstallParams) {
-        $InstallParams = '/install /quiet /noreboot'
+        $InstallParams = '/install /quiet /norestart'
     }
 }
 process {
