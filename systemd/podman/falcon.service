@@ -6,23 +6,38 @@ RequiresMountsFor=%t/containers
 
 [Service]
 Environment=PODMAN_SYSTEMD_UNIT=falcon
+EnvironmentFile=/etc/systemd/system/falcon.conf
 Restart=always
-ExecStartPre=/bin/bash -c "/bin/mkdir -p /opt/CrowdStrike && /bin/touch /opt/CrowdStrike/falconstore"
+TimeoutStopSec=70
+ExecStartPre=/usr/bin/podman run --rm \
+    --rm \
+    --replace \
+    -d \
+    --name falcon \
+    --privileged \
+    --pid=host \
+    --net=host \
+    --ipc=host \
+    --entrypoint /opt/CrowdStrike/falcon-daemonset-init \
+    ${FALCON_CONTAINER_IMAGE} -i
 ExecStart=/usr/bin/podman run \
-    --rm \
-    --replace \
-    -d \
-    --name falcon \
-    --userns=host \
-    --privileged \
-    --pid=host \
-    --network=host \
-    -e FALCONCTL_OPT_CID=<CID> \
-    -v /opt/CrowdStrike/falconstore:/opt/CrowdStrike/falconstore \
-    <falcon-sensor-container-image>
-ExecStop=/usr/bin/podman stop --ignore falcon
+    --rm \
+    --replace \
+    -d \
+    --name falcon \
+    --privileged \
+    --pid=host \
+    --net=host \
+    --ipc=host \
+    --userns=host \
+    -e FALCONCTL_OPT_BACKEND=${FALCON_BACKEND} \
+    -e FALCONCTL_OPT_CID=${FALCON_CID} \
+    -e FALCONCTL_OPT_TAGS=${FALCON_TAGS} \
+    -v /opt/CrowdStrike/falconstore:/opt/CrowdStrike/falconstore \
+    ${FALCON_CONTAINER_IMAGE}
+ExecStop=/usr/bin/podman stop --ignore -t 10 falcon
 ExecStopPost=/usr/bin/podman rm -f --ignore falcon
-Type=notify
+Type=forking
 NotifyAccess=all
 
 [Install]
