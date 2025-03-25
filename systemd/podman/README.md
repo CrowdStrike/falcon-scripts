@@ -1,19 +1,34 @@
 # Falcon Linux SystemD Podman service
 
-## Configuration
+This guide explains how to configure the Falcon Sensor to run as a SystemD service using Podman in non-Kubernetes environments.
 
-1. Replace the following in the `falcon.service` file:
-   - `<CID>` with your CrowdStrike Falcon Customer ID
-   - `<falcon-sensor-container-image>` with the repository/name:tag of the sensor e.g. myrepo.com/falcon/sensor:1234 (use `localhost` for the repository if the sensor was loaded locally)
+## Requirements
 
-2. Load or pull the sensor to the host
+- Podman installed and running
+- Root or sudo privileges
+- A valid CrowdStrike Falcon Customer ID (CID)
+- Access to the Falcon container image
 
-3. Install the `falcon.service` file:
+## Installation Options
+1. Load or pull the Falcon Sensor image to your host:
    ```bash
-   # cp falcon.service /etc/systemd/system
+   podman pull myrepo.com/falcon/sensor:1234
    ```
 
-4. Enable the Falcon service
+2. Update the `falcon.conf` configuration file your settings. e.g.:
+   ```
+   FALCON_CONTAINER_IMAGE=myrepo.com/falcon/sensor:1234
+   FALCON_CID=ABCDEFabcdef012345-12
+   FALCON_TAGS=systemd,production
+   ```
+
+3. Copy the `falcon.conf` and `falcon.service` files to `/etc/systemd/system`:
+   ```bash
+   cp falcon.* /etc/systemd/system
+   ```
+
+
+4. Enable and start the Falcon service:
    ```bash
    systemctl enable --now falcon.service
    ```

@@ -4,6 +4,7 @@ After=docker.service
 Requires=docker.service
 
 [Service]
+EnvironmentFile=/etc/systemd/system/falcon.conf
 TimeoutStartSec=0
 Restart=always
 ExecStartPre=/usr/bin/docker run --rm \
@@ -12,18 +13,18 @@ ExecStartPre=/usr/bin/docker run --rm \
         --net=host \
         --ipc=host \
         --entrypoint /opt/CrowdStrike/falcon-daemonset-init \
-        <falcon-sensor-container-image> -i
+        ${FALCON_CONTAINER_IMAGE} -i
 ExecStart=/usr/bin/docker run --rm --name falcon \
         --privileged \
         --pid=host \
         --net=host \
         --ipc=host \
         --userns=host \
-        -e FALCONCTL_OPT_BACKEND=bpf \
-        -e FALCONCTL_OPT_CID=<CID> \
-        -e FALCONCTL_OPT_TAGS=<TAGS> \
+        -e FALCONCTL_OPT_BACKEND=${FALCON_BACKEND} \
+        -e FALCONCTL_OPT_CID=${FALCON_CID} \
+        -e FALCONCTL_OPT_TAGS=${FALCON_TAGS} \
         -v /opt/CrowdStrike/falconstore:/opt/CrowdStrike/falconstore \
-        <falcon-sensor-container-image>
+        ${FALCON_CONTAINER_IMAGE}
 ExecStop=/usr/bin/docker stop falcon
 
 [Install]
