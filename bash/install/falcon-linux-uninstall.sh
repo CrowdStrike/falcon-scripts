@@ -80,6 +80,35 @@ main() {
     echo 'Falcon Sensor removed successfully.'
 }
 
+check_package_manager_lock() {
+    lock_file="/var/lib/rpm/.rpm.lock"
+    lock_type="RPM"
+    local timeout=300 interval=5 elapsed=0
+
+    if type dpkg >/dev/null 2>&1; then
+        lock_file="/var/lib/dpkg/lock"
+        lock_type="DPKG"
+    fi
+
+    while lsof -w "$lock_file" >/dev/null 2>&1; do
+        if [ $elapsed -eq 0 ]; then
+            echo ""
+            echo "Package manager is locked. Waiting up to ${timeout} seconds for lock to be released..."
+        fi
+
+        if [ $elapsed -ge $timeout ]; then
+            echo "Timed out waiting for ${lock_type} lock to be released after ${timeout} seconds."
+            echo "You may need to manually investigate processes locking ${lock_file}:"
+            lsof -w "$lock_file" || true
+            die "Installation aborted due to package manager lock timeout."
+        fi
+
+        sleep $interval
+        elapsed=$((elapsed + interval))
+        echo "Retrying again in ${interval} seconds..."
+    done
+}
+
 cs_sensor_remove() {
     remove_package() {
         pkg="$1"
@@ -96,6 +125,9 @@ cs_sensor_remove() {
             rpm -e --nodeps "$pkg"
         fi
     }
+
+    # Check for package manager lock prior to uninstallation
+    check_package_manager_lock
 
     remove_package "falcon-sensor"
 }
@@ -364,6 +396,24 @@ get_aid() {
 
 #------Start of the script------#
 set -e
+
+os_name=$(
+    # returns either: Amazon, Ubuntu, CentOS, RHEL, or SLES
+    # lsb_release is not always present
+    name=$(cat /etc/*release | grep ^NAME= | awk -F'=' '{ print $2 }' | sed "s/\"//g;s/Red Hat.*/RHEL/g;s/ Linux$//g;s/ GNU\/Linux$//g;s/Oracle.*/Oracle/g;s/Amazon.*/Amazon/g")
+    if [ -z "$name" ]; then
+        if lsb_release -s -i | grep -q ^RedHat; then
+            name="RHEL"
+        elif [ -f /usr/bin/lsb_release ]; then
+            name=$(/usr/bin/lsb_release -s -i)
+        fi
+    fi
+    if [ -z "$name" ]; then
+        die "Cannot recognise operating system"
+    fi
+
+    echo "$name"
+)
 
 cs_falcon_cloud=$(
     if [ -n "$FALCON_CLOUD" ]; then
