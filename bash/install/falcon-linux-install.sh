@@ -373,11 +373,43 @@ cs_sensor_download() {
     echo "$installer"
 }
 
+check_package_manager_lock() {
+    local lock_file="$1"
+    local lock_type="$2"
+    local timeout=300 interval=5 elapsed=0
+
+    # If no lock file specified, skip the check
+    if [ -z "$lock_file" ]; then
+        return 0
+    fi
+
+    while lsof -w "$lock_file" >/dev/null 2>&1; do
+        if [ $elapsed -eq 0 ]; then
+            echo ""
+            echo "Package manager is locked. Waiting up to ${timeout} seconds for lock to be released..."
+        fi
+
+        if [ $elapsed -ge $timeout ]; then
+            echo "Timed out waiting for ${lock_type} lock to be released after ${timeout} seconds."
+            echo "You may need to manually investigate processes locking ${lock_file}:"
+            lsof -w "$lock_file" || true
+            die "Installation aborted due to package manager lock timeout."
+        fi
+
+        sleep $interval
+        elapsed=$((elapsed + interval))
+        echo -n "."
+    done
+}
+
 os_install_package() {
     local pkg="$1"
 
     rpm_install_package() {
         local pkg="$1"
+
+        # Check for RPM lock before proceeding
+        check_package_manager_lock "/var/lib/rpm/.rpm.lock" "RPM"
 
         cs_falcon_gpg_import
 
@@ -397,9 +429,14 @@ os_install_package() {
             rpm_install_package "$pkg"
             ;;
         Debian)
+            # Check for Debian lock before proceeding
+            check_package_manager_lock "/var/lib/dpkg/lock" "APT"
             DEBIAN_FRONTEND=noninteractive apt-get -qq install -y "$pkg" >/dev/null
             ;;
         Ubuntu)
+            # Check for Ubuntu lock before proceeding
+            check_package_manager_lock "/var/lib/dpkg/lock" "APT"
+
             # If this is ubuntu 14, we need to use dpkg instead
             if [ "${cs_os_version}" -eq 14 ]; then
                 DEBIAN_FRONTEND=noninteractive dpkg -i "$pkg" >/dev/null 2>&1 || true
