@@ -81,22 +81,14 @@ main() {
 }
 
 check_package_manager_lock() {
-    local lock_file lock_type timeout=300 interval=5 elapsed=0
+    lock_file="/var/lib/rpm/.rpm.lock"
+    lock_type="RPM"
+    local timeout=300 interval=5 elapsed=0
 
-    case "${os_name}" in
-        Amazon | CentOS* | Oracle | RHEL | Rocky | AlmaLinux | SLES)
-            lock_file="/var/lib/rpm/.rpm.lock"
-            lock_type="RPM"
-            ;;
-        Debian | Ubuntu)
-            lock_file="/var/lib/dpkg/lock"
-            lock_type="APT"
-            ;;
-        *)
-            # No lock checking for unknown systems
-            return 0
-            ;;
-    esac
+    if type dpkg >/dev/null 2>&1; then
+        lock_file="/var/lib/dpkg/lock"
+        lock_type="DPKG"
+    fi
 
     while lsof -w "$lock_file" >/dev/null 2>&1; do
         if [ $elapsed -eq 0 ]; then
@@ -113,7 +105,7 @@ check_package_manager_lock() {
 
         sleep $interval
         elapsed=$((elapsed + interval))
-        echo -n "."
+        echo "Retrying again in ${interval} seconds..."
     done
 }
 
