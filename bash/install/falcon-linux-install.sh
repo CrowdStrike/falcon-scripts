@@ -373,8 +373,39 @@ cs_sensor_download() {
     echo "$installer"
 }
 
+check_package_manager_lock() {
+    lock_file="/var/lib/rpm/.rpm.lock"
+    lock_type="RPM"
+    local timeout=300 interval=5 elapsed=0
+
+    if type dpkg >/dev/null 2>&1; then
+        lock_file="/var/lib/dpkg/lock"
+        lock_type="DPKG"
+    fi
+
+    while lsof -w "$lock_file" >/dev/null 2>&1; do
+        if [ $elapsed -eq 0 ]; then
+            echo ""
+            echo "Package manager is locked. Waiting up to ${timeout} seconds for lock to be released..."
+        fi
+
+        if [ $elapsed -ge $timeout ]; then
+            echo "Timed out waiting for ${lock_type} lock to be released after ${timeout} seconds."
+            echo "You may need to manually investigate processes locking ${lock_file}:"
+            lsof -w "$lock_file" || true
+            die "Installation aborted due to package manager lock timeout."
+        fi
+
+        sleep $interval
+        elapsed=$((elapsed + interval))
+        echo "Retrying again in ${interval} seconds..."
+    done
+}
+
 os_install_package() {
     local pkg="$1"
+    # Check for package manager lock prior to uninstallation
+    check_package_manager_lock
 
     rpm_install_package() {
         local pkg="$1"
