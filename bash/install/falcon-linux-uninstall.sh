@@ -397,24 +397,6 @@ get_aid() {
 #------Start of the script------#
 set -e
 
-os_name=$(
-    # returns either: Amazon, Ubuntu, CentOS, RHEL, or SLES
-    # lsb_release is not always present
-    name=$(cat /etc/*release | grep ^NAME= | awk -F'=' '{ print $2 }' | sed "s/\"//g;s/Red Hat.*/RHEL/g;s/ Linux$//g;s/ GNU\/Linux$//g;s/Oracle.*/Oracle/g;s/Amazon.*/Amazon/g")
-    if [ -z "$name" ]; then
-        if lsb_release -s -i | grep -q ^RedHat; then
-            name="RHEL"
-        elif [ -f /usr/bin/lsb_release ]; then
-            name=$(/usr/bin/lsb_release -s -i)
-        fi
-    fi
-    if [ -z "$name" ]; then
-        die "Cannot recognise operating system"
-    fi
-
-    echo "$name"
-)
-
 cs_falcon_cloud=$(
     if [ -n "$FALCON_CLOUD" ]; then
         echo "$FALCON_CLOUD"
