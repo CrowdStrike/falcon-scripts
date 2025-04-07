@@ -20,6 +20,15 @@ jobs:
           zip -r ../../falcon_windows_install_scripts.zip *.ps1
           popd
 
+          # Create separate systemd artifacts zip files for Docker and Podman
+          pushd systemd/docker
+          zip -r ../../systemd_docker.zip *
+          popd
+
+          pushd systemd/podman
+          zip -r ../../systemd_podman.zip *
+          popd
+
           # Create a list of files to upload
           list_of_files=$(find . -type f \( -name "*.sh" -o -name "*.ps1" -o -name "*.zip" \))
 
