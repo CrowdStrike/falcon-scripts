@@ -12,7 +12,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Run shfmt with reviewdog
-      uses: reviewdog/action-shfmt@v1.0.2
+      uses: reviewdog/action-shfmt@v1.0.4
       with:
         fail_on_error: true
         workdir: 'bash'
