@@ -60,6 +60,8 @@ The proxy port for the sensor to use when communicating with CrowdStrike [defaul
 .PARAMETER ProxyDisable
 By default, the Falcon sensor for Windows automatically attempts to use any available proxy connections when it connects to the CrowdStrike cloud.
 This parameter forces the sensor to skip those attempts and ignore any proxy configuration, including Windows Proxy Auto Detection.
+.PARAMETER UserAgent
+User agent string to append to the User-Agent header when making requests to the CrowdStrike API.
 .PARAMETER Verbose
 Enable verbose logging
 #>
@@ -128,7 +130,9 @@ param(
     [Parameter(Position = 26)]
     [int] $ProxyPort,
     [Parameter(Position = 27)]
-    [switch] $ProxyDisable
+    [switch] $ProxyDisable,
+    [Parameter(Position = 28)]
+    [string] $UserAgent
 )
 
 
@@ -985,7 +989,7 @@ function Get-FalconCloud ([string] $xCsRegion) {
 
 function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
     $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
-    $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.7.4')
+    $Headers.Add('User-Agent', $FullUserAgent)
     try {
         $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body
         $content = ConvertFrom-Json -InputObject $response.Content
@@ -1072,6 +1076,14 @@ if (!(Test-FalconCredential $OldFalconClientId $OldFalconClientSecret)) {
     $message = 'API Credentials for the old cloud are required'
     Write-FalconLog -Source 'Test-FalconCredentials' -Message $message
     throw $message
+}
+
+$ScriptVersion = "1.7.4"
+$BaseUserAgent = "crowdstrike-falcon-scripts/$ScriptVersion pwsh-migrate"
+$FullUserAgent = if ($UserAgent) {
+    "$BaseUserAgent $UserAgent"
+} else {
+    $BaseUserAgent
 }
 
 # Hashtable for common Invoke-WebRequest parameters
