@@ -27,6 +27,11 @@ Authentication:
         Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1'].
 
 Other Options:
+    - FALCON_MAINTENANCE_TOKEN          (default: unset)
+        Sensor uninstall maintenance token used to unlock sensor uninstallation.
+        If not provided but FALCON_CLIENT_ID and FALCON_CLIENT_SECRET are set,
+        the script will try to retrieve the token from the API.
+
     - FALCON_REMOVE_HOST                (default: unset)
         Determines whether the host should be removed from the Falcon console after uninstalling the sensor.
         Requires API Authentication.
@@ -68,6 +73,17 @@ main() {
 
     # Check if Falcon sensor is installed
     cs_sensor_installed
+
+    # Handle maintenance token
+    cs_maintenance_token=""
+    if [ -n "$FALCON_MAINTENANCE_TOKEN" ]; then
+        cs_maintenance_token="$FALCON_MAINTENANCE_TOKEN"
+    elif [ -n "$FALCON_CLIENT_ID" ] && [ -n "$FALCON_CLIENT_SECRET" ] && [ -n "$aid" ]; then
+        get_oauth_token
+        get_maintenance_token
+        echo "Retrieved maintenance token via API"
+    fi
+
     echo -n 'Removing Falcon Sensor  ... '
     cs_sensor_remove
     echo '[ Ok ]'
@@ -126,6 +142,14 @@ cs_sensor_remove() {
         fi
     }
 
+    # Handle maintenance protection
+    if [ -n "$cs_maintenance_token" ]; then
+        # shellcheck disable=SC2086
+        if ! /opt/CrowdStrike/falconctl -s -f --maintenance-token=${cs_maintenance_token} >/dev/null 2>&1; then
+            die "Failed to apply maintenance token. Uninstallation may fail."
+        fi
+    fi
+
     # Check for package manager lock prior to uninstallation
     check_package_manager_lock
 
@@ -159,9 +183,33 @@ cs_sensor_installed() {
     if ! test -f /opt/CrowdStrike/falconctl; then
         echo "Falcon sensor is already uninstalled." && exit 0
     fi
-    # Get AID if FALCON_REMOVE_HOST is set to true and sensor is installed
-    if [ "${FALCON_REMOVE_HOST}" = "true" ]; then
+    # Get AID if FALCON_REMOVE_HOST is set to true or if we need to get a maintenance token
+    if [ "${FALCON_REMOVE_HOST}" = "true" ] || [ -n "$FALCON_CLIENT_ID" ] && [ -n "$FALCON_CLIENT_SECRET" ] && [ -z "$FALCON_MAINTENANCE_TOKEN" ]; then
         get_aid
+    fi
+}
+
+get_maintenance_token() {
+    if [ -z "$aid" ]; then
+        die "Unable to find AID. Cannot retrieve maintenance token."
+    fi
+
+    echo "Retrieving maintenance token from the CrowdStrike Falcon API..."
+
+    payload="{\"device_id\": \"$aid\", \"audit_message\": \"CrowdStrike Falcon Uninstall Bash Script\"}"
+    url="https://$(cs_cloud)/policy/combined/reveal-uninstall-token/v1"
+
+    response=$(curl_command -X "POST" -H "Content-Type: application/json" -d "$payload" "$url")
+
+    handle_curl_error $?
+
+    if echo "$response" | grep -q "\"uninstall_token\""; then
+        cs_maintenance_token=$(echo "$response" | json_value "uninstall_token" 1 | sed 's/ *$//g' | sed 's/^ *//g')
+        if [ -z "$cs_maintenance_token" ]; then
+            die "Retrieved empty maintenance token from API."
+        fi
+    else
+        die "Failed to retrieve maintenance token. Response: $response"
     fi
 }
 
