@@ -91,6 +91,10 @@ Other Options
         To prepare the sensor to be used in a golden image.
         Accepted values are ['true', 'false'].
 
+    - USER_AGENT                        (default: unset)
+        User agent string to append to the User-Agent header when making
+        requests to the CrowdStrike API.
+
 This script recognizes the following argument:
     -h, --help
         Print this help message and exit.
@@ -724,6 +728,14 @@ get_falcon_credentials() {
     fi
 }
 
+get_user_agent() {
+    local user_agent="crowdstrike-falcon-scripts/$VERSION"
+    if [ -n "$USER_AGENT" ]; then
+        user_agent="${user_agent} ${USER_AGENT}"
+    fi
+    echo "$user_agent"
+}
+
 get_oauth_token() {
     # Get credentials first
     get_falcon_credentials
@@ -735,7 +747,7 @@ get_oauth_token() {
             token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" |
                 curl -X POST -s -x "$proxy" -L "https://$(cs_cloud)/oauth2/token" \
                     -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
-                    -H "User-Agent: crowdstrike-falcon-scripts/$VERSION" \
+                    -H "User-Agent: $(get_user_agent)" \
                     --dump-header "${response_headers}" \
                     --data @-)
 
