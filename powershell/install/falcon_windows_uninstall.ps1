@@ -43,6 +43,8 @@ Member CID, used only in multi-CID ("Falcon Flight Control") configurations and 
 The proxy host for the sensor to use when communicating with CrowdStrike [default: $null]
 .PARAMETER ProxyPort
 The proxy port for the sensor to use when communicating with CrowdStrike [default: $null]
+.PARAMETER UserAgent
+User agent string to append to the User-Agent header when making requests to the CrowdStrike API.
 .PARAMETER Verbose
 Enable verbose logging
 
@@ -107,7 +109,10 @@ param(
     [switch] $GetAccessToken,
 
     [Parameter(Position = 15)]
-    [string] $FalconAccessToken
+    [string] $FalconAccessToken,
+
+    [Parameter(Position = 16)]
+    [string] $UserAgent
 )
 begin {
 
@@ -125,6 +130,14 @@ begin {
     }
     else {
         $PSScriptRoot
+    }
+
+    $ScriptVersion = "1.7.4"
+    $BaseUserAgent = "crowdstrike-falcon-scripts/$ScriptVersion"
+    $FullUserAgent = if ($UserAgent) {
+        "$BaseUserAgent $UserAgent"
+    } else {
+        $BaseUserAgent
     }
 
     function Write-FalconLog ([string] $Source, [string] $Message, [bool] $stdout = $true) {
@@ -177,7 +190,7 @@ begin {
 
     function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [hashtable] $Body, [string] $FalconCloud) {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
-        $Headers.Add('User-Agent', 'crowdstrike-falcon-scripts/1.7.4')
+        $Headers.Add('User-Agent', $FullUserAgent)
         if ($FalconAccessToken) {
             $Headers.Add('Authorization', "bearer $($FalconAccessToken)")
         }
