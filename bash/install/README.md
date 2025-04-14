@@ -33,17 +33,24 @@ API clients are granted one or more API scopes. Scopes allow access to specific 
 Ensure the following API scopes are enabled:
 
 - **Sensor Download** [read]
-- (optional) **Installation Tokens** [read]
-  > This scope allows the installation script to retrieve a provisioning token from the API, but only if installation tokens are required in your environment.
-- (optional) **Sensor update policies** [read]
-  > Use this scope when configuring the `FALCON_SENSOR_UPDATE_POLICY_NAME` environment variable.
-- (optional) **Hosts** [write]
-  > Use this scope when configuring the `FALCON_REMOVE_HOST` environment variable for the uninstall script.
+  > Required for downloading the Falcon Sensor installation package.
+
+- **Installation Tokens** [read]
+  > Required if your environment enforces installation tokens for Falcon Sensor installation.
+
+- **Sensor update policies** [read]
+  > Required when using the `FALCON_SENSOR_UPDATE_POLICY_NAME` environment variable to specify a sensor update policy.
+
+- **Sensor update policies** [write]
+  > Required if you want the uninstall script to automatically retrieve a maintenance token from the API.
+  > Not needed if you directly provide the maintenance token via the `FALCON_MAINTENANCE_TOKEN` environment variable.
+  > Maintenance tokens are required to uninstall sensors that have uninstall protection enabled.
+
+- **Hosts** [write]
+  > Required when using the `FALCON_REMOVE_HOST=true` environment variable with the uninstall script.
   >
   > :warning:
   > It is recommended to use Host Retention Policies in the Falcon console instead.
-
-
 
 ## Configuration
 
@@ -250,7 +257,7 @@ Usage: falcon-linux-uninstall.sh [-h|--help]
 Uninstalls the CrowdStrike Falcon Sensor from Linux operating systems.
 Version: 1.7.4
 
-The script recognizes the following environmental variables:
+This script recognizes the following environmental variables:
 
 Authentication:
     - FALCON_CLIENT_ID                  (default: unset)
@@ -269,6 +276,11 @@ Authentication:
         Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1'].
 
 Other Options:
+    - FALCON_MAINTENANCE_TOKEN          (default: unset)
+        Sensor uninstall maintenance token used to unlock sensor uninstallation.
+        If not provided but FALCON_CLIENT_ID and FALCON_CLIENT_SECRET are set,
+        the script will try to retrieve the token from the API.
+
     - FALCON_REMOVE_HOST                (default: unset)
         Determines whether the host should be removed from the Falcon console after uninstalling the sensor.
         Requires API Authentication.
