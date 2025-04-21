@@ -33,6 +33,7 @@ Other Options
 
     - FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
         The number of versions prior to the latest release to install.
+        For example, 1 would install version N-1.
 
     - FALCON_PROVISIONING_TOKEN         (default: unset)
         The provisioning token to use for installing the sensor.
