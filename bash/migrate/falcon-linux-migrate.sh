@@ -169,7 +169,7 @@ install_sensor() {
     echo -n 'Falcon Sensor Restart  ... '
     cs_sensor_restart
     echo '[ Ok ]'
-    log "INFO" 'Falcon Sensor installed successfully.'
+    echo 'Falcon Sensor installed successfully.'
 }
 
 uninstall_sensor() {
@@ -182,7 +182,7 @@ uninstall_sensor() {
         cs_maintenance_token="$FALCON_MAINTENANCE_TOKEN"
     elif [ -n "$FALCON_CLIENT_ID" ] && [ -n "$FALCON_CLIENT_SECRET" ] && [ -n "$aid" ]; then
         get_maintenance_token
-        log "INFO" "Retrieved maintenance token via API"
+        echo "Retrieved maintenance token via API"
     fi
 
     echo -n 'Removing Falcon Sensor  ... '
@@ -193,7 +193,7 @@ uninstall_sensor() {
         cs_remove_host_from_console
         echo '[ Ok ]'
     fi
-    log "INFO" 'Falcon Sensor removed successfully.'
+    echo 'Falcon Sensor removed successfully.'
 }
 
 # Shared functions
@@ -791,9 +791,9 @@ create_recovery_file() {
     # Create directory if it doesn't exist
     mkdir -p "$(dirname "$path")"
 
-    # Write data to recovery file in simple CSV format
-    echo "OldAid,SensorTags,FalconTags" >"$path"
-    echo "$old_aid,$sensor_tags,$falcon_tags" >>"$path"
+    # Write data to recovery file in CSV format using semicolons as delimiters
+    echo "OldAid;SensorTags;FalconTags" >"$path"
+    echo "$old_aid;$sensor_tags;$falcon_tags" >>"$path"
 
     log "INFO" "Recovery file created at $path"
 }
@@ -807,10 +807,10 @@ read_recovery_file() {
         return 1
     fi
 
-    # Skip header line and read data
-    old_aid=$(tail -n 1 "$path" | cut -d ',' -f 1)
-    sensor_tags=$(tail -n 1 "$path" | cut -d ',' -f 2)
-    falcon_tags=$(tail -n 1 "$path" | cut -d ',' -f 3)
+    # Skip header line and read data using semicolon as delimiter
+    old_aid=$(tail -n 1 "$path" | cut -d ';' -f 1)
+    sensor_tags=$(tail -n 1 "$path" | cut -d ';' -f 2)
+    falcon_tags=$(tail -n 1 "$path" | cut -d ';' -f 3)
 
     log "INFO" "Recovery data loaded: AID=$old_aid"
     return 0
@@ -818,6 +818,8 @@ read_recovery_file() {
 
 # Get the host's tags from a specific Falcon instance
 get_falcon_tags() {
+    local aid="$1"
+
     log "INFO" "Retrieving tags for host with AID: $aid"
 
     local response
@@ -833,10 +835,7 @@ get_falcon_tags() {
 
     # Extract tags from response
     local tags
-    tags=$(echo "$response" | grep -o '"tags":\[[^]]*\]' | sed 's/"tags":\[//;s/\]//')
-
-    # Strip quotes
-    tags=$(echo "$tags" | tr -d '"' | tr ',' ' ')
+    tags=$(echo "$response" | grep 'GroupingTags/' | sed 's/[",]//g' | sed 's/^[[:space:]]*//')
 
     echo "$tags"
 }
@@ -907,11 +906,7 @@ EOF
 
     handle_curl_error $?
 
-    if echo "$response" | grep "authorization failed" >/dev/null; then
-        die "Access denied: Please make sure your Falcon API credentials allow access to host data (scope Host [write])"
-    elif echo "$response" | grep "invalid bearer token" >/dev/null; then
-        die "Invalid Access Token: $cs_falcon_oauth_token"
-    elif echo "$response" | grep "\"updated\":true" >/dev/null; then
+    if [ "$(echo "$response" | json_value "updated" | xargs)" == "true" ]; then
         log "INFO" "Successfully set tags on host"
         return 0
     else
@@ -1235,7 +1230,7 @@ main() {
 
                 # Get the tags
                 local tags
-                tags=$(get_falcon_tags)
+                tags=$(get_falcon_tags "$old_aid")
 
                 # Split tags into sensor and falcon grouping tags
                 local split_result
