@@ -906,7 +906,7 @@ EOF
 
     handle_curl_error $?
 
-    if [ "$(echo "$response" | json_value "updated" | xargs)" == "true" ]; then
+    if [ "$(echo "$response" | json_value "updated" | xargs)" = "true" ]; then
         return 0
     else
         log "WARNING" "Failed to set tags: $response"
