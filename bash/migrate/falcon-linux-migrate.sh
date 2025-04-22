@@ -969,6 +969,90 @@ merge_tags() {
     echo "$merged_tags"
 }
 
+# Function to wait for and set Falcon grouping tags after sensor installation
+set_falcon_grouping_tags() {
+    local migrate_tags=$1
+    local falcon_tags=$2
+
+    # Early return if we don't need to migrate tags
+    if [ "$migrate_tags" != "true" ] || [ -z "$falcon_tags" ]; then
+        log "INFO" "Skipping Falcon grouping tags migration (migrate_tags=$migrate_tags, falcon_tags=${falcon_tags:-empty})"
+        return 0
+    fi
+
+    log "INFO" "Waiting for new sensor registration before setting Falcon grouping tags..."
+
+    # Wait for the new AID to be available
+    local max_wait=60
+    local wait_count=0
+    local new_aid=""
+
+    while [ $wait_count -lt $max_wait ]; do
+        new_aid=$(get_aid)
+        if [ -n "$new_aid" ]; then
+            break
+        fi
+        log "INFO" "Waiting for new AID to be available... ($wait_count/$max_wait)"
+        wait_count=$((wait_count + 1))
+        sleep 5
+    done
+
+    if [ -z "$new_aid" ]; then
+        log "WARNING" "Could not obtain new AID after $max_wait attempts"
+        return 1
+    fi
+
+    log "INFO" "New AID obtained: $new_aid"
+
+    # Merge existing falcon tags with any new falcon tags specified
+    if [ -n "$FALCON_GROUPING_TAGS" ]; then
+        falcon_tags=$(merge_tags "$falcon_tags" "$FALCON_GROUPING_TAGS")
+        log "INFO" "Falcon grouping tags to be migrated: $falcon_tags"
+    fi
+
+    # Format tags for API request
+    local formatted_tags
+    formatted_tags=$(format_tags_for_api "$falcon_tags" "FalconGroupingTags")
+
+    # Set falcon tags via API
+    log "INFO" "Setting Falcon grouping tags via API..."
+    local max_attempts=5
+    local attempt=1
+    local success=false
+
+    while [ $attempt -le $max_attempts ] && [ "$success" = false ]; do
+        if set_falcon_tags "$new_aid" "$formatted_tags"; then
+            success=true
+        else
+            log "WARNING" "Failed to set Falcon tags, attempt $attempt of $max_attempts"
+            attempt=$((attempt + 1))
+            sleep 5
+        fi
+    done
+
+    if [ "$success" = true ]; then
+        log "INFO" "Successfully set Falcon grouping tags"
+        return 0
+    else
+        log "WARNING" "Failed to set Falcon grouping tags after $max_attempts attempts"
+        return 1
+    fi
+}
+
+# Set vars needed for shared auth functions
+authenticate_to_falcon() {
+    local client_id=$1
+    local client_secret=$2
+    local cloud=$3
+    local cid=$4
+
+    FALCON_CLIENT_ID=$client_id
+    FALCON_CLIENT_SECRET=$client_secret
+    FALCON_CID=$cid
+    cs_falcon_cloud="${cloud:-us-1}"
+    get_oauth_token
+}
+
 #### start processing
 set -e
 
@@ -1195,12 +1279,11 @@ main() {
     touch "$log_file"
     echo "Migration file created at: $log_file"
     echo "Migration started at $(date)" >> "$log_file"
+
     # auth with old credentials
-    FALCON_CLIENT_ID=$OLD_FALCON_CLIENT_ID
-    FALCON_CLIENT_SECRET=$OLD_FALCON_CLIENT_SECRET
-    cs_falcon_cloud="${OLD_FALCON_CLOUD:-us-1}"
     log "INFO" "Authenticating to old CID..."
-    get_oauth_token
+    authenticate_to_falcon "$OLD_FALCON_CLIENT_ID" "$OLD_FALCON_CLIENT_SECRET" "$OLD_FALCON_CLOUD"
+
     # Check if we are in recovery mode
     local recovery_mode=false
     if [ -f "$recovery_file" ]; then
@@ -1254,12 +1337,8 @@ main() {
 
     # Install new sensor
     # auth with new credentials
-    FALCON_CLIENT_ID=$NEW_FALCON_CLIENT_ID
-    FALCON_CLIENT_SECRET=$NEW_FALCON_CLIENT_SECRET
-    FALCON_CID=$NEW_FALCON_CID
-    cs_falcon_cloud="${NEW_FALCON_CLOUD:-us-1}"
     log "INFO" "Authenticating to new CID..."
-    get_oauth_token
+    authenticate_to_falcon "$NEW_FALCON_CLIENT_ID" "$NEW_FALCON_CLIENT_SECRET" "$NEW_FALCON_CLOUD" "$NEW_FALCON_CID"
 
     log "INFO" "Checking if tags need to be migrated..."
     # Handle tags if migrating
@@ -1277,63 +1356,9 @@ main() {
     log "INFO" "Installing Falcon sensor to new CID..."
     install_sensor | tee -a "$log_file"
 
-    # If migrate tags - make sure all tags get added
-    # Set Falcon grouping tags if migrating tags and falcon tags exist
-    if [ "$migrate_tags" = "true" ] && [ -n "$falcon_tags" ]; then
-        log "INFO" "Waiting for new sensor registration before setting Falcon grouping tags..."
-
-        # Wait for the new AID to be available
-        local max_wait=60
-        local wait_count=0
-        local new_aid=""
-
-        while [ $wait_count -lt $max_wait ]; do
-            new_aid=$(get_aid)
-            if [ -n "$new_aid" ]; then
-                break
-            fi
-            log "INFO" "Waiting for new AID to be available... ($wait_count/$max_wait)"
-            wait_count=$((wait_count + 1))
-            sleep 5
-        done
-
-        if [ -n "$new_aid" ]; then
-            log "INFO" "New AID obtained: $new_aid"
-
-            # Merge existing falcon tags with any new falcon tags specified
-            if [ -n "$FALCON_GROUPING_TAGS" ]; then
-                falcon_tags=$(merge_tags "$falcon_tags" "$FALCON_GROUPING_TAGS")
-                log "INFO" "Falcon grouping tags to be migrated: $falcon_tags"
-            fi
-
-            # Format tags for API request
-            local formatted_tags
-            formatted_tags=$(format_tags_for_api "$falcon_tags" "FalconGroupingTags")
-
-            # Set falcon tags via API
-            log "INFO" "Setting Falcon grouping tags via API..."
-            local max_attempts=5
-            local attempt=1
-            local success=false
-
-            while [ $attempt -le $max_attempts ] && [ "$success" = false ]; do
-                if set_falcon_tags "$new_aid" "$formatted_tags"; then
-                    success=true
-                else
-                    log "WARNING" "Failed to set Falcon tags, attempt $attempt of $max_attempts"
-                    attempt=$((attempt + 1))
-                    sleep 5
-                fi
-            done
-
-            if [ "$success" = true ]; then
-                log "INFO" "Successfully set Falcon grouping tags"
-            else
-                log "WARNING" "Failed to set Falcon grouping tags after $max_attempts attempts"
-            fi
-        else
-            log "WARNING" "Could not obtain new AID after $max_wait attempts"
-        fi
+    # Set Falcon grouping tags if needed
+    if [ ! "$(set_falcon_grouping_tags "$migrate_tags" "$falcon_tag")" ]; then
+        log "WARNING" "There was an issue setting the Falcon grouping tags"
     fi
 
     # Remove recovery file when done
