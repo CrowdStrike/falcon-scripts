@@ -1,0 +1,25 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: false
+  become: true
+  environment:
+    OLD_FALCON_CLIENT_ID: "{{ lookup('env', 'FALCON_CLIENT_ID') }}"
+    OLD_FALCON_CLIENT_SECRET: "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
+    NEW_FALCON_CLIENT_ID: "{{ lookup('env', 'FALCON_CLIENT_ID') }}"
+    NEW_FALCON_CLIENT_SECRET: "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
+    ALLOW_LEGACY_CURL: "true"
+    FALCON_REMOVE_HOST: "true"
+    FALCON_TAGS: "migrate1,migrate2"
+    FALCON_GROUPING_TAGS: "fg-migrate1,fg-migrate2"
+  tasks:
+    # Execute shell command
+    - name: Migrate Falcon Sensor
+      ansible.builtin.script:
+        cmd: ../../bash/migrate/falcon-linux-migrate.sh
+      register: falcon_install
+
+    # Print stdout
+    - name: Task STDOUT
+      ansible.builtin.debug:
+        msg: "{{ falcon_install.stdout_lines }}"

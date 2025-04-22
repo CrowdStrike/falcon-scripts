@@ -1,0 +1,28 @@
+---
+- name: Prepare (Default)
+  hosts: all
+  become: true
+  environment:
+    FALCON_CLIENT_ID: "{{ lookup('env', 'FALCON_CLIENT_ID') }}"
+    FALCON_CLIENT_SECRET: "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
+    ALLOW_LEGACY_CURL: "true"
+  tasks:
+    # Ubuntu specific
+    - name: Install apt dependencies
+      ansible.builtin.apt:
+        name:
+          - gpg-agent
+          - curl
+        update_cache: true
+      when: ansible_pkg_mgr == 'apt'
+
+    - name: Install dependencies
+      ansible.builtin.package:
+        name:
+          - sudo
+        state: present
+
+    - name: Install Falcon Sensor
+      ansible.builtin.script:
+        cmd: ../../bash/install/falcon-linux-install.sh
+      register: falcon_install
