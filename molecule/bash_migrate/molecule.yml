@@ -5,7 +5,7 @@ driver:
   name: ec2
 # The Default Platform is Ubunutu 20.04 LTS | T2.Micro | us-west-2
 platforms:
-  - name: "${MOLECULE_INSTANCE_NAME:-default-bash-install}"
+  - name: "${MOLECULE_INSTANCE_NAME:-default-bash-migrate}"
     image_owner: "${MOLECULE_IMAGE_OWNER:-099720109477}"
     image_filters:
       - architecture: "${MOLECULE_IMAGE_ARCH:-x86_64}"
