@@ -304,6 +304,13 @@ get_falcon_credentials() {
                 die "Missing FALCON_CLIENT_SECRET environment variable. Please provide your OAuth2 API Client Secret for authentication with CrowdStrike Falcon platform. Establishing and retrieving OAuth2 API credentials can be performed at https://falcon.crowdstrike.com/support/api-clients-and-keys."
             fi
         )
+
+        # Adding suppport for member_cid
+        cs_falcon_member_cid=$(
+            if [ -n "$FALCON_MEMBER_CID" ]; then
+                echo "$FALCON_MEMBER_CID"
+            fi
+        )
     else
         if [ -z "$FALCON_CLOUD" ]; then
             die "If setting the FALCON_ACCESS_TOKEN manually, you must also specify the FALCON_CLOUD"
@@ -329,7 +336,14 @@ get_oauth_token() {
         if [ -n "$FALCON_ACCESS_TOKEN" ]; then
             token=$FALCON_ACCESS_TOKEN
         else
-            token_result=$(echo "client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret" |
+            # Build the auth request payload, adding member_cid if specified
+            auth_payload="client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret"
+
+            if [ -n "$cs_falcon_member_cid" ]; then
+                auth_payload="${auth_payload}&member_cid=${cs_falcon_member_cid}"
+            fi
+
+            token_result=$(echo "$auth_payload" |
                 curl -X POST -s -x "$proxy" -L "https://$(cs_cloud)/oauth2/token" \
                     -H 'Content-Type: application/x-www-form-urlencoded; charset=utf-8' \
                     -H "User-Agent: $(get_user_agent)" \
@@ -1056,11 +1070,13 @@ authenticate_to_falcon() {
     local client_secret=$2
     local cloud=$3
     local cid=$4
+    local member_cid=$5
 
     FALCON_CLIENT_ID=$client_id
     FALCON_CLIENT_SECRET=$client_secret
     FALCON_CID=$cid
     cs_falcon_cloud="${cloud:-us-1}"
+    cs_falcon_member_cid=$member_cid
     get_oauth_token
 }
 
@@ -1293,7 +1309,7 @@ main() {
 
     # auth with old credentials
     log "INFO" "Authenticating to old CID..."
-    authenticate_to_falcon "$OLD_FALCON_CLIENT_ID" "$OLD_FALCON_CLIENT_SECRET" "$OLD_FALCON_CLOUD"
+    authenticate_to_falcon "$OLD_FALCON_CLIENT_ID" "$OLD_FALCON_CLIENT_SECRET" "$OLD_FALCON_CLOUD" "$OLD_FALCON_MEMBER_CID"
 
     # Check if we are in recovery mode
     local recovery_mode=false
@@ -1349,7 +1365,7 @@ main() {
     # Install new sensor
     # auth with new credentials
     log "INFO" "Authenticating to new CID..."
-    authenticate_to_falcon "$NEW_FALCON_CLIENT_ID" "$NEW_FALCON_CLIENT_SECRET" "$NEW_FALCON_CLOUD" "$NEW_FALCON_CID"
+    authenticate_to_falcon "$NEW_FALCON_CLIENT_ID" "$NEW_FALCON_CLIENT_SECRET" "$NEW_FALCON_CLOUD" "$NEW_FALCON_CID" "$NEW_FALCON_MEMBER_CID"
 
     log "INFO" "Checking if tags need to be migrated..."
     # Handle tags if migrating
