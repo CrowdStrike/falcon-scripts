@@ -84,7 +84,7 @@ export [OLD|NEW]FALCON_CLOUD="us-gov-1"
 Usage: falcon-linux-migrate.sh [-h|--help]
 
 Migrates the Falcon sensor to another Falcon CID.
-Version: 1.7.4
+Version: 1.8.0
 
 This script recognizes the following environmental variables:
 
@@ -205,7 +205,7 @@ export OLD_FALCON_CLOUD="us-1"
 export NEW_FALCON_CLIENT_ID="ZZZZZZZ"
 export NEW_FALCON_CLIENT_SECRET="WWWWWWW"
 export NEW_FALCON_CLOUD="us-2"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.7.4/bash/migrate/falcon-linux-migrate.sh | sudo bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
 ```
 
 #### Migrate a sensor to EU-1 with removal from old console
@@ -218,7 +218,7 @@ export NEW_FALCON_CLIENT_ID="ZZZZZZZ"
 export NEW_FALCON_CLIENT_SECRET="WWWWWWW"
 export NEW_FALCON_CLOUD="eu-1"
 export FALCON_REMOVE_HOST="true"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.7.4/bash/migrate/falcon-linux-migrate.sh | sudo bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
 ```
 
 #### Migrate a sensor with custom tags
@@ -230,7 +230,7 @@ export NEW_FALCON_CLIENT_ID="ZZZZZZZ"
 export NEW_FALCON_CLIENT_SECRET="WWWWWWW"
 export FALCON_TAGS="department/it,location/hq"
 export FALCON_GROUPING_TAGS="environment/production,criticality/high"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.7.4/bash/migrate/falcon-linux-migrate.sh | sudo bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
 ```
 
 #### Migrate a sensor from one CID to another within the same cloud
@@ -242,7 +242,7 @@ export OLD_FALCON_CLOUD="us-1"
 export NEW_FALCON_CLIENT_ID="ZZZZZZZ"
 export NEW_FALCON_CLIENT_SECRET="WWWWWWW"
 export NEW_FALCON_CLOUD="us-1"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.7.4/bash/migrate/falcon-linux-migrate.sh | sudo bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
 ```
 
 ## Troubleshooting
@@ -256,7 +256,7 @@ bash -x falcon-linux-migrate.sh
 or
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.7.4/bash/migrate/falcon-linux-migrate.sh | bash -x
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/migrate/falcon-linux-migrate.sh | bash -x
 ```
 
 The script creates a log file at the location specified by `LOG_PATH` (defaults to `/tmp`) with the name format `falcon_migration_YYYYMMDD_HHMMSS.log`. This log contains detailed information about each step of the migration process.

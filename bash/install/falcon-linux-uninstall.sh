@@ -60,7 +60,7 @@ This script recognizes the following argument:
 EOF
 }
 
-VERSION="1.7.4"
+VERSION="1.8.0"
 
 # If -h or --help is passed, print the usage and exit
 if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
