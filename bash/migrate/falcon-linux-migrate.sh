@@ -974,9 +974,15 @@ set_falcon_grouping_tags() {
     local migrate_tags=$1
     local falcon_tags=$2
 
-    # Early return if we don't need to migrate tags
-    if [ "$migrate_tags" != "true" ] || [ -z "$falcon_tags" ]; then
-        log "INFO" "Skipping Falcon grouping tags migration (migrate_tags=$migrate_tags, falcon_tags=${falcon_tags:-empty})"
+    # Skip if we're not migrating tags AND there are no new tags to add
+    if [ "$migrate_tags" != "true" ] && [ -z "$FALCON_GROUPING_TAGS" ]; then
+        log "INFO" "Skipping Falcon grouping tags (migrate_tags=$migrate_tags, no new tags specified)"
+        return 0
+    fi
+
+    # Skip if we have no existing tags to migrate AND no new tags to add
+    if [ -z "$falcon_tags" ] && [ -z "$FALCON_GROUPING_TAGS" ]; then
+        log "INFO" "Skipping Falcon grouping tags (no existing or new tags to apply)"
         return 0
     fi
 
@@ -1004,15 +1010,20 @@ set_falcon_grouping_tags() {
 
     log "INFO" "New AID obtained: $new_aid"
 
-    # Merge existing falcon tags with any new falcon tags specified
+    # If we have new tags to add, merge them with existing tags
+    local tags_to_apply="$falcon_tags"
     if [ -n "$FALCON_GROUPING_TAGS" ]; then
-        falcon_tags=$(merge_tags "$falcon_tags" "$FALCON_GROUPING_TAGS")
-        log "INFO" "Falcon grouping tags to be migrated: $falcon_tags"
+        if [ -n "$tags_to_apply" ]; then
+            tags_to_apply=$(merge_tags "$tags_to_apply" "$FALCON_GROUPING_TAGS")
+        else
+            tags_to_apply="$FALCON_GROUPING_TAGS"
+        fi
+        log "INFO" "Final Falcon grouping tags to apply: $tags_to_apply"
     fi
 
     # Format tags for API request
     local formatted_tags
-    formatted_tags=$(format_tags_for_api "$falcon_tags" "FalconGroupingTags")
+    formatted_tags=$(format_tags_for_api "$tags_to_apply" "FalconGroupingTags")
 
     # Set falcon tags via API
     log "INFO" "Setting Falcon grouping tags via API..."
@@ -1357,7 +1368,7 @@ main() {
     install_sensor | tee -a "$log_file"
 
     # Set Falcon grouping tags if needed
-    if [ ! "$(set_falcon_grouping_tags "$migrate_tags" "$falcon_tag")" ]; then
+    if ! set_falcon_grouping_tags "$migrate_tags" "$falcon_tags"; then
         log "WARNING" "There was an issue setting the Falcon grouping tags"
     fi
 
