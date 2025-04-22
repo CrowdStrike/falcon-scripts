@@ -907,7 +907,6 @@ EOF
     handle_curl_error $?
 
     if [ "$(echo "$response" | json_value "updated" | xargs)" == "true" ]; then
-        log "INFO" "Successfully set tags on host"
         return 0
     else
         log "WARNING" "Failed to set tags: $response"
@@ -1268,7 +1267,7 @@ main() {
         # Merge existing sensor tags with any new tags specified
         if [ -n "$FALCON_TAGS" ]; then
             sensor_tags=$(merge_tags "$sensor_tags" "$FALCON_TAGS")
-            log "INFO" "Merged sensor tags: $sensor_tags"
+            log "INFO" "Sensor grouping tags to be migrated: $sensor_tags"
         fi
 
         # Set the tags for the sensor install
@@ -1304,7 +1303,7 @@ main() {
             # Merge existing falcon tags with any new falcon tags specified
             if [ -n "$FALCON_GROUPING_TAGS" ]; then
                 falcon_tags=$(merge_tags "$falcon_tags" "$FALCON_GROUPING_TAGS")
-                log "INFO" "Merged Falcon grouping tags: $falcon_tags"
+                log "INFO" "Falcon grouping tags to be migrated: $falcon_tags"
             fi
 
             # Format tags for API request
@@ -1340,10 +1339,11 @@ main() {
     # Remove recovery file when done
     if [ -f "$recovery_file" ]; then
         log "INFO" "Removing recovery file..."
-        # rm -f "$recovery_file"
+        rm -f "$recovery_file"
     fi
 
     log "INFO" "Falcon sensor migration completed successfully"
+    log "INFO" "Log file: $log_file"
 }
 
 main "$@"
