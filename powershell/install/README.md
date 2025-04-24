@@ -2,6 +2,15 @@
 
 Powershell scripts to install/uninstall Falcon Sensor through the Falcon APIs on a Windows endpoint.
 
+## Table of Contents
+
+- [Falcon API Permissions](#falcon-api-permissions)
+- [Auto-Discovery of Falcon Cloud Region](#auto-discovery-of-falcon-cloud-region)
+- [Configuration](#configuration)
+- [Install Sensor](#install-sensor)
+- [Uninstall Sensor](#uninstall-sensor)
+- [Troubleshooting](#troubleshooting)
+
 ## Falcon API Permissions
 
 API clients are granted one or more API scopes. Scopes allow access to specific CrowdStrike APIs and describe the actions that an API client can perform.
@@ -51,7 +60,7 @@ You can also specify a Falcon access token if doing a batch install across multi
 >
 > The script will output the access token to the console.
 
-### Install
+## Install Sensor
 
 Uses the CrowdStrike Falcon APIs to check the sensor version assigned to a ***Windows Sensor Update policy***,
 downloads that version, then installs it on the local machine. By default, once complete, the script
@@ -108,7 +117,7 @@ Enable verbose logging
 #>
 ```
 
-***Examples***:
+### Usage
 
 To download the script:
 
@@ -122,7 +131,7 @@ Basic example that will install the sensor with the provided provisioning token
 .\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string> -ProvToken <string>
 ```
 
-### Uninstall
+## Uninstall Sensor
 
 Uninstalls the CrowdStrike Falcon Sensor for Windows. By default, once complete, the script
 deletes itself and the downloaded uninstaller package (if necessary). The individual steps and any related error messages are logged to `'Windows\Temp\csfalcon_uninstall.log'` unless otherwise specified.
@@ -170,7 +179,7 @@ Enable verbose logging
 #>
 ```
 
-***Examples***:
+### Usage
 
 To download the script:
 

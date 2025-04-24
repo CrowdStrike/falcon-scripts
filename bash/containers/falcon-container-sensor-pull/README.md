@@ -6,6 +6,15 @@ A bash script for managing CrowdStrike Falcon container images. Pull from the of
 
 Please refer to the [Deprecation](DEPRECATION.md) document for more information pertaining to deprecated features and upcoming changes in version 2.0.0.
 
+## Table of Contents
+
+- [Table of Contents](#table-of-contents)
+- [Multi-Architecture Support :rocket:](#multi-architecture-support-rocket)
+- [Security recommendations](#security-recommendations)
+- [Prerequisites](#prerequisites)
+- [Auto-Discovery of Falcon Cloud Region](#auto-discovery-of-falcon-cloud-region)
+- [Usage](#usage)
+
 ## Multi-Architecture Support :rocket:
 
 The Falcon Container Sensor Pull script now supports multi-arch images. However, there are some limitations to be aware of:

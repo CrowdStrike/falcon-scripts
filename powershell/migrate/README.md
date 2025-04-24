@@ -4,6 +4,14 @@ A versatile PowerShell script for host migration between Falcon cloud tenants, s
 
 > Can also be used to migrate a sensor from one CID to another within the same cloud.
 
+## Table of Contents
+
+- [Requirements](#requirements)
+- [Auto-Discovery of Falcon Cloud Region](#auto-discovery-of-falcon-cloud-region)
+- [What Does It Do?](#what-does-it-do)
+- [Usage](#usage)
+- [Troubleshooting](#troubleshooting)
+
 ## Requirements
 
 - PowerShell 3.0 or higher

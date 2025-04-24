@@ -10,11 +10,12 @@ The scripts in this repository are organized into the following categories:
 |:-|:-|
 | [Containers](bash/containers) | Shell scripts for working with the CrowdStrike Falcon Container Sensor Images |
 | [Install](bash/install) | Shell scripts for installing/uninstalling the CrowdStrike Falcon Sensor for Linux |
+| [Migrate](bash/migrate) | Shell script to migrate Falcon sensor from one CID to another for Linux |
 
 | PowerShell | Description |
 |:-|:-|
 | [Install](powershell/install) | PowerShell scripts for installing/uninstalling the CrowdStrike Falcon Sensor for Windows |
-| [Migrate](powershell/migrate) | PowerShell script for host migration between Falcon cloud tenants |
+| [Migrate](powershell/migrate) | PowerShell script to migrate Falcon sensor from one CID to another for Windows |
 
 | SystemD | Description |
 |:-|:-|
