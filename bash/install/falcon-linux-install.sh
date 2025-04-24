@@ -601,6 +601,7 @@ cs_cloud() {
         us-2) echo "api.us-2.crowdstrike.com" ;;
         eu-1) echo "api.eu-1.crowdstrike.com" ;;
         us-gov-1) echo "api.laggar.gcw.crowdstrike.com" ;;
+        us-gov-2) echo "api.us-gov-2.crowdstrike.mil" ;;
         *) die "Unrecognized Falcon Cloud: ${cs_falcon_cloud}" ;;
     esac
 }
