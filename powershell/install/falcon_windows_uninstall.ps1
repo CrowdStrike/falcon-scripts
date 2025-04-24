@@ -183,6 +183,7 @@ begin {
             'us-2' { 'https://api.us-2.crowdstrike.com'; break }
             'eu-1' { 'https://api.eu-1.crowdstrike.com'; break }
             'us-gov-1' { 'https://api.laggar.gcw.crowdstrike.com'; break }
+            'us-gov-2' { 'https://api.us-gov-2.crowdstrike.mil'; break }
             default { throw "Provided region $xCsRegion is invalid. Please set FalconCloud to a valid region or 'autodiscover'"; break }
         }
         return $Output
