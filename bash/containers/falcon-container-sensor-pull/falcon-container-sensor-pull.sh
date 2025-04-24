@@ -72,6 +72,7 @@ cs_cloud() {
         us-2) echo "api.us-2.crowdstrike.com" ;;
         eu-1) echo "api.eu-1.crowdstrike.com" ;;
         us-gov-1) echo "api.laggar.gcw.crowdstrike.com" ;;
+        us-gov-2) echo "api.us-gov-2.crowdstrike.mil" ;;
         *) die "Unrecognized region option: ${FALCON_CLOUD}" ;;
     esac
 }
@@ -467,7 +468,10 @@ FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
 cs_registry="registry.crowdstrike.com"
 if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
     cs_registry="registry.laggar.gcw.crowdstrike.com"
+elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
+    cs_registry="registry.us-gov-2.crowdstrike.mil"
 fi
+
 SENSOR_VERSION=$(echo "$SENSOR_VERSION" | tr '[:upper:]' '[:lower:]')
 SENSOR_PLATFORM=$(echo "$SENSOR_PLATFORM" | tr '[:upper:]' '[:lower:]')
 COPY=$(echo "$COPY" | tr '[:upper:]' '[:lower:]')
@@ -543,6 +547,8 @@ registry_opts=$(
     # Account for govcloud api mismatch
     if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
         echo "$SENSOR_TYPE/gov1"
+    elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
+        echo "$SENSOR_TYPE/gov2"
     else
         echo "$SENSOR_TYPE/$FALCON_CLOUD"
     fi
@@ -628,6 +634,8 @@ elif [ "${SENSOR_TYPE}" = "falcon-jobcontroller" ]; then
     registry_opts="falcon-selfhostedregistryassessment"
     if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
         registry_opts="${registry_opts}/gov1"
+    elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
+        registry_opts="${registry_opts}/gov2"
     fi
 elif [ "${SENSOR_TYPE}" = "falcon-registryassessmentexecutor" ]; then
     # overrides for Registry Assessment Executor
@@ -636,6 +644,8 @@ elif [ "${SENSOR_TYPE}" = "falcon-registryassessmentexecutor" ]; then
     registry_opts="falcon-selfhostedregistryassessment"
     if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
         registry_opts="${registry_opts}/gov1"
+    elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
+        registry_opts="${registry_opts}/gov2"
     fi
 fi
 
