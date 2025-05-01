@@ -22,7 +22,7 @@ The Falcon Container Sensor Pull script now supports multi-arch images. However,
 - Currently only the `falcon-sensor` container image supports multi-arch as of 7.15.X.
   - The `falcon-sensor` image supports the following platforms:
     - `x86_64`
-    - `aaarch64`
+    - `aarch64`
 - `--list-tags` will list all tags for a selected platform **and** multi-arch images.
   - This is because multi-arch images support multiple platforms with the same tag.
 - ***Pulling the full multi-arch image locally is not supported***
