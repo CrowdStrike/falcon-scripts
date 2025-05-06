@@ -550,7 +550,12 @@ registry_opts=$(
     elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
         echo "$SENSOR_TYPE/gov2"
     else
-        echo "$SENSOR_TYPE/$FALCON_CLOUD"
+        if [ "${SENSOR_TYPE}" = "falcon-container" ] && [ "${BUILD_STAGE}" = "stage" ]; then
+            falcon_stage_cloud=$(echo "$FALCON_CLOUD" | tr -d '-')
+            echo "$SENSOR_TYPE/$falcon_stage_cloud"
+        else
+            echo "$SENSOR_TYPE/$FALCON_CLOUD"
+        fi
     fi
 )
 
