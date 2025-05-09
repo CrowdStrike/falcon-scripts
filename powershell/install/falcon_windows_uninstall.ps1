@@ -85,7 +85,7 @@ param(
     [switch] $RemoveHost,
 
     [Parameter(Position = 8)]
-    [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1')]
+    [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2')]
     [string] $FalconCloud = 'autodiscover',
 
     [Parameter(Position = 9)]

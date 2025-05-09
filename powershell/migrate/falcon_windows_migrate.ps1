@@ -76,7 +76,7 @@ param(
     [ValidatePattern('\w{40}')]
     [string] $NewFalconClientSecret,
     [Parameter(Position = 3)]
-    [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1')]
+    [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2')]
     [string] $NewFalconCloud = 'autodiscover',
     [Parameter(Position = 4)]
     [string] $NewMemberCid,
@@ -87,7 +87,7 @@ param(
     [ValidatePattern('\w{40}')]
     [string] $OldFalconClientSecret,
     [Parameter(Position = 7)]
-    [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1')]
+    [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2')]
     [string] $OldFalconCloud = 'autodiscover',
     [Parameter(Position = 8)]
     [string] $OldMemberCid,

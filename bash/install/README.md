@@ -103,7 +103,7 @@ The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET`
 ## Install Script
 
 ```terminal
-Usage: falcon-linux-install.sh [-h|--help]
+Usage: ./falcon-linux-install.sh [-h|--help]
 
 Installs and configures the CrowdStrike Falcon Sensor for Linux.
 Version: 1.8.0
@@ -124,7 +124,7 @@ Authentication:
     - FALCON_CLOUD                      (default: unset)
         The cloud region where your CrowdStrike Falcon instance is hosted.
         Required if using FALCON_ACCESS_TOKEN.
-        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1'].
+        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2'].
 
 Other Options
     - FALCON_CID                        (default: auto)
@@ -133,6 +133,7 @@ Other Options
 
     - FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
         The number of versions prior to the latest release to install.
+        For example, 1 would install version N-1.
 
     - FALCON_PROVISIONING_TOKEN         (default: unset)
         The provisioning token to use for installing the sensor.
@@ -190,6 +191,10 @@ Other Options
     - PREP_GOLDEN_IMAGE                 (default: false)
         To prepare the sensor to be used in a golden image.
         Accepted values are ['true', 'false'].
+
+    - USER_AGENT                        (default: unset)
+        User agent string to append to the User-Agent header when making
+        requests to the CrowdStrike API.
 
 This script recognizes the following argument:
     -h, --help
@@ -252,7 +257,7 @@ curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash
 ## Uninstall Script
 
 ```terminal
-Usage: falcon-linux-uninstall.sh [-h|--help]
+Usage: ./falcon-linux-uninstall.sh [-h|--help]
 
 Uninstalls the CrowdStrike Falcon Sensor from Linux operating systems.
 Version: 1.8.0
@@ -273,7 +278,7 @@ Authentication:
     - FALCON_CLOUD                      (default: unset)
         The cloud region where your CrowdStrike Falcon instance is hosted.
         Required if using FALCON_ACCESS_TOKEN.
-        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1'].
+        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2'].
 
 Other Options:
     - FALCON_MAINTENANCE_TOKEN          (default: unset)
@@ -297,6 +302,10 @@ Other Options:
 
     - FALCON_APP                        (default: unset)
         The proxy port for the sensor to use when communicating with CrowdStrike.
+
+    - USER_AGENT                        (default: unset)
+        User agent string to append to the User-Agent header when making
+        requests to the CrowdStrike API.
 
 This script recognizes the following argument:
     -h, --help

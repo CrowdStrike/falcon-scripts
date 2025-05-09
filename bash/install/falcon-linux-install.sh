@@ -24,7 +24,7 @@ Authentication:
     - FALCON_CLOUD                      (default: unset)
         The cloud region where your CrowdStrike Falcon instance is hosted.
         Required if using FALCON_ACCESS_TOKEN.
-        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1'].
+        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2'].
 
 Other Options
     - FALCON_CID                        (default: auto)
