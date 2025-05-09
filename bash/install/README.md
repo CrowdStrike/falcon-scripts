@@ -103,7 +103,7 @@ The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET`
 ## Install Script
 
 ```terminal
-Usage: ./falcon-linux-install.sh [-h|--help]
+Usage: falcon-linux-install.sh [-h|--help]
 
 Installs and configures the CrowdStrike Falcon Sensor for Linux.
 Version: 1.8.0
@@ -257,7 +257,7 @@ curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash
 ## Uninstall Script
 
 ```terminal
-Usage: ./falcon-linux-uninstall.sh [-h|--help]
+Usage: falcon-linux-uninstall.sh [-h|--help]
 
 Uninstalls the CrowdStrike Falcon Sensor from Linux operating systems.
 Version: 1.8.0

@@ -81,7 +81,7 @@ export [OLD|NEW]FALCON_CLOUD="us-gov-1"
 ## Usage
 
 ```terminal
-Usage: ./falcon-linux-migrate.sh [-h|--help]
+Usage: falcon-linux-migrate.sh [-h|--help]
 
 Migrates the Falcon sensor to another Falcon CID.
 Version: 1.8.0

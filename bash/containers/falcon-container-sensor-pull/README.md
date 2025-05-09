@@ -79,7 +79,7 @@ The script supports auto-discovery of the Falcon cloud region. If the cloud regi
 ## Usage
 
 ```terminal
-Usage: ./falcon-container-sensor-pull.sh [options]
+Usage: falcon-container-sensor-pull.sh [options]
 Version: 1.8.0
 
 Required Flags:
