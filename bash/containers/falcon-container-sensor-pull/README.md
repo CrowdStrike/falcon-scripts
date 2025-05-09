@@ -88,7 +88,7 @@ Required Flags:
 
 Optional Flags:
     -f, --cid <FALCON_CID>                         Falcon Customer ID
-    -r, --region <FALCON_CLOUD>                    Falcon Cloud Region [us-1|us-2|eu-1|us-gov-1] (Default: us-1)
+    -r, --region <FALCON_CLOUD>                    Falcon Cloud Region [us-1|us-2|eu-1|us-gov-1|us-gov-2] (Default: us-1)
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
                                                    By default, the image name and tag are appended. Use --copy-omit-image-name
                                                    and/or --copy-custom-tag to change that behavior.

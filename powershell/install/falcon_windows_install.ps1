@@ -76,7 +76,7 @@ Updated 2021-10-22 to include 'sensor_version' property when matching policy to 
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'DeleteScript')]
 param(
     [Parameter(Position = 1)]
-    [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1')]
+    [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2')]
     [string] $FalconCloud = 'autodiscover',
 
     [Parameter(Position = 2)]

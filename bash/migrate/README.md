@@ -101,7 +101,7 @@ Old CID Authentication:
 
     - OLD_FALCON_CLOUD                  (default: 'us-1')
         The cloud region where your old CrowdStrike Falcon instance is hosted.
-        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1'].
+        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2'].
 
 New CID Authentication:
     - NEW_FALCON_CLIENT_ID              (default: unset) [Required]
@@ -116,7 +116,7 @@ New CID Authentication:
 
     - NEW_FALCON_CLOUD                  (default: 'us-1')
         The cloud region where your new CrowdStrike Falcon instance is hosted.
-        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1'].
+        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2'].
 
     - NEW_FALCON_CID                    (default: unset)
         Your CrowdStrike Falcon customer ID (CID) for the new CID.
