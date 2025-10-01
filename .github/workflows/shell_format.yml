@@ -10,7 +10,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Run shfmt with reviewdog
       uses: reviewdog/action-shfmt@v1.0.4
       with:
