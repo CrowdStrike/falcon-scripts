@@ -30,6 +30,7 @@ Optional Flags:
                                                    -----------------------
                                                    falcon-container
                                                    falcon-sensor
+                                                   falcon-sensor-regional
                                                    falcon-kac
                                                    falcon-snapshot
                                                    falcon-imageanalyzer
@@ -443,7 +444,7 @@ detect_container_tool() {
 display_api_scopes() {
     local sensor_type=$1
     case "${sensor_type}" in
-        falcon-sensor | falcon-container | falcon-kac | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor)
+        falcon-sensor | falcon-sensor-regional | falcon-container | falcon-kac | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor)
             echo "Sensor Download [read], Falcon Images Download [read]"
             ;;
         kpagent)
@@ -459,6 +460,68 @@ display_api_scopes() {
             die "Unknown sensor type: ${sensor_type}"
             ;;
     esac
+}
+
+# Smart version matching function
+match_sensor_version() {
+    local requested_version="$1"
+    local all_tags
+    local matched_tags
+    local version_pattern
+
+    # Get all available tags by properly parsing JSON output from list_tags
+    all_tags=$(list_tags | awk '
+        /^[[:space:]]*"[0-9]/ {
+            # Extract quoted tag (lines starting with version numbers), remove surrounding quotes and whitespace
+            gsub(/^[[:space:]]*"/, "")
+            gsub(/"[[:space:]]*,?[[:space:]]*$/, "")
+            if (length($0) > 0) print $0
+        }
+    ')
+
+    if [ -z "$requested_version" ]; then
+        # If no version specified, get the latest version
+        if [ -n "$all_tags" ]; then
+            echo "$all_tags" | sort -V | tail -1
+            return 0
+        else
+            return 1
+        fi
+    fi
+
+    # First try: exact version match (e.g., 6.35.0 matches 6.35.0-*)
+    version_pattern="^${requested_version}[.-]"
+    matched_tags=$(echo "$all_tags" | grep -E "$version_pattern")
+
+    if [ -n "$matched_tags" ]; then
+        echo "$matched_tags" | sort -V | tail -1
+        return 0
+    fi
+
+    # Second try: partial version match (e.g., 6.35 matches 6.35.* versions)
+    # Count dots in requested version to determine specificity
+    dot_count=$(echo "$requested_version" | tr -cd '.' | wc -c)
+
+    if [ "$dot_count" -eq 1 ]; then
+        # For major.minor (e.g., 6.35), match 6.35.* versions
+        version_pattern="^${requested_version}\.[0-9]"
+        matched_tags=$(echo "$all_tags" | grep -E "$version_pattern")
+    elif [ "$dot_count" -eq 0 ]; then
+        # For major only (e.g., 6), match 6.* versions
+        version_pattern="^${requested_version}\.[0-9]"
+        matched_tags=$(echo "$all_tags" | grep -E "$version_pattern")
+    else
+        # For more specific versions, try prefix matching
+        matched_tags=$(echo "$all_tags" | grep "^${requested_version}")
+    fi
+
+    if [ -n "$matched_tags" ]; then
+        echo "$matched_tags" | sort -V | tail -1
+        return 0
+    fi
+
+    # No matches found - fail explicitly
+    return 1
 }
 
 # shellcheck disable=SC2086
@@ -489,12 +552,13 @@ fi
 
 # Check if SENSOR_TYPE is set to a valid value
 case "${SENSOR_TYPE}" in
-    falcon-container | falcon-sensor | falcon-kac | falcon-snapshot | falcon-imageanalyzer | kpagent | fcs | falcon-jobcontroller | falcon-registryassessmentexecutor) ;;
+    falcon-container | falcon-sensor | falcon-sensor-regional | falcon-kac | falcon-snapshot | falcon-imageanalyzer | kpagent | fcs | falcon-jobcontroller | falcon-registryassessmentexecutor) ;;
     *) die """
     Unrecognized sensor type: ${SENSOR_TYPE}
     Valid values are:
         falcon-container
         falcon-sensor
+        falcon-sensor-regional
         falcon-kac
         falcon-snapshot
         falcon-imageanalyzer
@@ -503,6 +567,11 @@ case "${SENSOR_TYPE}" in
         falcon-jobcontroller
         falcon-registryassessmentexecutor""" ;;
 esac
+
+# Add deprecation warning for falcon-sensor-regional
+if [ "${SENSOR_TYPE}" = "falcon-sensor-regional" ]; then
+    echo "WARNING: Use 'falcon-sensor' for the new unified sensor image as the regional sensor images will eventually be EOL."
+fi
 
 #Check all mandatory variables set
 VARIABLES="FALCON_CLIENT_ID FALCON_CLIENT_SECRET"
@@ -536,7 +605,7 @@ cs_falcon_oauth_token=$(
 region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
 rm "${response_headers}"
 
-if [ "x${FALCON_CLOUD}" != "x${region_hint}" ] && [ "${region_hint}" != "" ]; then
+if [ "${FALCON_CLOUD}" != "${region_hint}" ] && [ -n "${region_hint}" ]; then
     if [ -z "${region_hint}" ]; then
         die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
     fi
@@ -544,8 +613,20 @@ if [ "x${FALCON_CLOUD}" != "x${region_hint}" ] && [ "${region_hint}" != "" ]; th
 fi
 
 registry_opts=$(
-    # Account for govcloud api mismatch
-    if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
+    # Handle unified falcon-sensor format (no region)
+    if [ "${SENSOR_TYPE}" = "falcon-sensor" ]; then
+        echo "falcon-sensor"
+    # Handle falcon-sensor-regional with traditional regional paths
+    elif [ "${SENSOR_TYPE}" = "falcon-sensor-regional" ]; then
+        if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
+            echo "falcon-sensor/gov1"
+        elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
+            echo "falcon-sensor/gov2"
+        else
+            echo "falcon-sensor/$FALCON_CLOUD"
+        fi
+    # Account for govcloud api mismatch for other sensor types
+    elif [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
         echo "$SENSOR_TYPE/gov1"
     elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
         echo "$SENSOR_TYPE/gov2"
@@ -738,7 +819,22 @@ if [ "${ERROR}" = "true" ]; then
 fi
 
 #Get latest sensor version
-LATESTSENSOR=$(list_tags | awk -v RS=" " '{print}' | grep -i "$SENSOR_VERSION" | grep -o "[0-9a-zA-Z_\.\-]*" | tail -1)
+set +e  # Temporarily disable exit-on-error for version matching
+LATESTSENSOR=$(match_sensor_version "$SENSOR_VERSION")
+set -e  # Re-enable exit-on-error
+
+# Check if version matching was successful
+if [ -z "$LATESTSENSOR" ]; then
+    die "No sensor version found matching: ${SENSOR_VERSION}
+
+Available versions can be listed with: $0 --list-tags -t ${SENSOR_TYPE}
+
+Tips for version matching:
+  - Use exact version: -v 7.31.0
+  - Use partial version: -v 7.31 (matches latest 7.31.x)
+  - Use major version: -v 7 (matches latest 7.x.x)
+  - Omit -v flag to get the latest available version"
+fi
 
 #Construct full image path
 FULLIMAGEPATH="${REPOSITORY}:${LATESTSENSOR}"
