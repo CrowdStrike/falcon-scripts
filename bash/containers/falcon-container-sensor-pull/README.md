@@ -38,32 +38,13 @@ Refer to the [examples](#examples) section for more information on how to use th
 
 ## Unified Falcon Sensor Image Support
 
-Starting with Falcon sensor for Linux version 7.31 and above, CrowdStrike has introduced a unified image format that simplifies the registry path and tag structure.
+Starting with Falcon sensor for Linux version 7.31 and above, CrowdStrike has introduced a new unified Falcon sensor that utilizes a single container image as opposed to the regional based sensors.
 
-### Unified Format (falcon-sensor)
 
-The `falcon-sensor` type now uses the new unified format:
-
-- **Repository Path**: `registry.crowdstrike.com/falcon-sensor/release/falcon-sensor`
-- **Tag Format**: `<release_number>-<build_number>-<baseImage_number>`
-- **Example**: `registry.crowdstrike.com/falcon-sensor/release/falcon-sensor:7.31.0-15501-1`
-
-**Key Changes:**
-
-- Removes the region section from the repository path
-- Simplifies the tag format by removing `.falcon-linux.Release.<cloud-env>`
-- Uses a single, unified image that works across all regions
-
-### Regional Format (falcon-sensor-regional)
-
-The `falcon-sensor-regional` type maintains the traditional regional format for backward compatibility:
-
-- **Repository Path**: `registry.crowdstrike.com/falcon-sensor/<cloud-env>/release/falcon-sensor`
-- **Tag Format**: `<release_number>-<build_number>-<baseImage_number>.falcon-linux.Release.<cloud-env>`
-- **Example**: `registry.crowdstrike.com/falcon-sensor/us-1/release/falcon-sensor:7.29.0-15501-1.falcon-linux.Release.US-1`
+For additional context and information, please see the [Tech Alert](https://supportportal.crowdstrike.com/s/article/Tech-Alert-60-day-notice-Unified-installer-image-for-Falcon-sensor-for-Linux).
 
 > [!IMPORTANT]
-> **Backward Compatibility**: Existing users of the `falcon-sensor` type will now automatically receive the new unified format. If you need to maintain the traditional regional format for any reason, simply change `-t falcon-sensor` to `-t falcon-sensor-regional` in your commands. No other changes to your scripts or workflows are required.
+> **Backward Compatibility**: Existing users of the `falcon-sensor` type will now automatically receive the new unified sensor. If you need to maintain the traditional regional sensor for any reason, simply change `-t falcon-sensor` to `-t falcon-sensor-regional` in your commands. No other changes to your scripts or workflows are required.
 
 ## Security recommendations
 
@@ -196,8 +177,8 @@ The following sensor types are available to download:
 
 | Sensor Image Name                   | Description                                           |
 | :---------------------------------- | :---------------------------------------------------- |
-| `falcon-sensor`                     | The Falcon sensor for Linux as a DaemonSet deployment (unified format - version 7.31+) |
-| `falcon-sensor-regional`            | The Falcon sensor for Linux as a DaemonSet deployment w/ regions (traditional format) |
+| `falcon-sensor`                     | The Falcon sensor for Linux as a DaemonSet deployment (unified - version 7.31+) |
+| `falcon-sensor-regional`            | The Falcon sensor for Linux as a DaemonSet deployment w/ regions (traditional) |
 | `falcon-container` **(default)**    | The Falcon Container sensor for Linux                 |
 | `falcon-kac`                        | The Falcon Kubernetes Admission Controller            |
 | `falcon-snapshot`                   | The Falcon Snapshot scanner                           |
@@ -220,9 +201,9 @@ The following example will attempt to autodiscover the region and download the l
 --type falcon-kac
 ```
 
-#### Example getting the full image path for the Falcon DaemonSet sensor (unified format)
+#### Example getting the full image path for the Falcon DaemonSet sensor (unified)
 
-The following example will print the image repository path with the latest image tag of the Falcon DaemonSet sensor using the new unified format.
+The following example will print the image repository path with the latest image tag of the Falcon DaemonSet sensor using the new unified sensor.
 
 ```shell
 ./falcon-container-sensor-pull.sh \
@@ -234,9 +215,9 @@ The following example will print the image repository path with the latest image
 
 Example output: `registry.crowdstrike.com/falcon-sensor/release/falcon-sensor:7.31.0-15501-1`
 
-#### Example getting the full image path for the Falcon DaemonSet sensor (regional format)
+#### Example getting the full image path for the Falcon DaemonSet sensor (regional)
 
-The following example will print the image repository path with the latest image tag of the Falcon DaemonSet sensor using the traditional regional format.
+The following example will print the image repository path with the latest image tag of the Falcon DaemonSet sensor using the traditional regional sensor.
 
 ```shell
 ./falcon-container-sensor-pull.sh \
@@ -248,9 +229,9 @@ The following example will print the image repository path with the latest image
 
 Example output: `registry.crowdstrike.com/falcon-sensor/us-1/release/falcon-sensor:7.29.0-15501-1.falcon-linux.Release.US-1`
 
-#### Example downloading the Falcon DaemonSet sensor (unified format)
+#### Example downloading the Falcon DaemonSet sensor (unified)
 
-The following example will download the latest version of the Falcon DaemonSet sensor container image using the unified format and copy it to another registry.
+The following example will download the latest version of the Falcon DaemonSet sensor container image using the unified sensor and copy it to another registry.
 
 ```shell
 ./falcon-container-sensor-pull.sh \
@@ -260,9 +241,9 @@ The following example will download the latest version of the Falcon DaemonSet s
 --copy myregistry.com/mynamespace
 ```
 
-#### Example downloading the Falcon DaemonSet sensor (regional format)
+#### Example downloading the Falcon DaemonSet sensor (regional)
 
-The following example will download the latest version of the Falcon DaemonSet sensor container image using the regional format and copy it to another registry.
+The following example will download the latest version of the Falcon DaemonSet sensor container image using the regional sensor and copy it to another registry.
 
 ```shell
 ./falcon-container-sensor-pull.sh \
