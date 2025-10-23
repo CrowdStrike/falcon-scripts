@@ -301,8 +301,8 @@ begin {
 
     function Format-FalconResponseError($errors) {
         $Message = ''
-        foreach ($error in $errors) {
-            $Message += "`r`n`t $($error.message)"
+        foreach ($err in $errors) {
+            $Message += "`r`n`t $($err.message)"
         }
         return $Message
     }
