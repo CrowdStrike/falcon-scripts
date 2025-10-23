@@ -10,6 +10,7 @@ Please refer to the [Deprecation](DEPRECATION.md) document for more information 
 
 - [Table of Contents](#table-of-contents)
 - [Multi-Architecture Support :rocket:](#multi-architecture-support-rocket)
+- [Unified Falcon Sensor Image Support](#unified-falcon-sensor-image-support)
 - [Security recommendations](#security-recommendations)
 - [Prerequisites](#prerequisites)
 - [Auto-Discovery of Falcon Cloud Region](#auto-discovery-of-falcon-cloud-region)
@@ -34,6 +35,35 @@ Refer to the [examples](#examples) section for more information on how to use th
 
 > [!NOTE]
 > While we do support copying the multi-arch image to a different registry using Podman, Docker, or Skopeo, we recommend using Skopeo for this purpose. Skopeo is a tool specifically designed for copying container images between registries and supports multi-arch images.
+
+## Unified Falcon Sensor Image Support
+
+Starting with Falcon sensor for Linux version 7.31 and above, CrowdStrike has introduced a unified image format that simplifies the registry path and tag structure.
+
+### Unified Format (falcon-sensor)
+
+The `falcon-sensor` type now uses the new unified format:
+
+- **Repository Path**: `registry.crowdstrike.com/falcon-sensor/release/falcon-sensor`
+- **Tag Format**: `<release_number>-<build_number>-<baseImage_number>`
+- **Example**: `registry.crowdstrike.com/falcon-sensor/release/falcon-sensor:7.31.0-15501-1`
+
+**Key Changes:**
+
+- Removes the region section from the repository path
+- Simplifies the tag format by removing `.falcon-linux.Release.<cloud-env>`
+- Uses a single, unified image that works across all regions
+
+### Regional Format (falcon-sensor-regional)
+
+The `falcon-sensor-regional` type maintains the traditional regional format for backward compatibility:
+
+- **Repository Path**: `registry.crowdstrike.com/falcon-sensor/<cloud-env>/release/falcon-sensor`
+- **Tag Format**: `<release_number>-<build_number>-<baseImage_number>.falcon-linux.Release.<cloud-env>`
+- **Example**: `registry.crowdstrike.com/falcon-sensor/us-1/release/falcon-sensor:7.29.0-15501-1.falcon-linux.Release.US-1`
+
+> [!IMPORTANT]
+> **Backward Compatibility**: Existing users of the `falcon-sensor` type will now automatically receive the new unified format. If you need to maintain the traditional regional format for any reason, simply change `-t falcon-sensor` to `-t falcon-sensor-regional` in your commands. No other changes to your scripts or workflows are required.
 
 ## Security recommendations
 
@@ -176,41 +206,6 @@ The following sensor types are available to download:
 | `fcs`                               | The Falcon Cloud Security CLI tool                    |
 | `falcon-jobcontroller`              | The Self Hosted Registry Assessment Jobs Controller   |
 | `falcon-registryassessmentexecutor` | The Self Hosted Registry Assessment Executor          |
-
-### Falcon Sensor Image Formats
-
-Starting with Falcon sensor for Linux version 7.31 and above, CrowdStrike has introduced a unified image format that simplifies the registry path and tag structure.
-
-#### Unified Format (falcon-sensor)
-
-The `falcon-sensor` type now uses the new unified format:
-
-- **Repository Path**: `registry.crowdstrike.com/falcon-sensor/release/falcon-sensor`
-- **Tag Format**: `<release_number>-<build_number>-<baseImage_number>`
-- **Example**: `registry.crowdstrike.com/falcon-sensor/release/falcon-sensor:7.31.0-15501-1`
-
-**Key Changes:**
-
-- Removes the region section from the repository path
-- Simplifies the tag format by removing `.falcon-linux.Release.<cloud-env>`
-- Uses a single, unified image that works across all regions
-
-#### Regional Format (falcon-sensor-regional)
-
-The `falcon-sensor-regional` type maintains the traditional regional format for backward compatibility:
-
-- **Repository Path**: `registry.crowdstrike.com/falcon-sensor/<cloud-env>/release/falcon-sensor`
-- **Tag Format**: `<release_number>-<build_number>-<baseImage_number>.falcon-linux.Release.<cloud-env>`
-- **Example**: `registry.crowdstrike.com/falcon-sensor/us-1/release/falcon-sensor:7.29.0-15501-1.falcon-linux.Release.US-1`
-
-**When to Use:**
-
-- Use `falcon-sensor` for new deployments (recommended for version 7.31+)
-- Use `falcon-sensor-regional` for backward compatibility or when you specifically need the regional sensor image format
-- Both types provide the same functionality; the difference is in the image format and repository structure
-
-> [!NOTE]
-> **Backward Compatibility**: Existing users of the `falcon-sensor` type will now automatically receive the new unified format. If you need to maintain the traditional regional format for any reason, simply change `-t falcon-sensor` to `-t falcon-sensor-regional` in your commands. No other changes to your scripts or workflows are required.
 
 ### Examples
 
