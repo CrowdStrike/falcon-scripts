@@ -16,7 +16,7 @@ uninstall and the OAuth2 API Client being used requires 'sensor-update-policies:
 .PARAMETER MaintenanceToken
 Sensor uninstall maintenance token. If left undefined, the script will attempt to retrieve the token from the API assuming the FalconClientId|FalconClientSecret are defined.
 .PARAMETER UninstallParams
-Sensor uninstall parameters ['/uninstall /quiet' if left undefined]
+Sensor uninstall parameters ['/uninstall /quiet' if left undefined. Remove '/uninstall' as parameter if the standalone uninstaller is used.]
 .PARAMETER UninstallTool
 Sensor uninstall tool, local installation cache or CS standalone uninstaller ['installcache' if left undefined]
 .PARAMETER LogPath
