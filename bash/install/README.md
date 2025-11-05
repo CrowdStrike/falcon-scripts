@@ -208,7 +208,7 @@ To download and run the script directly:
 ```bash
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-install.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-install.sh | sudo -E bash
 ```
 
 Alternatively, download the script and run it locally:
@@ -217,13 +217,13 @@ Alternatively, download the script and run it locally:
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 curl -O https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-install.sh
-bash falcon-linux-install.sh
+sudo -E bash falcon-linux-install.sh  # Use -E to preserve environment variables
 ```
 
 Or pass the environment variables directly to the script:
 
 ```bash
-FALCON_CLIENT_ID="XXXXXXX" FALCON_CLIENT_SECRET="YYYYYYYYY" bash falcon-linux-install.sh
+sudo FALCON_CLIENT_ID="XXXXXXX" FALCON_CLIENT_SECRET="YYYYYYYYY" bash falcon-linux-install.sh
 ```
 
 ### Examples
@@ -233,7 +233,7 @@ FALCON_CLIENT_ID="XXXXXXX" FALCON_CLIENT_SECRET="YYYYYYYYY" bash falcon-linux-in
 ```bash
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-install.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-install.sh | sudo -E bash
 ```
 
 #### Install the Falcon Sensor with the previous version (n-1)
@@ -242,7 +242,7 @@ curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 export FALCON_SENSOR_VERSION_DECREMENT=1
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-install.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-install.sh | sudo -E bash
 ```
 
 #### Create a Golden Image
@@ -251,7 +251,7 @@ curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 export PREP_GOLDEN_IMAGE="true"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-install.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-install.sh | sudo -E bash
 ```
 
 ## Uninstall Script
@@ -317,14 +317,14 @@ This script recognizes the following argument:
 To download and run the script directly
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-uninstall.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-uninstall.sh | sudo bash
 ```
 
 Alternatively, download the script and run it locally
 
 ```bash
 curl -O https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-uninstall.sh
-bash falcon-linux-uninstall.sh
+sudo bash falcon-linux-uninstall.sh
 ```
 
 ### Examples
@@ -332,7 +332,7 @@ bash falcon-linux-uninstall.sh
 #### Uninstall the Falcon Sensor
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-uninstall.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-uninstall.sh | sudo bash
 ```
 
 ## Troubleshooting
@@ -340,11 +340,11 @@ curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash
 To troubleshoot installation issues, run the script by using `bash -x`:
 
 ```bash
-bash -x falcon-linux-install.sh
+sudo -E bash -x falcon-linux-install.sh
 ```
 
 or
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-install.sh | bash -x
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.8.0/bash/install/falcon-linux-install.sh | sudo -E bash -x
 ```
