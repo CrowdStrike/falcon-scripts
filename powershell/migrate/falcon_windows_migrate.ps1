@@ -432,7 +432,12 @@ function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $Uninst
     }
     catch {
         Write-VerboseLog -VerboseInput $_.Exception -PreMessage 'Invoke-FalconUninstall - CAUGHT EXCEPTION - $_.Exception:'
-        $message = "Error uninstalling Falcon Sensor: $($_.Exception.Message)"
+        $errorMessage = if ($_.Exception -and $_.Exception.Message) {
+            $_.Exception.Message
+        } else {
+            "Unknown error occurred"
+        }
+        $message = "Error uninstalling Falcon Sensor: $errorMessage"
         throw $message
     }
 }
@@ -615,7 +620,12 @@ function Invoke-FalconInstall ([hashtable] $WebRequestParams, [string] $InstallP
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message $Message
     }
     catch {
-        $message = "Error installing Falcon Sensor: $($_.Exception.Message)"
+        $errorMessage = if ($_.Exception -and $_.Exception.Message) {
+            $_.Exception.Message
+        } else {
+            "Unknown error occurred"
+        }
+        $message = "Error installing Falcon Sensor: $errorMessage"
         throw $message
     }
 }
