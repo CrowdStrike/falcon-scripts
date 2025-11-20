@@ -10,6 +10,7 @@ Please refer to the [Deprecation](DEPRECATION.md) document for more information 
 
 - [Table of Contents](#table-of-contents)
 - [Multi-Architecture Support :rocket:](#multi-architecture-support-rocket)
+- [Unified Falcon Sensor Image Support](#unified-falcon-sensor-image-support)
 - [Security recommendations](#security-recommendations)
 - [Prerequisites](#prerequisites)
 - [Auto-Discovery of Falcon Cloud Region](#auto-discovery-of-falcon-cloud-region)
@@ -35,6 +36,16 @@ Refer to the [examples](#examples) section for more information on how to use th
 > [!NOTE]
 > While we do support copying the multi-arch image to a different registry using Podman, Docker, or Skopeo, we recommend using Skopeo for this purpose. Skopeo is a tool specifically designed for copying container images between registries and supports multi-arch images.
 
+## Unified Falcon Sensor Image Support
+
+Starting with Falcon sensor for Linux version 7.31 and above, CrowdStrike has introduced a new unified Falcon sensor that utilizes a single container image as opposed to the regional based sensors.
+
+
+For additional context and information, please see the [Tech Alert](https://supportportal.crowdstrike.com/s/article/Tech-Alert-60-day-notice-Unified-installer-image-for-Falcon-sensor-for-Linux).
+
+> [!IMPORTANT]
+> **Backward Compatibility**: Existing users of the `falcon-sensor` type will now automatically receive the new unified sensor. If you need to maintain the traditional regional sensor for any reason, simply change `-t falcon-sensor` to `-t falcon-sensor-regional` in your commands. No other changes to your scripts or workflows are required.
+
 ## Security recommendations
 
 ### Use cURL version 7.55.0 or later
@@ -55,7 +66,7 @@ To check your version of cURL, run the following command: `curl --version`
 > [!IMPORTANT]
 > The following API scopes are the minimum required to retrieve the images. If you need to perform other operations post-retrieval, please refer to the CrowdStrike documentation to identify any additional scopes that may be required.
 
-- **falcon-sensor | falcon-container | falcon-kac | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor**
+- **falcon-sensor | falcon-sensor-regional | falcon-container | falcon-kac | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor**
   - `Sensor Download (read)`
   - `Falcon Images Download (read)`
 - **kpagent**
@@ -100,6 +111,7 @@ Optional Flags:
                                                    -----------------------
                                                    falcon-container
                                                    falcon-sensor
+                                                   falcon-sensor-regional
                                                    falcon-kac
                                                    falcon-snapshot
                                                    falcon-imageanalyzer
@@ -138,7 +150,7 @@ Help Options:
 | `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)             | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`. <br> *\*By default, the image name and tag are appended. Use `--copy-omit-image-name` and/or `--copy-custom-tag` to change that behavior.*           |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)             | Specify sensor version to retrieve from the registry                                                                                                                                                                                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)             | Specify sensor platform to retrieve from the registry                                                                                                                                                                                                    |
-| `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`          | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-kac`, `falcon-snapshot`, `falcon-imageanalyzer`, `kpagent`, `fcs`, `falcon-jobcontroller`, `falcon-registryassessmentexecutor`] ([see more details below](#sensor-types)) |
+| `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`          | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-sensor-regional`, `falcon-kac`, `falcon-snapshot`, `falcon-imageanalyzer`, `kpagent`, `fcs`, `falcon-jobcontroller`, `falcon-registryassessmentexecutor`] ([see more details below](#sensor-types)) |
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)           | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.                                                                                                                                                                       |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)            | Print registry credentials to stdout to copy/paste into container tools                                                                                                                                                                                  |
 | `--get-image-path`                             | N/A                     | `None`                        | Get the full image path including the registry, repository, and latest tag for the specified `SENSOR_TYPE`.                                                                                                                                              |
@@ -165,7 +177,8 @@ The following sensor types are available to download:
 
 | Sensor Image Name                   | Description                                           |
 | :---------------------------------- | :---------------------------------------------------- |
-| `falcon-sensor`                     | The Falcon sensor for Linux as a DaemonSet deployment |
+| `falcon-sensor`                     | The Falcon sensor for Linux as a DaemonSet deployment (unified - version 7.31+) |
+| `falcon-sensor-regional`            | The Falcon sensor for Linux as a DaemonSet deployment w/ regions (traditional) |
 | `falcon-container` **(default)**    | The Falcon Container sensor for Linux                 |
 | `falcon-kac`                        | The Falcon Kubernetes Admission Controller            |
 | `falcon-snapshot`                   | The Falcon Snapshot scanner                           |
@@ -188,9 +201,9 @@ The following example will attempt to autodiscover the region and download the l
 --type falcon-kac
 ```
 
-#### Example getting the full image path for the Falcon DaemonSet sensor
+#### Example getting the full image path for the Falcon DaemonSet sensor (unified)
 
-The following example will print the image repository path with the latest image tag of the Falcon DaemonSet sensor.
+The following example will print the image repository path with the latest image tag of the Falcon DaemonSet sensor using the new unified sensor.
 
 ```shell
 ./falcon-container-sensor-pull.sh \
@@ -200,16 +213,44 @@ The following example will print the image repository path with the latest image
 --get-image-path
 ```
 
-#### Example downloading the Falcon DaemonSet sensor
+Example output: `registry.crowdstrike.com/falcon-sensor/release/falcon-sensor:7.31.0-15501-1`
 
-The following example will download the latest version of the Falcon DaemonSet sensor container image and copy it to another registry.
+#### Example getting the full image path for the Falcon DaemonSet sensor (regional)
+
+The following example will print the image repository path with the latest image tag of the Falcon DaemonSet sensor using the traditional regional sensor.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-sensor-regional \
+--get-image-path
+```
+
+Example output: `registry.crowdstrike.com/falcon-sensor/us-1/release/falcon-sensor:7.29.0-15501-1.falcon-linux.Release.US-1`
+
+#### Example downloading the Falcon DaemonSet sensor (unified)
+
+The following example will download the latest version of the Falcon DaemonSet sensor container image using the unified sensor and copy it to another registry.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-sensor \
+--copy myregistry.com/mynamespace
+```
+
+#### Example downloading the Falcon DaemonSet sensor (regional)
+
+The following example will download the latest version of the Falcon DaemonSet sensor container image using the regional sensor and copy it to another registry.
 
 ```shell
 ./falcon-container-sensor-pull.sh \
 --client-id <FALCON_CLIENT_ID> \
 --client-secret <FALCON_CLIENT_SECRET> \
 --region us-2 \
---type falcon-sensor \
+--type falcon-sensor-regional \
 --copy myregistry.com/mynamespace
 ```
 
