@@ -8,3 +8,6 @@
 .vagrant
 .vscode
 Vagrantfile
+
+# local testing
+tests/

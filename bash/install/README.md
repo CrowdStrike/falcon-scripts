@@ -163,9 +163,10 @@ Other Options
         For sensor backend.
         Accepted values are values: [auto|bpf|kernel].
 
-    - FALCON_TRACE                      (default: none)
-        To configure the trace level.
-        Accepted values are [none|err|warn|info|debug]
+    - FALCON_SENSOR_CLOUD               (default: unset)
+        To pin the cloud region for unified sensor installations.
+        This allows specifying the cloud region for unified sensors at installation time.
+        Accepted values are [us-1|us-2|eu-1|us-gov-1|us-gov-2].
 
     - FALCON_UNINSTALL                  (default: false)
         To uninstall the falcon sensor.

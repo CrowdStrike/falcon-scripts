@@ -63,9 +63,10 @@ Other Options
         For sensor backend.
         Accepted values are values: [auto|bpf|kernel].
 
-    - FALCON_TRACE                      (default: none)
-        To configure the trace level.
-        Accepted values are [none|err|warn|info|debug]
+    - FALCON_SENSOR_CLOUD               (default: unset)
+        To pin the cloud region for unified sensor installations.
+        This allows specifying the cloud region for unified sensors at installation time.
+        Accepted values are [us-1|us-2|eu-1|us-gov-1|us-gov-2].
 
     - FALCON_UNINSTALL                  (default: false)
         To uninstall the falcon sensor.
@@ -193,10 +194,10 @@ cs_sensor_register() {
         cs_falconctl_opt_backend=--backend="${cs_falcon_backend}"
         cs_falcon_args="$cs_falcon_args $cs_falconctl_opt_backend"
     fi
-    # add the trace level to the params
-    if [ -n "${cs_falcon_trace}" ]; then
-        cs_falconctl_opt_trace=--trace="${cs_falcon_trace}"
-        cs_falcon_args="$cs_falcon_args $cs_falconctl_opt_trace"
+    # add the cloud region to the params for unified sensors
+    if [ -n "${cs_falcon_sensor_cloud}" ]; then
+        cs_falconctl_opt_cloud=--cloud="${cs_falcon_sensor_cloud}"
+        cs_falcon_args="$cs_falcon_args $cs_falconctl_opt_cloud"
     fi
     # run the configuration command
     # shellcheck disable=SC2086
@@ -1042,26 +1043,26 @@ if [ -n "$FALCON_BACKEND" ]; then
     )
 fi
 
-if [ -n "$FALCON_TRACE" ]; then
-    cs_falcon_trace=$(
-        case "${FALCON_TRACE}" in
-            none)
-                echo "none"
+if [ -n "$FALCON_SENSOR_CLOUD" ]; then
+    cs_falcon_sensor_cloud=$(
+        case "${FALCON_SENSOR_CLOUD}" in
+            us-1)
+                echo "us-1"
                 ;;
-            err)
-                echo "err"
+            us-2)
+                echo "us-2"
                 ;;
-            warn)
-                echo "warn"
+            eu-1)
+                echo "eu-1"
                 ;;
-            info)
-                echo "info"
+            us-gov-1)
+                echo "us-gov-1"
                 ;;
-            debug)
-                echo "debug"
+            us-gov-2)
+                echo "us-gov-2"
                 ;;
             *)
-                die "Unrecognized TRACE: ${FALCON_TRACE} value must be one of : [none|err|warn|info|debug]"
+                die "Unrecognized SENSOR_CLOUD: ${FALCON_SENSOR_CLOUD} value must be one of : [us-1|us-2|eu-1|us-gov-1|us-gov-2]"
                 ;;
         esac
     )
