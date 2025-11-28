@@ -40,7 +40,6 @@ Refer to the [examples](#examples) section for more information on how to use th
 
 Starting with Falcon sensor for Linux version 7.31 and above, CrowdStrike has introduced a new unified Falcon sensor that utilizes a single container image as opposed to the regional based sensors.
 
-
 For additional context and information, please see the [Tech Alert](https://supportportal.crowdstrike.com/s/article/Tech-Alert-60-day-notice-Unified-installer-image-for-Falcon-sensor-for-Linux).
 
 > [!IMPORTANT]
@@ -91,7 +90,7 @@ The script supports auto-discovery of the Falcon cloud region. If the cloud regi
 
 ```terminal
 Usage: falcon-container-sensor-pull.sh [options]
-Version: 1.9.0
+Version: 1.10.0
 
 Required Flags:
     -u, --client-id <FALCON_CLIENT_ID>             Falcon API OAUTH Client ID
