@@ -42,9 +42,10 @@ CrowdStrike now provides unified images that work across all regions:
 
 - **`falcon-sensor`** (unified) - Single sensor image for version 7.31+
 - **`falcon-container`** (unified) - Single container image for version 7.33+
+- **`falcon-kac`** (unified) - Single KAC image for version 7.33+
 
 > [!IMPORTANT]
-> **Backward Compatibility**: Existing users automatically receive unified images. For regional images, use `-t falcon-sensor-regional` or `-t falcon-container-regional`.
+> **Backward Compatibility**: Existing users automatically receive unified images. For regional images, use `-t falcon-sensor-regional`, `-t falcon-container-regional`, or `-t falcon-kac-regional`.
 
 ## Security recommendations
 
@@ -66,7 +67,7 @@ To check your version of cURL, run the following command: `curl --version`
 > [!IMPORTANT]
 > The following API scopes are the minimum required to retrieve the images. If you need to perform other operations post-retrieval, please refer to the CrowdStrike documentation to identify any additional scopes that may be required.
 
-- **falcon-sensor | falcon-sensor-regional | falcon-container | falcon-container-regional | falcon-kac | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor**
+- **falcon-sensor | falcon-sensor-regional | falcon-container | falcon-container-regional | falcon-kac | falcon-kac-regional | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor**
   - `Sensor Download (read)`
   - `Falcon Images Download (read)`
 - **kpagent**
