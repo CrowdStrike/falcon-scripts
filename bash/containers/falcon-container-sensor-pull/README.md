@@ -36,39 +36,15 @@ Refer to the [examples](#examples) section for more information on how to use th
 > [!NOTE]
 > While we do support copying the multi-arch image to a different registry using Podman, Docker, or Skopeo, we recommend using Skopeo for this purpose. Skopeo is a tool specifically designed for copying container images between registries and supports multi-arch images.
 
-## Unified Falcon Sensor Image Support
+## Unified Image Support
 
-Starting with Falcon sensor for Linux version 7.31 and above, CrowdStrike has introduced a new unified Falcon sensor that utilizes a single container image as opposed to the regional based sensors.
+CrowdStrike now provides unified images that work across all regions:
 
-For additional context and information, please see the [Tech Alert](https://supportportal.crowdstrike.com/s/article/Tech-Alert-60-day-notice-Unified-installer-image-for-Falcon-sensor-for-Linux).
-
-> [!IMPORTANT]
-> **Backward Compatibility**: Existing users of the `falcon-sensor` type will now automatically receive the new unified sensor. If you need to maintain the traditional regional sensor for any reason, simply change `-t falcon-sensor` to `-t falcon-sensor-regional` in your commands. No other changes to your scripts or workflows are required.
-
-## Unified Falcon Container Image Support
-
-Starting with Falcon Container sensor for Linux version 7.33 and above, CrowdStrike has introduced a new unified Falcon container image that eliminates the need to specify region information when deploying the Falcon container sensor for Linux.
-
-### Key Changes
-
-- **Image name**: Changed from `falcon-sensor` to `falcon-container`
-- **Registry path**: Removes region-specific directory (e.g., `/us-1/`, `/eu-1/`)
-- **Tag format**: Simplified by removing `.container.Release.<cloud-env>` suffix
-
-### Image Format Comparison
-
-**Unified Format** (Version 7.33+):
-```
-registry.crowdstrike.com/falcon-container/release/falcon-container:7.33.0-7201-1
-```
-
-**Regional Format** (Version 7.32 and earlier):
-```
-registry.crowdstrike.com/falcon-container/us-1/release/falcon-sensor:7.29.0-6801.container.Release.US-1
-```
+- **`falcon-sensor`** (unified) - Single sensor image for version 7.31+
+- **`falcon-container`** (unified) - Single container image for version 7.33+
 
 > [!IMPORTANT]
-> **Backward Compatibility**: Existing users of the `falcon-container` type will now automatically receive the new unified container image. If you need to maintain the traditional regional container format for any reason, simply change `-t falcon-container` to `-t falcon-container-regional` in your commands. No other changes to your scripts or workflows are required.
+> **Backward Compatibility**: Existing users automatically receive unified images. For regional images, use `-t falcon-sensor-regional` or `-t falcon-container-regional`.
 
 ## Security recommendations
 
