@@ -45,6 +45,31 @@ For additional context and information, please see the [Tech Alert](https://supp
 > [!IMPORTANT]
 > **Backward Compatibility**: Existing users of the `falcon-sensor` type will now automatically receive the new unified sensor. If you need to maintain the traditional regional sensor for any reason, simply change `-t falcon-sensor` to `-t falcon-sensor-regional` in your commands. No other changes to your scripts or workflows are required.
 
+## Unified Falcon Container Image Support
+
+Starting with Falcon Container sensor for Linux version 7.33 and above, CrowdStrike has introduced a new unified Falcon container image that eliminates the need to specify region information when deploying the Falcon container sensor for Linux.
+
+### Key Changes
+
+- **Image name**: Changed from `falcon-sensor` to `falcon-container`
+- **Registry path**: Removes region-specific directory (e.g., `/us-1/`, `/eu-1/`)
+- **Tag format**: Simplified by removing `.container.Release.<cloud-env>` suffix
+
+### Image Format Comparison
+
+**Unified Format** (Version 7.33+):
+```
+registry.crowdstrike.com/falcon-container/release/falcon-container:7.33.0-7201-1
+```
+
+**Regional Format** (Version 7.32 and earlier):
+```
+registry.crowdstrike.com/falcon-container/us-1/release/falcon-sensor:7.29.0-6801.container.Release.US-1
+```
+
+> [!IMPORTANT]
+> **Backward Compatibility**: Existing users of the `falcon-container` type will now automatically receive the new unified container image. If you need to maintain the traditional regional container format for any reason, simply change `-t falcon-container` to `-t falcon-container-regional` in your commands. No other changes to your scripts or workflows are required.
+
 ## Security recommendations
 
 ### Use cURL version 7.55.0 or later
@@ -65,7 +90,7 @@ To check your version of cURL, run the following command: `curl --version`
 > [!IMPORTANT]
 > The following API scopes are the minimum required to retrieve the images. If you need to perform other operations post-retrieval, please refer to the CrowdStrike documentation to identify any additional scopes that may be required.
 
-- **falcon-sensor | falcon-sensor-regional | falcon-container | falcon-kac | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor**
+- **falcon-sensor | falcon-sensor-regional | falcon-container | falcon-container-regional | falcon-kac | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor**
   - `Sensor Download (read)`
   - `Falcon Images Download (read)`
 - **kpagent**
