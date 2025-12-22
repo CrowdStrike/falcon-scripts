@@ -492,14 +492,17 @@ function Invoke-FalconInstall ([hashtable] $WebRequestParams, [string] $InstallP
         $policyDetails = Get-ResourceContent -WebRequestParams $WebRequestParams -url $url -logKey 'GetPolicy' -scope $policy_scope -errorMessage "Unable to fetch policy details from the CrowdStrike Falcon API." -Headers $newCloudHeaders
         $policyId = $policyDetails.id
         $build = $policyDetails[0].settings.build
-        $version = $policyDetails[0].settings.sensor_version
+        $rawVersion = $policyDetails[0].settings.sensor_version
 
         # Make sure we got a version from the policy
-        if (!$version) {
+        if (!$rawVersion) {
             $message = "Unable to retrieve sensor version from policy '$($SensorUpdatePolicyName)'. Please check the policy and try again."
             Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
             throw $message
         }
+
+        # Normalize version to remove LTS suffixes for API compatibility
+        $version = ($rawVersion -split '\s+')[0].Trim()
 
         $message = "Retrieved sensor policy details: Policy ID: $policyId, Build: $build, Version: $version"
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
