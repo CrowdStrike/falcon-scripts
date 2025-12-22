@@ -90,7 +90,7 @@ The script supports auto-discovery of the Falcon cloud region. If the cloud regi
 
 ```terminal
 Usage: falcon-container-sensor-pull.sh [options]
-Version: 1.10.0
+Version: 1.10.1
 
 Required Flags:
     -u, --client-id <FALCON_CLIENT_ID>             Falcon API OAUTH Client ID
