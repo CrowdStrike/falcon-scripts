@@ -507,19 +507,22 @@ process {
     $policyDetails = Get-ResourceContent -WebRequestParams $WebRequestParams -url $url -logKey 'GetPolicy' -scope $policy_scope -errorMessage "Unable to fetch policy details from the CrowdStrike Falcon API."
     $policyId = $policyDetails.id
     $build = $policyDetails[0].settings.build
-    $version = $policyDetails[0].settings.sensor_version
+    $rawVersion = $policyDetails[0].settings.sensor_version
 
     # Make sure we got a version from the policy
-    if (!$version) {
+    if (!$rawVersion) {
         $message = "Unable to retrieve sensor version from policy '$($SensorUpdatePolicyName)'. Please check the policy and try again."
         Write-FalconLog 'GetPolicy' $message
         throw $message
     }
 
+    # Normalize version to remove LTS suffixes for API compatibility
+    $version = ($rawVersion -split '\s+')[0].Trim()
+
     $message = "Retrieved sensor policy details: Policy ID: $policyId, Build: $build, Version: $version"
     Write-FalconLog 'GetPolicy' $message
 
-    # Get installer details based on policy version
+    # Get installer details based on normalized policy version
     $message = "Retrieving installer details for sensor version: '$($version)'"
     Write-FalconLog 'GetInstaller' $message
     $encodedFilter = [System.Web.HttpUtility]::UrlEncode("platform:'windows'+version:'$($version)'")
