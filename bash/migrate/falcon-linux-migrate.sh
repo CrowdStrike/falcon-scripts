@@ -665,9 +665,14 @@ os_install_package() {
             rpm_install_package "$pkg"
             ;;
         Debian)
+            # Refresh package cache to handle stale cache issues
+            DEBIAN_FRONTEND=noninteractive apt-get -qq update >/dev/null 2>&1 || true
             DEBIAN_FRONTEND=noninteractive apt-get -qq install -y "$pkg" >/dev/null
             ;;
         Ubuntu)
+            # Refresh package cache to handle stale cache issues
+            DEBIAN_FRONTEND=noninteractive apt-get -qq update >/dev/null 2>&1 || true
+
             # If this is ubuntu 14, we need to use dpkg instead
             if [ "${cs_os_version}" -eq 14 ]; then
                 DEBIAN_FRONTEND=noninteractive dpkg -i "$pkg" >/dev/null 2>&1 || true
