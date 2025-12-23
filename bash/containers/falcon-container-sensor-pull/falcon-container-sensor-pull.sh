@@ -29,9 +29,11 @@ Optional Flags:
                                                    Available sensor types:
                                                    -----------------------
                                                    falcon-container
+                                                   falcon-container-regional
                                                    falcon-sensor
                                                    falcon-sensor-regional
                                                    falcon-kac
+                                                   falcon-kac-regional
                                                    falcon-snapshot
                                                    falcon-imageanalyzer
                                                    kpagent
@@ -444,7 +446,7 @@ detect_container_tool() {
 display_api_scopes() {
     local sensor_type=$1
     case "${sensor_type}" in
-        falcon-sensor | falcon-sensor-regional | falcon-container | falcon-kac | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor)
+        falcon-sensor | falcon-sensor-regional | falcon-container | falcon-container-regional | falcon-kac | falcon-kac-regional | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor)
             echo "Sensor Download [read], Falcon Images Download [read]"
             ;;
         kpagent)
@@ -552,14 +554,16 @@ fi
 
 # Check if SENSOR_TYPE is set to a valid value
 case "${SENSOR_TYPE}" in
-    falcon-container | falcon-sensor | falcon-sensor-regional | falcon-kac | falcon-snapshot | falcon-imageanalyzer | kpagent | fcs | falcon-jobcontroller | falcon-registryassessmentexecutor) ;;
+    falcon-container | falcon-container-regional | falcon-sensor | falcon-sensor-regional | falcon-kac | falcon-kac-regional | falcon-snapshot | falcon-imageanalyzer | kpagent | fcs | falcon-jobcontroller | falcon-registryassessmentexecutor) ;;
     *) die """
     Unrecognized sensor type: ${SENSOR_TYPE}
     Valid values are:
         falcon-container
+        falcon-container-regional
         falcon-sensor
         falcon-sensor-regional
         falcon-kac
+        falcon-kac-regional
         falcon-snapshot
         falcon-imageanalyzer
         kpagent
@@ -571,6 +575,16 @@ esac
 # Add deprecation warning for falcon-sensor-regional
 if [ "${SENSOR_TYPE}" = "falcon-sensor-regional" ]; then
     echo "WARNING: Use 'falcon-sensor' for the new unified sensor image as the regional sensor images will eventually be EOL."
+fi
+
+# Add deprecation warning for falcon-container-regional
+if [ "${SENSOR_TYPE}" = "falcon-container-regional" ]; then
+    echo "WARNING: Use 'falcon-container' for the new unified container image as the regional container images will eventually be EOL."
+fi
+
+# Add deprecation warning for falcon-kac-regional
+if [ "${SENSOR_TYPE}" = "falcon-kac-regional" ]; then
+    echo "WARNING: Use 'falcon-kac' for the new unified KAC image as the regional KAC images will eventually be EOL."
 fi
 
 #Check all mandatory variables set
@@ -625,18 +639,37 @@ registry_opts=$(
         else
             echo "falcon-sensor/$FALCON_CLOUD"
         fi
+    # Handle unified falcon-container format (no region)
+    elif [ "${SENSOR_TYPE}" = "falcon-container" ]; then
+        echo "falcon-container"
+    # Handle falcon-container-regional with traditional regional paths
+    elif [ "${SENSOR_TYPE}" = "falcon-container-regional" ]; then
+        if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
+            echo "falcon-container/gov1"
+        elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
+            echo "falcon-container/gov2"
+        else
+            echo "falcon-container/$FALCON_CLOUD"
+        fi
+    # Handle unified falcon-kac format (no region)
+    elif [ "${SENSOR_TYPE}" = "falcon-kac" ]; then
+        echo "falcon-kac"
+    # Handle falcon-kac-regional with traditional regional paths
+    elif [ "${SENSOR_TYPE}" = "falcon-kac-regional" ]; then
+        if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
+            echo "falcon-kac/gov1"
+        elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
+            echo "falcon-kac/gov2"
+        else
+            echo "falcon-kac/$FALCON_CLOUD"
+        fi
     # Account for govcloud api mismatch for other sensor types
     elif [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
         echo "$SENSOR_TYPE/gov1"
     elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
         echo "$SENSOR_TYPE/gov2"
     else
-        if [ "${SENSOR_TYPE}" = "falcon-container" ] && [ "${BUILD_STAGE}" = "stage" ]; then
-            falcon_stage_cloud=$(echo "$FALCON_CLOUD" | tr -d '-')
-            echo "$SENSOR_TYPE/$falcon_stage_cloud"
-        else
-            echo "$SENSOR_TYPE/$FALCON_CLOUD"
-        fi
+        echo "$SENSOR_TYPE/$FALCON_CLOUD"
     fi
 )
 
@@ -686,8 +719,20 @@ IMAGE_NAME="falcon-sensor"
 repository_name="$BUILD_STAGE/falcon-sensor"
 registry_type="container-security"
 
-if [ "${SENSOR_TYPE}" = "falcon-kac" ]; then
-    # overrides for KAC
+if [ "${SENSOR_TYPE}" = "falcon-container" ]; then
+    # Unified format: use falcon-container image name
+    IMAGE_NAME="falcon-container"
+    repository_name="$BUILD_STAGE/falcon-container"
+elif [ "${SENSOR_TYPE}" = "falcon-container-regional" ]; then
+    # Regional format: use falcon-sensor image name (current behavior)
+    IMAGE_NAME="falcon-sensor"
+    repository_name="$BUILD_STAGE/falcon-sensor"
+elif [ "${SENSOR_TYPE}" = "falcon-kac" ]; then
+    # Unified format: use falcon-kac image name
+    IMAGE_NAME="falcon-kac"
+    repository_name="$BUILD_STAGE/falcon-kac"
+elif [ "${SENSOR_TYPE}" = "falcon-kac-regional" ]; then
+    # Regional format: use falcon-kac image name (same as unified)
     IMAGE_NAME="falcon-kac"
     repository_name="$BUILD_STAGE/falcon-kac"
 elif [ "${SENSOR_TYPE}" = "falcon-snapshot" ]; then
