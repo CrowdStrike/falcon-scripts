@@ -220,11 +220,6 @@ begin {
                     throw $message
                 }
 
-                if ($GetAccessToken -eq $true) {
-                    Write-Output $content.access_token | out-host
-                    exit 0
-                }
-
                 $Headers.Add('Authorization', "bearer $($content.access_token)")
             }
             catch {
@@ -468,6 +463,13 @@ process {
         }
 
         $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
+
+        # Check if we just need the token
+        if ($GetAccessToken -eq $true) {
+            $token = $Headers['Authorization'] -replace '^bearer\s+', ''
+            Write-Output $token
+            exit 0
+        }
         $Headers['Content-Type'] = 'application/json'
         $WebRequestParams.Add('Headers', $Headers)
     }
