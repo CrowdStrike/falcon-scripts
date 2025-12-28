@@ -147,7 +147,7 @@ the parameter descriptions:
 .PARAMETER MaintenanceToken
 Sensor uninstall maintenance token. If left undefined, the script will attempt to retrieve the token from the API assuming the FalconClientId|FalconClientSecret are defined.
 .PARAMETER UninstallParams
-Sensor uninstall parameters ['/uninstall /quiet' if left undefined. Remove '/uninstall' as parameter if the standalone uninstaller is used.]
+Sensor uninstall parameters ['/uninstall /quiet' if left undefined]. Note: '/uninstall' parameter is automatically removed when UninstallTool='standalone' as it's incompatible with CsUninstallTool.exe.
 .PARAMETER UninstallTool
 Sensor uninstall tool, local installation cache or CS standalone uninstaller ['installcache' if left undefined]
 .PARAMETER LogPath
