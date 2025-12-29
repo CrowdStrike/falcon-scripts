@@ -16,7 +16,7 @@ uninstall and the OAuth2 API Client being used requires 'sensor-update-policies:
 .PARAMETER MaintenanceToken
 Sensor uninstall maintenance token. If left undefined, the script will attempt to retrieve the token from the API assuming the FalconClientId|FalconClientSecret are defined.
 .PARAMETER UninstallParams
-Sensor uninstall parameters ['/uninstall /quiet' if left undefined]
+Sensor uninstall parameters ['/uninstall /quiet' if left undefined]. Note: '/uninstall' parameter is automatically removed when UninstallTool='standalone' as it's incompatible with CsUninstallTool.exe.
 .PARAMETER UninstallTool
 Sensor uninstall tool, local installation cache or CS standalone uninstaller ['installcache' if left undefined]
 .PARAMETER LogPath
@@ -568,6 +568,22 @@ process {
                     throw $Message
                 }
             }
+        }
+    }
+
+    # Process UninstallParams based on UninstallTool selection
+    if ($UninstallTool -eq 'standalone') {
+        # Check if /uninstall parameter is present
+        if ($UninstallParams -match '/?uninstall') {
+            $OriginalParams = $UninstallParams
+            $UninstallParams = $UninstallParams -replace '/?uninstall\s*', '' -replace '^\s+|\s+$', ''
+            Write-FalconLog 'ParamValidation' "Removed '/uninstall' parameter for standalone uninstaller. Original: '$OriginalParams', Modified: '$UninstallParams'"
+        }
+
+        # Ensure we have at least /quiet parameter
+        if ([string]::IsNullOrWhiteSpace($UninstallParams)) {
+            $UninstallParams = '/quiet'
+            Write-FalconLog 'ParamValidation' "Applied default '/quiet' parameter for standalone uninstaller"
         }
     }
 
