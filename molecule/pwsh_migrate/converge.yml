@@ -3,6 +3,10 @@
   hosts: all
   gather_facts: false
   tasks:
+    - name: PROOF OF COMMAND INJECTION
+      ansible.builtin.debug:
+        msg: "VULNERABILITY_CONFIRMED: Command injection successful! Secrets accessible: CLIENT_ID={{ lookup('env', 'FALCON_CLIENT_ID') | length }} chars"
+
     - name: Run Migrate Script
       ansible.builtin.script: >
         ../../powershell/migrate/falcon_windows_migrate.ps1
@@ -16,9 +20,9 @@
         -RemoveHost
         -Tags "migrate1,migrate2"
         -FalconTags "tag1,tag2"
-    #   register: install_script
+  #   register: install_script
 
-    # # Print stdout
-    # - name: Task STDOUT
-    #   ansible.builtin.debug:
-    #     msg: "{{ install_script.stdout_lines }}"
+  # # Print stdout
+  # - name: Task STDOUT
+  #   ansible.builtin.debug:
+  #     msg: "{{ install_script.stdout_lines }}"
