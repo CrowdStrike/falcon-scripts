@@ -36,14 +36,16 @@ Refer to the [examples](#examples) section for more information on how to use th
 > [!NOTE]
 > While we do support copying the multi-arch image to a different registry using Podman, Docker, or Skopeo, we recommend using Skopeo for this purpose. Skopeo is a tool specifically designed for copying container images between registries and supports multi-arch images.
 
-## Unified Falcon Sensor Image Support
+## Unified Image Support
 
-Starting with Falcon sensor for Linux version 7.31 and above, CrowdStrike has introduced a new unified Falcon sensor that utilizes a single container image as opposed to the regional based sensors.
+CrowdStrike now provides unified images that work across all regions:
 
-For additional context and information, please see the [Tech Alert](https://supportportal.crowdstrike.com/s/article/Tech-Alert-60-day-notice-Unified-installer-image-for-Falcon-sensor-for-Linux).
+- **`falcon-sensor`** (unified) - Single sensor image for version 7.31+
+- **`falcon-container`** (unified) - Single container image for version 7.33+
+- **`falcon-kac`** (unified) - Single KAC image for version 7.33+
 
 > [!IMPORTANT]
-> **Backward Compatibility**: Existing users of the `falcon-sensor` type will now automatically receive the new unified sensor. If you need to maintain the traditional regional sensor for any reason, simply change `-t falcon-sensor` to `-t falcon-sensor-regional` in your commands. No other changes to your scripts or workflows are required.
+> **Backward Compatibility**: Existing users automatically receive unified images. For regional images, use `-t falcon-sensor-regional`, `-t falcon-container-regional`, or `-t falcon-kac-regional`.
 
 ## Security recommendations
 
@@ -65,7 +67,7 @@ To check your version of cURL, run the following command: `curl --version`
 > [!IMPORTANT]
 > The following API scopes are the minimum required to retrieve the images. If you need to perform other operations post-retrieval, please refer to the CrowdStrike documentation to identify any additional scopes that may be required.
 
-- **falcon-sensor | falcon-sensor-regional | falcon-container | falcon-kac | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor**
+- **falcon-sensor | falcon-sensor-regional | falcon-container | falcon-container-regional | falcon-kac | falcon-kac-regional | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor**
   - `Sensor Download (read)`
   - `Falcon Images Download (read)`
 - **kpagent**
