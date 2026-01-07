@@ -1092,7 +1092,7 @@ if (!(Test-FalconCredential $OldFalconClientId $OldFalconClientSecret)) {
     throw $message
 }
 
-$ScriptVersion = "1.10.1"
+$ScriptVersion = "1.11.0"
 $BaseUserAgent = "crowdstrike-falcon-scripts/$ScriptVersion pwsh-migrate"
 $FullUserAgent = if ($UserAgent) {
     "$BaseUserAgent $UserAgent"
