@@ -70,10 +70,6 @@ To check your version of cURL, run the following command: `curl --version`
 - **falcon-sensor | falcon-sensor-regional | falcon-container | falcon-container-regional | falcon-kac | falcon-kac-regional | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor**
   - `Sensor Download (read)`
   - `Falcon Images Download (read)`
-- **kpagent**
-  - `Sensor Download (read)`
-  - `Falcon Images Download (read)`
-  - `Kubernetes Protection (read)`
 - **falcon-snapshot**
   - `Sensor Download (read)`
   - `Snapshot Scanner Image Download (read)`
@@ -116,7 +112,6 @@ Optional Flags:
                                                    falcon-kac
                                                    falcon-snapshot
                                                    falcon-imageanalyzer
-                                                   kpagent
                                                    fcs
                                                    falcon-jobcontroller
                                                    falcon-registryassessmentexecutor
@@ -151,7 +146,7 @@ Help Options:
 | `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)             | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`. <br> *\*By default, the image name and tag are appended. Use `--copy-omit-image-name` and/or `--copy-custom-tag` to change that behavior.*           |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)             | Specify sensor version to retrieve from the registry                                                                                                                                                                                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)             | Specify sensor platform to retrieve from the registry                                                                                                                                                                                                    |
-| `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`          | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-sensor-regional`, `falcon-kac`, `falcon-snapshot`, `falcon-imageanalyzer`, `kpagent`, `fcs`, `falcon-jobcontroller`, `falcon-registryassessmentexecutor`] ([see more details below](#sensor-types)) |
+| `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`          | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-sensor`, `falcon-sensor-regional`, `falcon-kac`, `falcon-snapshot`, `falcon-imageanalyzer`, `fcs`, `falcon-jobcontroller`, `falcon-registryassessmentexecutor`] ([see more details below](#sensor-types)) |
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)           | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.                                                                                                                                                                       |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)            | Print registry credentials to stdout to copy/paste into container tools                                                                                                                                                                                  |
 | `--get-image-path`                             | N/A                     | `None`                        | Get the full image path including the registry, repository, and latest tag for the specified `SENSOR_TYPE`.                                                                                                                                              |
@@ -184,7 +179,6 @@ The following sensor types are available to download:
 | `falcon-kac`                        | The Falcon Kubernetes Admission Controller            |
 | `falcon-snapshot`                   | The Falcon Snapshot scanner                           |
 | `falcon-imageanalyzer`              | The Falcon Image Assessment at Runtime                |
-| `kpagent`                           | The Falcon Kubernetes Protection Agent                |
 | `fcs`                               | The Falcon Cloud Security CLI tool                    |
 | `falcon-jobcontroller`              | The Self Hosted Registry Assessment Jobs Controller   |
 | `falcon-registryassessmentexecutor` | The Self Hosted Registry Assessment Executor          |

@@ -1,7 +1,7 @@
 #!/bin/bash
 : <<'#DESCRIPTION#'
 File: falcon-container-sensor-pull.sh
-Description: Bash script to copy Falcon DaemonSet Sensor, Container Sensor, Kubernetes Admission Controller or Kubernetes Protection Agent images from CrowdStrike Container Registry.
+Description: Bash script to copy Falcon DaemonSet Sensor, Container Sensor, or Kubernetes Admission Controller images from CrowdStrike Container Registry.
 #DESCRIPTION#
 
 set -e
@@ -36,7 +36,6 @@ Optional Flags:
                                                    falcon-kac-regional
                                                    falcon-snapshot
                                                    falcon-imageanalyzer
-                                                   kpagent
                                                    fcs
                                                    falcon-jobcontroller
                                                    falcon-registryassessmentexecutor
@@ -189,12 +188,6 @@ while [ $# != 0 ]; do
                 SENSOR_TYPE="falcon-kac"
             fi
             ;;
-        --kubernetes-protection-agent)
-            if [ -n "${1}" ]; then
-                deprecated "--kubernetes-protection-agent"
-                SENSOR_TYPE="kpagent"
-            fi
-            ;;
         -t | --type)
             if [ -n "${2}" ]; then
                 SENSOR_TYPE="${2}"
@@ -305,11 +298,11 @@ fetch_tags() {
 }
 
 format_tags() {
-    # Formats tags and handles sorting for KPA
+    # Formats tags and handles sorting for non-standard images
     local all_tags=$1
 
     case "${SENSOR_TYPE}" in
-        "kpagent" | "falcon-snapshot" | "falcon-imageanalyzer" | "fcs" | "falcon-jobcontroller" | "falcon-registryassessmentexecutor")
+        "falcon-snapshot" | "falcon-imageanalyzer" | "fcs" | "falcon-jobcontroller" | "falcon-registryassessmentexecutor")
             echo "$all_tags" |
                 sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
                 tr -d '"' | tr ',' '\n' |
@@ -449,9 +442,6 @@ display_api_scopes() {
         falcon-sensor | falcon-sensor-regional | falcon-container | falcon-container-regional | falcon-kac | falcon-kac-regional | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor)
             echo "Sensor Download [read], Falcon Images Download [read]"
             ;;
-        kpagent)
-            echo "Sensor Download [read], Falcon Images Download [read], Kubernetes Protection [read]"
-            ;;
         falcon-snapshot)
             echo "Sensor Download [read], Snapshot Scanner Image Download [read]"
             ;;
@@ -554,7 +544,7 @@ fi
 
 # Check if SENSOR_TYPE is set to a valid value
 case "${SENSOR_TYPE}" in
-    falcon-container | falcon-container-regional | falcon-sensor | falcon-sensor-regional | falcon-kac | falcon-kac-regional | falcon-snapshot | falcon-imageanalyzer | kpagent | fcs | falcon-jobcontroller | falcon-registryassessmentexecutor) ;;
+    falcon-container | falcon-container-regional | falcon-sensor | falcon-sensor-regional | falcon-kac | falcon-kac-regional | falcon-snapshot | falcon-imageanalyzer | fcs | falcon-jobcontroller | falcon-registryassessmentexecutor) ;;
     *) die """
     Unrecognized sensor type: ${SENSOR_TYPE}
     Valid values are:
@@ -566,7 +556,6 @@ case "${SENSOR_TYPE}" in
         falcon-kac-regional
         falcon-snapshot
         falcon-imageanalyzer
-        kpagent
         fcs
         falcon-jobcontroller
         falcon-registryassessmentexecutor""" ;;
@@ -689,11 +678,7 @@ cs_falcon_cid_with_checksum=$(
 cs_falcon_cid=$(echo "$cs_falcon_cid_with_checksum" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]')
 
 if [ "$GETCID" ]; then
-    if [ "${SENSOR_TYPE}" = "kpagent" ]; then
-        echo "${cs_falcon_cid}"
-    else
-        echo "${cs_falcon_cid_with_checksum}"
-    fi
+    echo "${cs_falcon_cid_with_checksum}"
     exit 0
 fi
 
@@ -745,13 +730,6 @@ elif [ "${SENSOR_TYPE}" = "falcon-imageanalyzer" ]; then
     # overrides for Image Analyzer
     IMAGE_NAME="falcon-imageanalyzer"
     repository_name="$BUILD_STAGE/falcon-imageanalyzer"
-elif [ "${SENSOR_TYPE}" = "kpagent" ]; then
-    # overrides for KPA
-    ART_USERNAME="kp-$cs_falcon_cid"
-    IMAGE_NAME="kpagent"
-    repository_name="kpagent"
-    registry_type="kubernetes-protection"
-    registry_opts="kubernetes_protection"
 elif [ "${SENSOR_TYPE}" = "fcs" ]; then
     # overrides for FCS
     ART_USERNAME="fh-$cs_falcon_cid"
@@ -781,15 +759,9 @@ elif [ "${SENSOR_TYPE}" = "falcon-registryassessmentexecutor" ]; then
 fi
 
 #Set Docker token using the BEARER token captured earlier
-if [ "${SENSOR_TYPE}" = "kpagent" ]; then
-    raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/$registry_type/entities/integration/agent/v1?cluster_name=clustername&is_self_managed_cluster=true")
-    handle_curl_error $?
-    docker_api_token=$(echo "$raw_docker_api_token" | awk '/dockerAPIToken:/ {print $2}')
-else
-    raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/$registry_type/entities/image-registry-credentials/v1")
-    handle_curl_error $?
-    docker_api_token=$(echo "$raw_docker_api_token" | json_value "token")
-fi
+raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/$registry_type/entities/image-registry-credentials/v1")
+handle_curl_error $?
+docker_api_token=$(echo "$raw_docker_api_token" | json_value "token")
 
 ART_PASSWORD=$(echo "$docker_api_token" | sed 's/ *$//g' | sed 's/^ *//g')
 if [ -z "$ART_PASSWORD" ]; then

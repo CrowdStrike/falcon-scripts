@@ -6,7 +6,7 @@ The following deprecations will be introduced in version 2.0.0 of the Falcon Con
 
 1. **Environment Variable Deprecation** : The `SENSORTYPE` environment variable will be deprecated and replaced by `SENSOR_TYPE`. This update is intended to increase readability and maintain consistency in our environment variable naming convention.
 
-1. **Command Option Deprecation** : The command line options `-n, --node`, `--kubernetes-admission-controller`, and `--kubernetes-protection-agent` will be deprecated and replaced by a single option `-t, --type`. The new `-t, --type` option will allow you to specify the sensor type in a more straightforward and simplified manner.
+1. **Command Option Deprecation** : The command line options `-n, --node` and `--kubernetes-admission-controller` will be deprecated and replaced by a single option `-t, --type`. The new `-t, --type` option will allow you to specify the sensor type in a more straightforward and simplified manner.
 
 While these changes will be officially introduced in version 2.0.0, we will continue to support the deprecated environment variable and command options until that release. We strongly encourage you to adapt your usage to include the new `SENSOR_TYPE` environment variable and `-t, --type` command option to ensure a smooth transition when version 2.0.0 is released.
 

@@ -39,8 +39,6 @@ jobs:
             cli_arg: '-n'
           - type: falcon-kac
             cli_arg: '--kubernetes-admission-controller'
-          - type: kpagent
-            cli_arg: '--kubernetes-protection-agent'
 
     steps:
       - name: Check out code
