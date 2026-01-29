@@ -14,6 +14,9 @@ on:
       - 'bash/containers/falcon-container-sensor-pull/**'
       - '.github/workflows/container_sensor_pull.yml'
 
+permissions:
+  contents: read
+
 jobs:
   container_sensor_pull:
     if: |
@@ -23,6 +26,7 @@ jobs:
       github.event.label.name == 'ok-to-test')
     name: ${{ matrix.sensortype.type }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
       FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
@@ -42,11 +46,11 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         if: github.event_name != 'pull_request_target'
 
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           ref: ${{github.event.pull_request.head.sha}}
         if: github.event_name == 'pull_request_target'

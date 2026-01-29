@@ -11,20 +11,25 @@ on:
       - 'powershell/**'
       - '.github/workflows/psscriptanalyzer.yml'
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   powershell:
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Run PSScriptAnalyzer
-        uses: microsoft/psscriptanalyzer-action@main
+        uses: microsoft/psscriptanalyzer-action@7a0da25f33985767f15f93140306528900744195 # main
         with:
           path: .\powershell
           recurse: true
           excludeRule: '"PSUseShouldProcessForStateChangingFunctions"'
           output: 'results.sarif'
       - name: Upload SARIF results file
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@fbcef3fba75224ed6476919775448de80b23cb15 # v3.32.0
         with:
           sarif_file: results.sarif

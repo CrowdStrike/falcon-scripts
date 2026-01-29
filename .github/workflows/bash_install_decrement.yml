@@ -16,6 +16,9 @@ on:
       - 'bash/install/**'
       - '.github/workflows/bash_install_decrement.yml'
 
+permissions:
+  contents: read
+
 jobs:
   molecule:
     if: |
@@ -84,24 +87,24 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         if: github.event_name != 'pull_request_target'
 
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           ref: ${{github.event.pull_request.head.sha}}
         if: github.event_name == 'pull_request_target'
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE }}
           role-session-name: github-actions-molecule-ansible
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -115,7 +118,7 @@ jobs:
 
       - name: Run role tests
         id: molecule-role-test
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3.0.2
         env:
           MOLECULE_INSTANCE_NAME: ${{ matrix.molecule.distro }}-${{ matrix.collection_role }}
           MOLECULE_IMAGE_OWNER: ${{ matrix.molecule.image_owner }}
@@ -134,7 +137,7 @@ jobs:
         continue-on-error: true
 
       - name: Ensure instances are destroyed
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3.0.2
         env:
           MOLECULE_INSTANCE_NAME: ${{ matrix.molecule.distro }}-${{ matrix.collection_role }}
           MOLECULE_IMAGE_OWNER: ${{ matrix.molecule.image_owner }}
@@ -152,7 +155,7 @@ jobs:
             molecule --debug destroy -s ${{ matrix.collection_role }}
 
       - name: Assert molecule tests passed
-        uses: nick-fields/assert-action@v2
+        uses: nick-fields/assert-action@aa0067e01f0f6545c31755d6ca128c5a3a14f6bf # v2.0.0
         with:
           expected: success
           actual: ${{ steps.molecule-role-test.outcome }}
