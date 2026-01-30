@@ -1,0 +1,58 @@
+# Reusable workflow for container sensor pull tests
+# Centralizes test logic with environment-based secret protection
+#
+# SECURITY: This workflow requires secrets to be configured in the 'molecule-testing'
+# GitHub Environment with required reviewers enabled. For push/schedule events,
+# secrets are accessed from repository level. For pull_request events (including
+# forks), the environment protection gates secret access pending approval.
+name: "Reusable: Container Sensor Pull Test"
+
+on:
+  workflow_call:
+    inputs:
+      sensor_types:
+        description: 'JSON array of sensor type configurations'
+        required: true
+        type: string
+      pr_sha:
+        description: 'PR head SHA for checkout (empty for push/schedule)'
+        required: false
+        type: string
+        default: ''
+      pr_repo:
+        description: 'PR head repo for checkout (empty for push/schedule)'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  container_sensor_pull:
+    name: ${{ matrix.sensortype.type }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ inputs.pr_sha != '' && 'molecule-testing' || '' }}
+    env:
+      FALCON_CLIENT_ID: ${{ secrets.FALCON_CLIENT_ID }}
+      FALCON_CLIENT_SECRET: ${{ secrets.FALCON_CLIENT_SECRET }}
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        sensortype: ${{ fromJSON(inputs.sensor_types) }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ inputs.pr_sha || github.sha }}
+          repository: ${{ inputs.pr_repo || github.repository }}
+          persist-credentials: false
+
+      - name: Run script to pull ${{ matrix.sensortype.type }} image
+        run: |
+          bash bash/containers/falcon-container-sensor-pull/falcon-container-sensor-pull.sh "${{ matrix.sensortype.cli_arg }}"
