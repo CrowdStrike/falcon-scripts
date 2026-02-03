@@ -35,6 +35,8 @@ jobs:
 
   molecule-test:
     name: Molecule Test
+    permissions:
+      id-token: write
     needs: validate
     uses: ./.github/workflows/reusable-molecule-test-linux.yml
     with:
