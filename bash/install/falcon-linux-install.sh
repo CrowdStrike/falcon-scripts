@@ -1,4 +1,5 @@
 #!/bin/bash
+# DO NOT MERGE :)
 
 print_usage() {
     cat <<EOF
