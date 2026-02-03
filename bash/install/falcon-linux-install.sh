@@ -777,7 +777,7 @@ get_oauth_token() {
             fi
             cs_falcon_cloud="${region_hint}"
         else
-            if [ "x${FALCON_CLOUD}" != "x${region_hint}" ]; then
+            if [ "${FALCON_CLOUD}" != "${region_hint}" ]; then
                 echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
             fi
         fi
