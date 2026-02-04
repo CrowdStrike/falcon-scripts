@@ -511,7 +511,7 @@ function Invoke-FalconInstall ([hashtable] $WebRequestParams, [string] $InstallP
         $message = "Retrieving installer details for sensor version: '$($version)'"
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
         $encodedFilter = [System.Web.HttpUtility]::UrlEncode("platform:'windows'+version:'$($version)'")
-        $url = "${newBaseUrl}/sensors/combined/installers/v1?filter=${encodedFilter}"
+        $url = "${newBaseUrl}/sensors/combined/installers/v3?filter=${encodedFilter}"
         $installer_scope = @{
             'Sensor Download' = @('Read')
         }
@@ -532,7 +532,7 @@ function Invoke-FalconInstall ([hashtable] $WebRequestParams, [string] $InstallP
         # Download the installer
         $localFile = Join-Path -Path $WinTemp -ChildPath $cloudFile
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message "Downloading installer to: '$localFile'"
-        $url = "${newBaseUrl}/sensors/entities/download-installer/v1?id=$cloudHash"
+        $url = "${newBaseUrl}/sensors/entities/download-installer/v3?id=$cloudHash"
         Invoke-FalconDownload -WebRequestParams $WebRequestParams -url $url -Outfile $localFile -Headers $newCloudHeaders
 
         if (Test-Path $localFile) {

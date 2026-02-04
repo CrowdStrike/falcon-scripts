@@ -603,7 +603,7 @@ cs_sensor_download() {
     fi
 
     existing_installers=$(
-        curl_command -G "https://$(cs_cloud)/sensors/combined/installers/v2?sort=version|desc" \
+        curl_command -G "https://$(cs_cloud)/sensors/combined/installers/v3?sort=version|desc" \
             --data-urlencode "filter=os:\"$cs_os_name\"+os_version:\"*$cs_os_version*\"$cs_api_version_filter$cs_os_arch_filter"
     )
 
@@ -632,7 +632,7 @@ cs_sensor_download() {
 
     installer="${destination_dir}/falcon-sensor.${file_type}"
 
-    curl_command "https://$(cs_cloud)/sensors/entities/download-installer/v1?id=$sha" -o "${installer}"
+    curl_command "https://$(cs_cloud)/sensors/entities/download-installer/v3?id=$sha" -o "${installer}"
 
     handle_curl_error $?
 

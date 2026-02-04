@@ -528,7 +528,7 @@ process {
     $message = "Retrieving installer details for sensor version: '$($version)'"
     Write-FalconLog 'GetInstaller' $message
     $encodedFilter = [System.Web.HttpUtility]::UrlEncode("platform:'windows'+version:'$($version)'")
-    $url = "${BaseUrl}/sensors/combined/installers/v1?filter=${encodedFilter}"
+    $url = "${BaseUrl}/sensors/combined/installers/v3?filter=${encodedFilter}"
     $installer_scope = @{
         'Sensor Download' = @('Read')
     }
@@ -549,7 +549,7 @@ process {
     # Download the installer
     $localFile = Join-Path -Path $WinTemp -ChildPath $cloudFile
     Write-FalconLog 'DownloadFile' "Downloading installer to: '$localFile'"
-    $url = "${BaseUrl}/sensors/entities/download-installer/v1?id=$cloudHash"
+    $url = "${BaseUrl}/sensors/entities/download-installer/v3?id=$cloudHash"
     Invoke-FalconDownload -WebRequestParams $WebRequestParams -url $url -Outfile $localFile
 
     if (Test-Path $localFile) {
