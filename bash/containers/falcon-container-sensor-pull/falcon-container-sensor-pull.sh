@@ -36,6 +36,7 @@ Optional Flags:
                                                    falcon-kac-regional
                                                    falcon-snapshot
                                                    falcon-imageanalyzer
+                                                   falcon-imageanalyzer-regional
                                                    fcs
                                                    falcon-jobcontroller
                                                    falcon-registryassessmentexecutor
@@ -302,7 +303,7 @@ format_tags() {
     local all_tags=$1
 
     case "${SENSOR_TYPE}" in
-        "falcon-snapshot" | "falcon-imageanalyzer" | "fcs" | "falcon-jobcontroller" | "falcon-registryassessmentexecutor")
+        "falcon-snapshot" | "falcon-imageanalyzer" | "falcon-imageanalyzer-regional" | "fcs" | "falcon-jobcontroller" | "falcon-registryassessmentexecutor")
             echo "$all_tags" |
                 sed -n 's/.*"tags" : \[\(.*\)\].*/\1/p' |
                 tr -d '"' | tr ',' '\n' |
@@ -439,7 +440,7 @@ detect_container_tool() {
 display_api_scopes() {
     local sensor_type=$1
     case "${sensor_type}" in
-        falcon-sensor | falcon-sensor-regional | falcon-container | falcon-container-regional | falcon-kac | falcon-kac-regional | falcon-imageanalyzer | falcon-jobcontroller | falcon-registryassessmentexecutor)
+        falcon-sensor | falcon-sensor-regional | falcon-container | falcon-container-regional | falcon-kac | falcon-kac-regional | falcon-imageanalyzer | falcon-imageanalyzer-regional | falcon-jobcontroller | falcon-registryassessmentexecutor)
             echo "Sensor Download [read], Falcon Images Download [read]"
             ;;
         falcon-snapshot)
@@ -544,7 +545,7 @@ fi
 
 # Check if SENSOR_TYPE is set to a valid value
 case "${SENSOR_TYPE}" in
-    falcon-container | falcon-container-regional | falcon-sensor | falcon-sensor-regional | falcon-kac | falcon-kac-regional | falcon-snapshot | falcon-imageanalyzer | fcs | falcon-jobcontroller | falcon-registryassessmentexecutor) ;;
+    falcon-container | falcon-container-regional | falcon-sensor | falcon-sensor-regional | falcon-kac | falcon-kac-regional | falcon-snapshot | falcon-imageanalyzer | falcon-imageanalyzer-regional | fcs | falcon-jobcontroller | falcon-registryassessmentexecutor) ;;
     *) die """
     Unrecognized sensor type: ${SENSOR_TYPE}
     Valid values are:
@@ -556,6 +557,7 @@ case "${SENSOR_TYPE}" in
         falcon-kac-regional
         falcon-snapshot
         falcon-imageanalyzer
+        falcon-imageanalyzer-regional
         fcs
         falcon-jobcontroller
         falcon-registryassessmentexecutor""" ;;
@@ -574,6 +576,11 @@ fi
 # Add deprecation warning for falcon-kac-regional
 if [ "${SENSOR_TYPE}" = "falcon-kac-regional" ]; then
     echo "WARNING: Use 'falcon-kac' for the new unified KAC image as the regional KAC images will eventually be EOL."
+fi
+
+# Add deprecation warning for falcon-imageanalyzer-regional
+if [ "${SENSOR_TYPE}" = "falcon-imageanalyzer-regional" ]; then
+    echo "WARNING: Use 'falcon-imageanalyzer' for the new unified IAR image as the regional IAR images will eventually be EOL."
 fi
 
 #Check all mandatory variables set
@@ -652,6 +659,18 @@ registry_opts=$(
         else
             echo "falcon-kac/$FALCON_CLOUD"
         fi
+    # Handle unified falcon-imageanalyzer format (no region)
+    elif [ "${SENSOR_TYPE}" = "falcon-imageanalyzer" ]; then
+        echo "falcon-imageanalyzer"
+    # Handle falcon-imageanalyzer-regional with traditional regional paths
+    elif [ "${SENSOR_TYPE}" = "falcon-imageanalyzer-regional" ]; then
+        if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
+            echo "falcon-imageanalyzer/gov1"
+        elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
+            echo "falcon-imageanalyzer/gov2"
+        else
+            echo "falcon-imageanalyzer/$FALCON_CLOUD"
+        fi
     # Account for govcloud api mismatch for other sensor types
     elif [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
         echo "$SENSOR_TYPE/gov1"
@@ -727,7 +746,11 @@ elif [ "${SENSOR_TYPE}" = "falcon-snapshot" ]; then
     repository_name="$BUILD_STAGE/cs-snapshotscanner"
     registry_type="snapshots"
 elif [ "${SENSOR_TYPE}" = "falcon-imageanalyzer" ]; then
-    # overrides for Image Analyzer
+    # Unified format: use falcon-imageanalyzer image name
+    IMAGE_NAME="falcon-imageanalyzer"
+    repository_name="$BUILD_STAGE/falcon-imageanalyzer"
+elif [ "${SENSOR_TYPE}" = "falcon-imageanalyzer-regional" ]; then
+    # Regional format: use falcon-imageanalyzer image name (same as unified)
     IMAGE_NAME="falcon-imageanalyzer"
     repository_name="$BUILD_STAGE/falcon-imageanalyzer"
 elif [ "${SENSOR_TYPE}" = "fcs" ]; then
