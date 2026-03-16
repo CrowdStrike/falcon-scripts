@@ -1320,7 +1320,7 @@ main() {
     # Start of migration
     touch "$log_file"
     echo "Migration file created at: $log_file"
-    echo "Migration started at $(date)" >> "$log_file"
+    echo "Migration started at $(date)" >>"$log_file"
 
     # auth with old credentials
     log "INFO" "Authenticating to old CID..."
