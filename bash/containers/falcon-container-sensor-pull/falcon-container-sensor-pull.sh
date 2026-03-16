@@ -491,8 +491,7 @@ resolve_version_channel() {
         n-1|n-2|lts|lts-1)
             all_tags=$(extract_raw_tags)
             if [ -z "$all_tags" ]; then
-                echo "Fatal error: No tags found for sensor type: ${SENSOR_TYPE}" >&2
-                return 1
+                die "No tags found for sensor type: ${SENSOR_TYPE}"
             fi
             ;;
         *)
@@ -507,8 +506,7 @@ resolve_version_channel() {
             major_minor_versions=$(echo "$all_tags" | grep -v "\-LTS" | \
                 awk -F'.' '{ print $1"."$2 }' | sort -u -V)
             if [ "$(echo "$major_minor_versions" | wc -l)" -lt 2 ]; then
-                echo "Fatal error: Not enough versions available for N-1. Only $(echo "$major_minor_versions" | wc -l | tr -d ' ') major.minor version(s) found." >&2
-                return 1
+                die "Not enough versions available for N-1. Only $(echo "$major_minor_versions" | wc -l | tr -d ' ') major.minor version(s) found."
             fi
             target_version=$(echo "$major_minor_versions" | tail -2 | head -1)
             ;;
@@ -516,16 +514,14 @@ resolve_version_channel() {
             major_minor_versions=$(echo "$all_tags" | grep -v "\-LTS" | \
                 awk -F'.' '{ print $1"."$2 }' | sort -u -V)
             if [ "$(echo "$major_minor_versions" | wc -l)" -lt 3 ]; then
-                echo "Fatal error: Not enough versions available for N-2. Only $(echo "$major_minor_versions" | wc -l | tr -d ' ') major.minor version(s) found." >&2
-                return 1
+                die "Not enough versions available for N-2. Only $(echo "$major_minor_versions" | wc -l | tr -d ' ') major.minor version(s) found."
             fi
             target_version=$(echo "$major_minor_versions" | tail -3 | head -1)
             ;;
         lts)
             lts_tags=$(echo "$all_tags" | grep "\-LTS")
             if [ -z "$lts_tags" ]; then
-                echo "Fatal error: No LTS versions found for sensor type: ${SENSOR_TYPE}" >&2
-                return 1
+                die "No LTS versions found for sensor type: ${SENSOR_TYPE}"
             fi
             lts_versions=$(echo "$lts_tags" | awk -F'.' '{ print $1"."$2 }' | sort -u -V)
             target_version=$(echo "$lts_versions" | tail -1)
@@ -533,13 +529,11 @@ resolve_version_channel() {
         lts-1)
             lts_tags=$(echo "$all_tags" | grep "\-LTS")
             if [ -z "$lts_tags" ]; then
-                echo "Fatal error: No LTS versions found for sensor type: ${SENSOR_TYPE}" >&2
-                return 1
+                die "No LTS versions found for sensor type: ${SENSOR_TYPE}"
             fi
             lts_versions=$(echo "$lts_tags" | awk -F'.' '{ print $1"."$2 }' | sort -u -V)
             if [ "$(echo "$lts_versions" | wc -l)" -lt 2 ]; then
-                echo "Fatal error: Not enough LTS versions available for LTS-1. Only $(echo "$lts_versions" | wc -l | tr -d ' ') LTS version(s) found." >&2
-                return 1
+                die "Not enough LTS versions available for LTS-1. Only $(echo "$lts_versions" | wc -l | tr -d ' ') LTS version(s) found."
             fi
             target_version=$(echo "$lts_versions" | tail -2 | head -1)
             ;;
@@ -928,17 +922,13 @@ if [ "${ERROR}" = "true" ]; then
 fi
 
 #Get latest sensor version
-# Resolve channel keywords (latest, N-1, N-2, LTS, LTS-1) to version prefixes
-set +e
+# Resolve channel keywords (latest, N-1, N-2, LTS, LTS-1) to version prefixes.
+# die() inside resolve_version_channel exits the subshell with code 1;
+# set -e (active since line 7) propagates that to the parent script.
 RESOLVED_VERSION=$(resolve_version_channel "$SENSOR_VERSION")
-CHANNEL_STATUS=$?
-set -e
 
-if [ $CHANNEL_STATUS -ne 0 ]; then
-    exit 1  # error message already printed to stderr by resolve_version_channel
-fi
-
-set +e  # Temporarily disable exit-on-error for version matching
+# match_sensor_version returns 1 for "no match" — a soft failure we handle below.
+set +e
 LATESTSENSOR=$(match_sensor_version "$RESOLVED_VERSION")
 set -e  # Re-enable exit-on-error
 
