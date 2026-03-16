@@ -23,6 +23,17 @@ Optional Flags:
                                                    By default, the image name and tag are appended. Use --copy-omit-image-name
                                                    and/or --copy-custom-tag to change that behavior.
     -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
+
+                                                   Accepts version strings or channel keywords:
+                                                   -------------------------------------------
+                                                   latest       Latest sensor version (default)
+                                                   N-1          Previous major.minor release
+                                                   N-2          Two major.minor releases back
+                                                   LTS          Latest LTS release
+                                                   LTS-1        Previous LTS release
+                                                   7.33         Latest build of version 7.33.x
+                                                   7.33.0-18606 Specific sensor build
+
     -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
     -t, --type <SENSOR_TYPE>                       Specify which sensor to download (Default: falcon-container)
 
@@ -454,6 +465,94 @@ display_api_scopes() {
     esac
 }
 
+# Extract clean tag strings from list_tags JSON output
+extract_raw_tags() {
+    list_tags | awk '
+        /^[[:space:]]*"[0-9]/ {
+            gsub(/^[[:space:]]*"/, "")
+            gsub(/"[[:space:]]*,?[[:space:]]*$/, "")
+            if (length($0) > 0) print $0
+        }
+    '
+}
+
+# Resolve version channel keywords (latest, N-1, N-2, LTS, LTS-1) to version prefixes
+resolve_version_channel() {
+    local input="$1"
+    local normalized all_tags major_minor_versions lts_tags lts_versions target_version
+
+    normalized=$(echo "$input" | tr '[:upper:]' '[:lower:]')
+
+    case "$normalized" in
+        latest)
+            echo ""
+            return 0
+            ;;
+        n-1|n-2|lts|lts-1)
+            all_tags=$(extract_raw_tags)
+            if [ -z "$all_tags" ]; then
+                echo "Fatal error: No tags found for sensor type: ${SENSOR_TYPE}" >&2
+                return 1
+            fi
+            ;;
+        *)
+            # Not a channel keyword — pass through as-is
+            echo "$input"
+            return 0
+            ;;
+    esac
+
+    case "$normalized" in
+        n-1)
+            major_minor_versions=$(echo "$all_tags" | grep -v "\-LTS" | \
+                awk -F'.' '{ print $1"."$2 }' | sort -u -V)
+            if [ "$(echo "$major_minor_versions" | wc -l)" -lt 2 ]; then
+                echo "Fatal error: Not enough versions available for N-1. Only $(echo "$major_minor_versions" | wc -l | tr -d ' ') major.minor version(s) found." >&2
+                return 1
+            fi
+            target_version=$(echo "$major_minor_versions" | tail -2 | head -1)
+            ;;
+        n-2)
+            major_minor_versions=$(echo "$all_tags" | grep -v "\-LTS" | \
+                awk -F'.' '{ print $1"."$2 }' | sort -u -V)
+            if [ "$(echo "$major_minor_versions" | wc -l)" -lt 3 ]; then
+                echo "Fatal error: Not enough versions available for N-2. Only $(echo "$major_minor_versions" | wc -l | tr -d ' ') major.minor version(s) found." >&2
+                return 1
+            fi
+            target_version=$(echo "$major_minor_versions" | tail -3 | head -1)
+            ;;
+        lts)
+            lts_tags=$(echo "$all_tags" | grep "\-LTS")
+            if [ -z "$lts_tags" ]; then
+                echo "Fatal error: No LTS versions found for sensor type: ${SENSOR_TYPE}" >&2
+                return 1
+            fi
+            lts_versions=$(echo "$lts_tags" | awk -F'.' '{ print $1"."$2 }' | sort -u -V)
+            target_version=$(echo "$lts_versions" | tail -1)
+            ;;
+        lts-1)
+            lts_tags=$(echo "$all_tags" | grep "\-LTS")
+            if [ -z "$lts_tags" ]; then
+                echo "Fatal error: No LTS versions found for sensor type: ${SENSOR_TYPE}" >&2
+                return 1
+            fi
+            lts_versions=$(echo "$lts_tags" | awk -F'.' '{ print $1"."$2 }' | sort -u -V)
+            if [ "$(echo "$lts_versions" | wc -l)" -lt 2 ]; then
+                echo "Fatal error: Not enough LTS versions available for LTS-1. Only $(echo "$lts_versions" | wc -l | tr -d ' ') LTS version(s) found." >&2
+                return 1
+            fi
+            target_version=$(echo "$lts_versions" | tail -2 | head -1)
+            ;;
+    esac
+
+    if [ -z "$target_version" ]; then
+        return 1
+    fi
+
+    echo "$target_version"
+    return 0
+}
+
 # Smart version matching function
 match_sensor_version() {
     local requested_version="$1"
@@ -462,14 +561,7 @@ match_sensor_version() {
     local version_pattern
 
     # Get all available tags by properly parsing JSON output from list_tags
-    all_tags=$(list_tags | awk '
-        /^[[:space:]]*"[0-9]/ {
-            # Extract quoted tag (lines starting with version numbers), remove surrounding quotes and whitespace
-            gsub(/^[[:space:]]*"/, "")
-            gsub(/"[[:space:]]*,?[[:space:]]*$/, "")
-            if (length($0) > 0) print $0
-        }
-    ')
+    all_tags=$(extract_raw_tags)
 
     if [ -z "$requested_version" ]; then
         # If no version specified, get the latest version
@@ -836,8 +928,18 @@ if [ "${ERROR}" = "true" ]; then
 fi
 
 #Get latest sensor version
+# Resolve channel keywords (latest, N-1, N-2, LTS, LTS-1) to version prefixes
+set +e
+RESOLVED_VERSION=$(resolve_version_channel "$SENSOR_VERSION")
+CHANNEL_STATUS=$?
+set -e
+
+if [ $CHANNEL_STATUS -ne 0 ]; then
+    exit 1  # error message already printed to stderr by resolve_version_channel
+fi
+
 set +e  # Temporarily disable exit-on-error for version matching
-LATESTSENSOR=$(match_sensor_version "$SENSOR_VERSION")
+LATESTSENSOR=$(match_sensor_version "$RESOLVED_VERSION")
 set -e  # Re-enable exit-on-error
 
 # Check if version matching was successful
@@ -847,6 +949,7 @@ if [ -z "$LATESTSENSOR" ]; then
 Available versions can be listed with: $0 --list-tags -t ${SENSOR_TYPE}
 
 Tips for version matching:
+  - Use channel keywords: -v latest, -v N-1, -v N-2, -v LTS, -v LTS-1
   - Use exact version: -v 7.31.0
   - Use partial version: -v 7.31 (matches latest 7.31.x)
   - Use major version: -v 7 (matches latest 7.x.x)
