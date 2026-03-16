@@ -19,7 +19,7 @@ jobs:
     steps:
     - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
     - name: Run shfmt with reviewdog
-      uses: reviewdog/action-shfmt@650566520dd8dfd3ac8f4129754a0aa342fdda4d # v1.0.4
+      uses: reviewdog/action-shfmt@d8f080930b9be5847b4f97e9f4122b81a82aaeac # v1.0.4
       with:
         fail_on_error: true
         workdir: 'bash'
