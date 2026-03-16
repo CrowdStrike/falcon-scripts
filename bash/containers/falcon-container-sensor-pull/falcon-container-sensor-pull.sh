@@ -488,7 +488,7 @@ resolve_version_channel() {
             echo ""
             return 0
             ;;
-        n-1|n-2|lts|lts-1)
+        n-1 | n-2 | lts | lts-1)
             all_tags=$(extract_raw_tags)
             if [ -z "$all_tags" ]; then
                 die "No tags found for sensor type: ${SENSOR_TYPE}"
@@ -503,7 +503,7 @@ resolve_version_channel() {
 
     case "$normalized" in
         n-1)
-            major_minor_versions=$(echo "$all_tags" | grep -v "\-LTS" | \
+            major_minor_versions=$(echo "$all_tags" | grep -v "\-LTS" |
                 awk -F'.' '{ print $1"."$2 }' | sort -u -V)
             if [ "$(echo "$major_minor_versions" | wc -l)" -lt 2 ]; then
                 die "Not enough versions available for N-1. Only $(echo "$major_minor_versions" | wc -l | tr -d ' ') major.minor version(s) found."
@@ -511,7 +511,7 @@ resolve_version_channel() {
             target_version=$(echo "$major_minor_versions" | tail -2 | head -1)
             ;;
         n-2)
-            major_minor_versions=$(echo "$all_tags" | grep -v "\-LTS" | \
+            major_minor_versions=$(echo "$all_tags" | grep -v "\-LTS" |
                 awk -F'.' '{ print $1"."$2 }' | sort -u -V)
             if [ "$(echo "$major_minor_versions" | wc -l)" -lt 3 ]; then
                 die "Not enough versions available for N-2. Only $(echo "$major_minor_versions" | wc -l | tr -d ' ') major.minor version(s) found."
@@ -928,7 +928,7 @@ RESOLVED_VERSION=$(resolve_version_channel "$SENSOR_VERSION")
 # match_sensor_version returns 1 for "no match" — a soft failure we handle below.
 set +e
 LATESTSENSOR=$(match_sensor_version "$RESOLVED_VERSION")
-set -e  # Re-enable exit-on-error
+set -e # Re-enable exit-on-error
 
 # Check if version matching was successful
 if [ -z "$LATESTSENSOR" ]; then
