@@ -3,7 +3,7 @@
 # Bash script to migrate Falcon sensor to another falcon CID.
 #
 
-VERSION="1.11.1"
+VERSION="1.12.0"
 
 print_usage() {
     cat <<EOF

@@ -146,7 +146,7 @@ begin {
         $PSScriptRoot
     }
 
-    $ScriptVersion = "1.11.1"
+    $ScriptVersion = "1.12.0"
     $BaseUserAgent = "crowdstrike-falcon-scripts/$ScriptVersion"
     $FullUserAgent = if ($UserAgent) {
         "$BaseUserAgent $UserAgent"
