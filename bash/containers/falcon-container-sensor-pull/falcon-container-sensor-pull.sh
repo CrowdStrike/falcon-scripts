@@ -921,12 +921,10 @@ if [ "${ERROR}" = "true" ]; then
     die "ERROR: ${CONTAINER_TOOL} login failed. Error message: ${error_message}"
 fi
 
-#Get latest sensor version
 # Resolve channel keywords (latest, N-1, N-2, LTS, LTS-1) to version prefixes.
-# die() inside resolve_version_channel exits the subshell with code 1;
-# set -e (active since line 7) propagates that to the parent script.
 RESOLVED_VERSION=$(resolve_version_channel "$SENSOR_VERSION")
 
+# Get latest sensor version
 # match_sensor_version returns 1 for "no match" — a soft failure we handle below.
 set +e
 LATESTSENSOR=$(match_sensor_version "$RESOLVED_VERSION")
