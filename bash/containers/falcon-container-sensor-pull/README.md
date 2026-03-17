@@ -102,6 +102,16 @@ Optional Flags:
                                                    By default, the image name and tag are appended. Use --copy-omit-image-name
                                                    and/or --copy-custom-tag to change that behavior.
     -v, --version <SENSOR_VERSION>                 Specify sensor version to retrieve from the registry
+
+                                                   Accepts version strings or channel keywords:
+                                                   -------------------------------------------
+                                                   latest       Latest sensor version (default)
+                                                   N-1          Previous major.minor release
+                                                   N-2          Two major.minor releases back
+                                                   LTS          Latest LTS release
+                                                   LTS-1        Previous LTS release
+                                                   7.33         Latest build of version 7.33.x
+                                                   7.33.0-18606 Specific sensor build
     -p, --platform <SENSOR_PLATFORM>               Specify sensor platform to retrieve, e.g., x86_64, aarch64
     -t, --type <SENSOR_TYPE>                       Specify which sensor to download (Default: falcon-container)
 
@@ -148,7 +158,7 @@ Help Options:
 | `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)             | CrowdStrike API Client Secret                                                                                                                                                                                                                            |
 | `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)             | CrowdStrike Region. <br>\**Auto-discovery is only available for [`us-1, us-2, eu-1`] regions.*                                                                                                                                                           |
 | `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)             | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`. <br> *\*By default, the image name and tag are appended. Use `--copy-omit-image-name` and/or `--copy-custom-tag` to change that behavior.*           |
-| `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)             | Specify sensor version to retrieve from the registry                                                                                                                                                                                                     |
+| `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)             | Specify sensor version to retrieve from the registry. Accepts version strings (e.g., `7.33`, `7.33.0`) or channel keywords: `latest`, `N-1`, `N-2`, `LTS`, `LTS-1`                                                                                      |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)             | Specify sensor platform to retrieve from the registry                                                                                                                                                                                                    |
 | `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`          | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-container-regional`, `falcon-sensor`, `falcon-sensor-regional`, `falcon-kac`, `falcon-kac-regional`, `falcon-snapshot`, `falcon-imageanalyzer`, `falcon-imageanalyzer-regional`, `fcs`, `falcon-jobcontroller`, `falcon-registryassessmentexecutor`] ([see more details below](#sensor-types)) |
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)           | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.                                                                                                                                                                       |
@@ -189,6 +199,45 @@ The following sensor types are available to download:
 | `fcs`                               | The Falcon Cloud Security CLI tool                                              |
 | `falcon-jobcontroller`              | The Self Hosted Registry Assessment Jobs Controller                             |
 | `falcon-registryassessmentexecutor` | The Self Hosted Registry Assessment Executor                                    |
+
+### Version Channels
+
+The `-v, --version` flag accepts channel keywords for policy-driven deployments without needing to know exact version numbers:
+
+| Keyword  | Description                         |
+| :------- | :---------------------------------- |
+| `latest` | Latest sensor version (default)     |
+| `N-1`    | Previous major.minor release        |
+| `N-2`    | Two major.minor releases back       |
+| `LTS`    | Latest LTS release                  |
+| `LTS-1`  | Previous LTS release                |
+
+Channel keywords are case-insensitive (`n-1`, `N-1`, `lts`, `LTS` all work). N-1/N-2 exclude LTS tags from consideration. No additional API scopes are required — channels are resolved entirely from existing registry tag data.
+
+```shell
+# Pull latest (default behavior)
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET>
+
+# Pull the previous major.minor release (N-1)
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--version N-1
+
+# Pull the latest LTS release
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--version LTS
+
+# Pull the previous LTS release
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--version LTS-1
+```
 
 ### Examples
 
