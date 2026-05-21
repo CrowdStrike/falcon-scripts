@@ -288,7 +288,7 @@ curl_command() {
 
 fetch_tags() {
     bearer_result=$(echo "-u $ART_USERNAME:$ART_PASSWORD" |
-        curl -s -L "https://$cs_registry/v2/token?=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=$cs_registry" -K-)
+        curl -s -L "https://$cs_registry/v2/token?account=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=$cs_registry" -K-)
     handle_curl_error $?
     registry_bearer=$(echo "$bearer_result" | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
     # Check if registry_bearer is not empty
@@ -859,9 +859,9 @@ if [ "${ERROR}" = "true" ]; then
 fi
 
 #Get latest sensor version
-set +e  # Temporarily disable exit-on-error for version matching
+set +e # Temporarily disable exit-on-error for version matching
 LATESTSENSOR=$(match_sensor_version "$SENSOR_VERSION")
-set -e  # Re-enable exit-on-error
+set -e # Re-enable exit-on-error
 
 # Check if version matching was successful
 if [ -z "$LATESTSENSOR" ]; then
