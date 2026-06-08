@@ -612,7 +612,7 @@ cs_sensor_download() {
 
     existing_installers=$(
         curl_command -G "https://$(cs_cloud)/sensors/combined/installers/v3?sort=version|desc" \
-            --data-urlencode "filter=os:\"$cs_os_name\"+os_version:\"*$cs_os_version*\"$cs_api_version_filter$cs_os_arch_filter"
+            --data-urlencode "filter=os:\"$cs_os_name\"$cs_os_version_filter$cs_api_version_filter$cs_os_arch_filter"
     )
 
     handle_curl_error $?
@@ -1209,6 +1209,22 @@ cs_os_version=$(
         fi
     fi
     echo "$version"
+)
+
+cs_os_version_filter=$(
+    # Amazon Linux versions are exact whole numbers (1, 2, 2023). A wildcard match
+    # on Amazon Linux 2 ("*2*") also matches "2023", so AL2 hosts could be served an
+    # AL2023 installer. Use an exact match for Amazon Linux to avoid this. The API
+    # stores the arm64 os_version with a " - arm64" suffix, so match accordingly.
+    if [ "${os_name}" = "Amazon" ]; then
+        if [ "$cs_os_arch" = "aarch64" ]; then
+            echo "+os_version:\"$cs_os_version - arm64\""
+        else
+            echo "+os_version:\"$cs_os_version\""
+        fi
+    else
+        echo "+os_version:\"*$cs_os_version*\""
+    fi
 )
 
 cs_falcon_token=$(
