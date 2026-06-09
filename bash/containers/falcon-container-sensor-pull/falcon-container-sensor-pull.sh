@@ -505,7 +505,7 @@ resolve_version_channel() {
 
     case "$normalized" in
         n-1)
-            major_minor_versions=$(echo "$all_tags" | grep -v "\-LTS" |
+            major_minor_versions=$(echo "$all_tags" | grep -iv -- "-lts" |
                 awk -F'.' '{ print $1"."$2 }' | sort -u -V)
             if [ "$(echo "$major_minor_versions" | wc -l)" -lt 2 ]; then
                 die "Not enough versions available for N-1. Only $(echo "$major_minor_versions" | wc -l | tr -d ' ') major.minor version(s) found."
@@ -513,7 +513,7 @@ resolve_version_channel() {
             target_version=$(echo "$major_minor_versions" | tail -2 | head -1)
             ;;
         n-2)
-            major_minor_versions=$(echo "$all_tags" | grep -v "\-LTS" |
+            major_minor_versions=$(echo "$all_tags" | grep -iv -- "-lts" |
                 awk -F'.' '{ print $1"."$2 }' | sort -u -V)
             if [ "$(echo "$major_minor_versions" | wc -l)" -lt 3 ]; then
                 die "Not enough versions available for N-2. Only $(echo "$major_minor_versions" | wc -l | tr -d ' ') major.minor version(s) found."
@@ -521,15 +521,16 @@ resolve_version_channel() {
             target_version=$(echo "$major_minor_versions" | tail -3 | head -1)
             ;;
         lts)
-            lts_tags=$(echo "$all_tags" | grep "\-LTS")
+            lts_tags=$(echo "$all_tags" | grep -i -- "-lts")
             if [ -z "$lts_tags" ]; then
                 die "No LTS versions found for sensor type: ${SENSOR_TYPE}"
             fi
             lts_versions=$(echo "$lts_tags" | awk -F'.' '{ print $1"."$2 }' | sort -u -V)
-            target_version=$(echo "$lts_versions" | tail -1)
+            lts_line=$(echo "$lts_versions" | tail -1)
+            target_version=$(echo "$lts_tags" | grep "^${lts_line}\." | sort -V | tail -1)
             ;;
         lts-1)
-            lts_tags=$(echo "$all_tags" | grep "\-LTS")
+            lts_tags=$(echo "$all_tags" | grep -i -- "-lts")
             if [ -z "$lts_tags" ]; then
                 die "No LTS versions found for sensor type: ${SENSOR_TYPE}"
             fi
@@ -537,7 +538,8 @@ resolve_version_channel() {
             if [ "$(echo "$lts_versions" | wc -l)" -lt 2 ]; then
                 die "Not enough LTS versions available for LTS-1. Only $(echo "$lts_versions" | wc -l | tr -d ' ') LTS version(s) found."
             fi
-            target_version=$(echo "$lts_versions" | tail -2 | head -1)
+            lts_line=$(echo "$lts_versions" | tail -2 | head -1)
+            target_version=$(echo "$lts_tags" | grep "^${lts_line}\." | sort -V | tail -1)
             ;;
     esac
 
