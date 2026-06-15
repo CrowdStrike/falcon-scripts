@@ -8,6 +8,20 @@ set -e
 
 VERSION="1.12.1"
 
+# Function to print verbose messages
+verbose_log() {
+    if [ "${VERBOSE:-false}" = "true" ]; then
+        echo "[INFO] $*" >&2
+    fi
+}
+
+# Function to print debug messages
+debug_log() {
+    if [ "${DEBUG:-false}" = "true" ]; then
+        echo "[DEBUG] $*" >&2
+    fi
+}
+
 usage() {
     echo "Usage: $0 [options]
 Version: $VERSION
@@ -50,6 +64,8 @@ Optional Flags:
     --get-cid                                      Get the CID assigned to the API Credentials
     --list-tags                                    List all tags available for the selected sensor type and platform, sorted in ascending order
     --allow-legacy-curl                            Allow the script to run with an older version of curl
+    --verbose                                      Enable verbose output
+    --debug                                        Enable debug output (includes verbose)
 
 Internal Flags:
     --internal-build-stage <BUILD_STAGE>           (Internal only) Falcon Build Stage [release|stage] (Default: release)
@@ -177,6 +193,17 @@ while [ $# != 0 ]; do
                 ALLOW_LEGACY_CURL=true
             fi
             ;;
+        --verbose)
+            if [ -n "${1}" ]; then
+                VERBOSE=true
+            fi
+            ;;
+        --debug)
+            if [ -n "${1}" ]; then
+                DEBUG=true
+                VERBOSE=true
+            fi
+            ;;
         -n | --node)
             if [ -n "${1}" ]; then
                 deprecated "-n|--node"
@@ -219,6 +246,7 @@ while [ $# != 0 ]; do
 done
 
 # Check if curl is greater or equal to 7.55
+verbose_log "Checking curl version for compatibility..."
 old_curl=$(
     version=$(curl --version | head -n 1 | awk '{ print $2 }')
     minimum="7.55"
@@ -231,8 +259,11 @@ old_curl=$(
     fi
 )
 
+debug_log "Curl version check result: old_curl=$old_curl"
+
 # Old curl print warning message
 if [ "$old_curl" -eq 0 ]; then
+    verbose_log "Detected older curl version (< 7.55)"
     if [ "${ALLOW_LEGACY_CURL}" != "true" ]; then
         echo """
 WARNING: Your version of curl does not support the ability to pass headers via stdin.
@@ -241,7 +272,11 @@ For security considerations, we strongly recommend upgrading to curl 7.55.0 or n
 To bypass this warning, set the optional flag --allow-legacy-curl
 """
         exit 1
+    else
+        verbose_log "Legacy curl allowed by user flag"
     fi
+else
+    verbose_log "Curl version is compatible"
 fi
 
 # Handle error codes returned by curl
@@ -279,6 +314,7 @@ curl_command() {
     # Dash does not support arrays, so we have to pass the args as separate arguments
     local token="$1"
     set -- "$@"
+    debug_log "Executing curl command with old_curl=$old_curl"
     if [ "$old_curl" -eq 0 ]; then
         curl -s -L -H "Authorization: Bearer ${token}" "$@"
     else
@@ -287,14 +323,22 @@ curl_command() {
 }
 
 fetch_tags() {
+    verbose_log "Fetching registry bearer token..."
+    debug_log "Using registry: $cs_registry, account: $ART_USERNAME"
+
     bearer_result=$(echo "-u $ART_USERNAME:$ART_PASSWORD" |
         curl -s -L "https://$cs_registry/v2/token?account=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=$cs_registry" -K-)
     handle_curl_error $?
+
     registry_bearer=$(echo "$bearer_result" | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
     # Check if registry_bearer is not empty
     if [ -z "$registry_bearer" ]; then
         die "Failed to retrieve the registry bearer token."
     fi
+
+    verbose_log "Successfully obtained registry bearer token"
+    debug_log "Fetching tags for repository: $registry_opts/$repository_name"
+
     curl_command "$registry_bearer" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list"
 }
 
@@ -343,6 +387,7 @@ print_formatted_tags() {
 }
 
 list_tags() {
+    verbose_log "Listing available tags for sensor type: $SENSOR_TYPE"
     all_tags=$(fetch_tags)
     formatted_tags=$(format_tags "$all_tags")
 
@@ -362,6 +407,8 @@ is_multi_arch() {
     local image_path="$1"
     local manifest_output
 
+    verbose_log "Checking if image is multi-architecture: $image_path"
+
     case "${CONTAINER_TOOL}" in
         *docker | *podman)
             manifest_output=$($CONTAINER_TOOL manifest inspect "$image_path" 2>/dev/null)
@@ -375,8 +422,10 @@ is_multi_arch() {
     esac
 
     if echo "$manifest_output" | grep -q '"manifests"'; then
+        verbose_log "Image is multi-architecture"
         echo true
     else
+        verbose_log "Image is single architecture"
         echo false
     fi
 }
@@ -384,7 +433,9 @@ is_multi_arch() {
 pull_image() {
     local image_path="$1"
     local platform_override="$2"
+    verbose_log "Pulling image: $image_path"
     if [ -n "$platform_override" ]; then
+        verbose_log "Using platform override: $platform_override"
         "$CONTAINER_TOOL" pull --platform "$platform_override" "$image_path"
     else
         "$CONTAINER_TOOL" pull "$image_path"
@@ -395,17 +446,26 @@ copy_image() {
     local source_path="$1"
     local destination_path="$2"
     local multi_arch_copy="$3"
+
+    verbose_log "Copying image from $source_path to $destination_path"
+    if [ "$multi_arch_copy" = "true" ]; then
+        verbose_log "Performing multi-architecture copy"
+    fi
+
     if [ "$multi_arch_copy" = "true" ]; then
         case "${CONTAINER_TOOL}" in
             *skopeo)
+                verbose_log "Using skopeo for multi-arch copy"
                 "$CONTAINER_TOOL" copy --all "docker://$source_path" "docker://$destination_path"
                 ;;
             *podman)
+                verbose_log "Using podman manifest for multi-arch copy"
                 "$CONTAINER_TOOL" manifest create --all "$destination_path" "$source_path" >/dev/null
                 "$CONTAINER_TOOL" manifest push --all "$destination_path"
                 "$CONTAINER_TOOL" manifest rm "$destination_path" >/dev/null
                 ;;
             *docker)
+                verbose_log "Using docker buildx for multi-arch copy"
                 if ! "$CONTAINER_TOOL" buildx version >/dev/null 2>&1; then
                     die "Docker buildx is not installed/enabled. Please install/enable buildx before continuing."
                 else
@@ -418,19 +478,26 @@ copy_image() {
         esac
     else
         # Copy the image to the desired registry
+        verbose_log "Tagging image: $source_path -> $destination_path"
         "$CONTAINER_TOOL" tag "$source_path" "$destination_path"
+        verbose_log "Pushing image: $destination_path"
         "$CONTAINER_TOOL" push "$destination_path"
     fi
 }
 
 detect_container_tool() {
     local container_tool
+    verbose_log "Auto-detecting container runtime tool..."
+
     if command -v docker >/dev/null 2>&1; then
         container_tool="docker"
+        verbose_log "Found docker"
     elif command -v podman >/dev/null 2>&1; then
         container_tool="podman"
+        verbose_log "Found podman"
     elif command -v skopeo >/dev/null 2>&1; then
         container_tool="skopeo"
+        verbose_log "Found skopeo"
     else
         die "No container runtime tool found. Please install either Docker, Podman, or Skopeo."
     fi
@@ -462,6 +529,8 @@ match_sensor_version() {
     local matched_tags
     local version_pattern
 
+    verbose_log "Matching sensor version: ${requested_version:-latest}"
+
     # Get all available tags by properly parsing JSON output from list_tags
     all_tags=$(list_tags | awk '
         /^[[:space:]]*"[0-9]/ {
@@ -475,7 +544,9 @@ match_sensor_version() {
     if [ -z "$requested_version" ]; then
         # If no version specified, get the latest version
         if [ -n "$all_tags" ]; then
-            echo "$all_tags" | sort -V | tail -1
+            local latest_version=$(echo "$all_tags" | sort -V | tail -1)
+            verbose_log "No version specified, using latest: $latest_version"
+            echo "$latest_version"
             return 0
         else
             return 1
@@ -487,7 +558,9 @@ match_sensor_version() {
     matched_tags=$(echo "$all_tags" | grep -E "$version_pattern")
 
     if [ -n "$matched_tags" ]; then
-        echo "$matched_tags" | sort -V | tail -1
+        local matched_version=$(echo "$matched_tags" | sort -V | tail -1)
+        verbose_log "Found exact version match: $matched_version"
+        echo "$matched_version"
         return 0
     fi
 
@@ -509,16 +582,21 @@ match_sensor_version() {
     fi
 
     if [ -n "$matched_tags" ]; then
-        echo "$matched_tags" | sort -V | tail -1
+        local matched_version=$(echo "$matched_tags" | sort -V | tail -1)
+        verbose_log "Found partial version match: $matched_version"
+        echo "$matched_version"
         return 0
     fi
 
     # No matches found - fail explicitly
+    verbose_log "No matching version found for: $requested_version"
     return 1
 }
 
 # shellcheck disable=SC2086
 FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
+
+debug_log "Initial parameters: FALCON_CLOUD=$FALCON_CLOUD, SENSOR_TYPE=${SENSOR_TYPE:-unset}"
 
 # shellcheck disable=SC2005,SC2001
 cs_registry="registry.crowdstrike.com"
@@ -527,6 +605,8 @@ if [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
 elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
     cs_registry="registry.us-gov-2.crowdstrike.mil"
 fi
+
+verbose_log "Using registry: $cs_registry"
 
 SENSOR_VERSION=$(echo "$SENSOR_VERSION" | tr '[:upper:]' '[:lower:]')
 SENSOR_PLATFORM=$(echo "$SENSOR_PLATFORM" | tr '[:upper:]' '[:lower:]')
@@ -586,17 +666,27 @@ fi
 #Check all mandatory variables set
 VARIABLES="FALCON_CLIENT_ID FALCON_CLIENT_SECRET"
 {
+    verbose_log "Checking mandatory variables..."
     for VAR_NAME in $VARIABLES; do
-        [ -z "$(eval "echo \"\$$VAR_NAME\"")" ] && echo "$VAR_NAME is not configured!" && VAR_UNSET=true
+        if [ -z "$(eval "echo \"\$$VAR_NAME\"")" ]; then
+            echo "$VAR_NAME is not configured!"
+            VAR_UNSET=true
+        else
+            debug_log "$VAR_NAME is configured"
+        fi
     done
     [ -n "$VAR_UNSET" ] && usage
 }
 
 response_headers=$(mktemp)
+verbose_log "Authenticating with CrowdStrike API..."
+
 cs_falcon_oauth_token=$(
     if ! command -v curl >/dev/null 2>&1; then
         die "The 'curl' command is missing. Please install it before continuing. Aborting..."
     fi
+
+    debug_log "Requesting OAuth token from $(cs_cloud)"
 
     token_result=$(echo "client_id=$FALCON_CLIENT_ID&client_secret=$FALCON_CLIENT_SECRET" |
         curl -X POST -s -L "https://$(cs_cloud)/oauth2/token" \
@@ -609,6 +699,7 @@ cs_falcon_oauth_token=$(
     if [ -z "$token" ]; then
         die "Unable to obtain CrowdStrike Falcon OAuth Token. Double check your credentials and/or ensure you set the correct cloud region."
     fi
+    verbose_log "Successfully obtained OAuth token"
     echo "$token"
 )
 
@@ -619,10 +710,14 @@ if [ "${FALCON_CLOUD}" != "${region_hint}" ] && [ -n "${region_hint}" ]; then
     if [ -z "${region_hint}" ]; then
         die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
     fi
+    verbose_log "Region hint received: $region_hint, updating FALCON_CLOUD from $FALCON_CLOUD to $region_hint"
     FALCON_CLOUD="${region_hint}"
+else
+    verbose_log "Region confirmed: $FALCON_CLOUD"
 fi
 
 registry_opts=$(
+    verbose_log "Determining registry options for sensor type: $SENSOR_TYPE and region: $FALCON_CLOUD"
     # Handle unified falcon-sensor format (no region)
     if [ "${SENSOR_TYPE}" = "falcon-sensor" ]; then
         echo "falcon-sensor"
@@ -681,10 +776,15 @@ registry_opts=$(
     fi
 )
 
+debug_log "Registry options determined: $registry_opts"
+
 cs_falcon_cid_with_checksum=$(
+    verbose_log "Retrieving CID..."
     if [ -n "$FALCON_CID" ]; then
+        verbose_log "Using provided CID: $FALCON_CID"
         echo "$FALCON_CID"
     else
+        verbose_log "Fetching CID from API..."
         cs_target_cid=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
         handle_curl_error $?
         if echo "$cs_target_cid" | grep -q "authorization failed"; then
@@ -695,6 +795,8 @@ cs_falcon_cid_with_checksum=$(
 )
 
 cs_falcon_cid=$(echo "$cs_falcon_cid_with_checksum" | cut -d'-' -f1 | tr '[:upper:]' '[:lower:]')
+
+debug_log "CID: $cs_falcon_cid (with checksum: $cs_falcon_cid_with_checksum)"
 
 if [ "$GETCID" ]; then
     echo "${cs_falcon_cid_with_checksum}"
@@ -716,6 +818,9 @@ if [ ! "$LISTTAGS" ] && [ ! "$PULLTOKEN" ] && [ ! "$GETIMAGEPATH" ]; then
     echo "Using the following settings:"
     echo "Falcon Region:   $(cs_cloud)"
     echo "Falcon Registry: ${cs_registry}"
+    verbose_log "Sensor Type: ${SENSOR_TYPE}"
+    verbose_log "Build Stage: ${BUILD_STAGE}"
+    verbose_log "Registry Options: ${registry_opts}"
 fi
 
 ART_USERNAME="fc-$cs_falcon_cid"
@@ -723,42 +828,52 @@ IMAGE_NAME="falcon-sensor"
 repository_name="$BUILD_STAGE/falcon-sensor"
 registry_type="container-security"
 
+verbose_log "Configuring image settings for sensor type: $SENSOR_TYPE"
+
 if [ "${SENSOR_TYPE}" = "falcon-container" ]; then
     # Unified format: use falcon-container image name
     IMAGE_NAME="falcon-container"
     repository_name="$BUILD_STAGE/falcon-container"
+    debug_log "Using unified falcon-container format"
 elif [ "${SENSOR_TYPE}" = "falcon-container-regional" ]; then
     # Regional format: use falcon-sensor image name (current behavior)
     IMAGE_NAME="falcon-sensor"
     repository_name="$BUILD_STAGE/falcon-sensor"
+    debug_log "Using regional falcon-container format"
 elif [ "${SENSOR_TYPE}" = "falcon-kac" ]; then
     # Unified format: use falcon-kac image name
     IMAGE_NAME="falcon-kac"
     repository_name="$BUILD_STAGE/falcon-kac"
+    debug_log "Using unified falcon-kac format"
 elif [ "${SENSOR_TYPE}" = "falcon-kac-regional" ]; then
     # Regional format: use falcon-kac image name (same as unified)
     IMAGE_NAME="falcon-kac"
     repository_name="$BUILD_STAGE/falcon-kac"
+    debug_log "Using regional falcon-kac format"
 elif [ "${SENSOR_TYPE}" = "falcon-snapshot" ]; then
     # overrides for Snapshot
     ART_USERNAME="fs-$cs_falcon_cid"
     IMAGE_NAME="cs-snapshotscanner"
     repository_name="$BUILD_STAGE/cs-snapshotscanner"
     registry_type="snapshots"
+    debug_log "Using falcon-snapshot configuration"
 elif [ "${SENSOR_TYPE}" = "falcon-imageanalyzer" ]; then
     # Unified format: use falcon-imageanalyzer image name
     IMAGE_NAME="falcon-imageanalyzer"
     repository_name="$BUILD_STAGE/falcon-imageanalyzer"
+    debug_log "Using unified falcon-imageanalyzer format"
 elif [ "${SENSOR_TYPE}" = "falcon-imageanalyzer-regional" ]; then
     # Regional format: use falcon-imageanalyzer image name (same as unified)
     IMAGE_NAME="falcon-imageanalyzer"
     repository_name="$BUILD_STAGE/falcon-imageanalyzer"
+    debug_log "Using regional falcon-imageanalyzer format"
 elif [ "${SENSOR_TYPE}" = "fcs" ]; then
     # overrides for FCS
     ART_USERNAME="fh-$cs_falcon_cid"
     IMAGE_NAME="fcs"
     repository_name="$BUILD_STAGE/cs-fcs"
     registry_type="iac"
+    debug_log "Using fcs configuration"
 elif [ "${SENSOR_TYPE}" = "falcon-jobcontroller" ]; then
     # overrides for Job Controller
     IMAGE_NAME="falcon-jobcontroller"
@@ -769,6 +884,7 @@ elif [ "${SENSOR_TYPE}" = "falcon-jobcontroller" ]; then
     elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
         registry_opts="${registry_opts}/gov2"
     fi
+    debug_log "Using falcon-jobcontroller configuration"
 elif [ "${SENSOR_TYPE}" = "falcon-registryassessmentexecutor" ]; then
     # overrides for Registry Assessment Executor
     IMAGE_NAME="falcon-registryassessmentexecutor"
@@ -779,9 +895,13 @@ elif [ "${SENSOR_TYPE}" = "falcon-registryassessmentexecutor" ]; then
     elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
         registry_opts="${registry_opts}/gov2"
     fi
+    debug_log "Using falcon-registryassessmentexecutor configuration"
 fi
 
+debug_log "Final configuration: IMAGE_NAME=$IMAGE_NAME, repository_name=$repository_name, ART_USERNAME=$ART_USERNAME, registry_type=$registry_type"
+
 #Set Docker token using the BEARER token captured earlier
+verbose_log "Retrieving registry credentials..."
 raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/$registry_type/entities/image-registry-credentials/v1")
 handle_curl_error $?
 docker_api_token=$(echo "$raw_docker_api_token" | json_value "token")
@@ -797,7 +917,11 @@ Ensure the following:
   - Cloud Security is enabled in your tenant."
 fi
 
+verbose_log "Successfully retrieved registry credentials"
+debug_log "Registry username: $ART_USERNAME"
+
 if [ "$PULLTOKEN" ]; then
+    verbose_log "Generating pull token..."
     # Determine if base64 supports the -w option
     BASE64_OPT=""
     if base64 --help 2>&1 | grep -q "\-w"; then
@@ -808,6 +932,7 @@ if [ "$PULLTOKEN" ]; then
     # Generate and display token
     # shellcheck disable=SC2086
     IMAGE_PULL_TOKEN=$(printf '{"auths": { "%s": { "auth": "%s" } } }' "${cs_registry}" "$PARTIALPULLTOKEN" | base64 $BASE64_OPT)
+    verbose_log "Pull token generated successfully"
     echo "${IMAGE_PULL_TOKEN}"
     exit 0
 fi
@@ -822,6 +947,8 @@ fi
 #Construct repository path
 REPOSITORY="$cs_registry/$registry_opts/$repository_name"
 
+verbose_log "Repository path: $REPOSITORY"
+
 if [ "$LISTTAGS" ]; then
     list_tags
     exit 0
@@ -831,8 +958,11 @@ fi
 if [ -z "${CONTAINER_TOOL}" ]; then
     CONTAINER_TOOL=$(detect_container_tool)
 else
+    verbose_log "Using specified container tool: ${CONTAINER_TOOL}"
     CONTAINER_TOOL=$(echo "${CONTAINER_TOOL}" | tr '[:upper:]' '[:lower:]')
 fi
+
+verbose_log "Container tool selected: $CONTAINER_TOOL"
 
 # Validate container tool
 case "${CONTAINER_TOOL}" in
@@ -848,6 +978,7 @@ if grep -qw "skopeo" "$CONTAINER_TOOL" && [ -z "${COPY}" ] && [ -z "${LISTTAGS}"
 fi
 
 #Set container login
+verbose_log "Logging into container registry: $cs_registry"
 error_message=$(echo "$ART_PASSWORD" | "$CONTAINER_TOOL" login --username "$ART_USERNAME" "$cs_registry" --password-stdin 2>&1 >/dev/null) || ERROR=true
 if [ "${ERROR}" = "true" ]; then
     # Check to see if unknown flag error is thrown
@@ -857,9 +988,11 @@ if [ "${ERROR}" = "true" ]; then
     fi
     die "ERROR: ${CONTAINER_TOOL} login failed. Error message: ${error_message}"
 fi
+verbose_log "Successfully logged into container registry"
 
 #Get latest sensor version
 set +e # Temporarily disable exit-on-error for version matching
+verbose_log "Resolving sensor version..."
 LATESTSENSOR=$(match_sensor_version "$SENSOR_VERSION")
 set -e # Re-enable exit-on-error
 
@@ -876,8 +1009,12 @@ Tips for version matching:
   - Omit -v flag to get the latest available version"
 fi
 
+verbose_log "Selected sensor version: $LATESTSENSOR"
+
 #Construct full image path
 FULLIMAGEPATH="${REPOSITORY}:${LATESTSENSOR}"
+
+verbose_log "Full image path: $FULLIMAGEPATH"
 
 if [ "$GETIMAGEPATH" ]; then
     echo "${FULLIMAGEPATH}"
@@ -908,12 +1045,19 @@ else
     fi
 fi
 
+if [ -n "$COPY" ]; then
+    verbose_log "Destination path for copy: $COPYPATH"
+fi
+
 # Handle multi-arch images first
+verbose_log "Starting image processing..."
 if [ "$(is_multi_arch "$FULLIMAGEPATH")" = "true" ]; then
     # If a platform has been specified, pull the specific platform for the container tool
     if [ -n "$SENSOR_PLATFORM" ]; then
+        verbose_log "Processing multi-arch image with platform: $SENSOR_PLATFORM"
         # If Skopeo is being used, the platform must be overridden
         if grep -qw "skopeo" "$CONTAINER_TOOL"; then
+            verbose_log "Using skopeo to copy specific platform"
             "$CONTAINER_TOOL" copy --override-arch "$(platform_override)" --override-os linux "docker://$FULLIMAGEPATH" "docker://$COPYPATH"
         else
             # Podman/Docker can pull the specific platform
@@ -927,6 +1071,7 @@ if [ "$(is_multi_arch "$FULLIMAGEPATH")" = "true" ]; then
         fi
     else
         if [ -n "$COPY" ]; then
+            verbose_log "Copying multi-arch image to registry"
             # Copy the multi-arch image to the desired registry
             copy_image "$FULLIMAGEPATH" "$COPYPATH" "true"
         else
@@ -942,7 +1087,9 @@ You can either:
     fi
 else
     # Handle non-multi-arch images
+    verbose_log "Processing single-arch image"
     if grep -qw "skopeo" "$CONTAINER_TOOL"; then
+        verbose_log "Using skopeo to copy image"
         "$CONTAINER_TOOL" copy "docker://$FULLIMAGEPATH" "docker://$COPYPATH"
     else
         pull_image "$FULLIMAGEPATH"
@@ -956,3 +1103,5 @@ fi
 if [ -n "$COPY" ]; then
     echo "Image copied to: $COPYPATH"
 fi
+
+verbose_log "Script execution completed successfully"
