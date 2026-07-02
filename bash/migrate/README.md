@@ -70,7 +70,7 @@ export NEW_FALCON_CID="AAAAAAAAAAA"  # Optional, will be auto-detected if not pr
 #### Auto-Discovery of Falcon Cloud Region
 
 > [!IMPORTANT]
-> Auto-discovery is only available for [us-1, us-2, eu-1] regions.
+> Auto-discovery is only available for [us-1, us-2, us-3, eu-1] regions.
 
 The scripts support auto-discovery of the Falcon cloud region. If the `[OLD|NEW]FALCON_CLOUD` environment variable is not set, the script will attempt to auto-discover it. If you want to set the cloud region manually, or if your region does not support auto-discovery, you can set the `[OLD|NEW]FALCON_CLOUD` environment variable:
 
@@ -101,7 +101,7 @@ Old CID Authentication:
 
     - OLD_FALCON_CLOUD                  (default: 'us-1')
         The cloud region where your old CrowdStrike Falcon instance is hosted.
-        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2'].
+        Accepted values are ['us-1', 'us-2', 'us-3', 'eu-1', 'us-gov-1', 'us-gov-2'].
 
 New CID Authentication:
     - NEW_FALCON_CLIENT_ID              (default: unset) [Required]
@@ -116,7 +116,7 @@ New CID Authentication:
 
     - NEW_FALCON_CLOUD                  (default: 'us-1')
         The cloud region where your new CrowdStrike Falcon instance is hosted.
-        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2'].
+        Accepted values are ['us-1', 'us-2', 'us-3', 'eu-1', 'us-gov-1', 'us-gov-2'].
 
     - NEW_FALCON_CID                    (default: unset)
         Your CrowdStrike Falcon customer ID (CID) for the new CID.
@@ -181,7 +181,7 @@ Other Options
     - FALCON_SENSOR_CLOUD               (default: unset)
         To pin the cloud region for unified sensor installations.
         This allows specifying the cloud region for unified sensors at installation time.
-        Accepted values are [us-1|us-2|eu-1|us-gov-1|us-gov-2].
+        Accepted values are [us-1|us-2|us-3|eu-1|us-gov-1|us-gov-2].
 
     - ALLOW_LEGACY_CURL                 (default: false)
         To use the legacy version of curl; version < 7.55.0.

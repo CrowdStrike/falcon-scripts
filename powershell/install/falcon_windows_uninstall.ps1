@@ -85,7 +85,7 @@ param(
     [switch] $RemoveHost,
 
     [Parameter(Position = 8)]
-    [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2')]
+    [ValidateSet('autodiscover', 'us-1', 'us-2', 'us-3', 'eu-1', 'us-gov-1', 'us-gov-2')]
     [string] $FalconCloud = 'autodiscover',
 
     [Parameter(Position = 9)]
@@ -181,6 +181,7 @@ begin {
             'autodiscover' { 'https://api.crowdstrike.com'; break }
             'us-1' { 'https://api.crowdstrike.com'; break }
             'us-2' { 'https://api.us-2.crowdstrike.com'; break }
+            'us-3' { 'https://api.us-3.crowdstrike.com'; break }
             'eu-1' { 'https://api.eu-1.crowdstrike.com'; break }
             'us-gov-1' { 'https://api.laggar.gcw.crowdstrike.com'; break }
             'us-gov-2' { 'https://api.us-gov-2.crowdstrike.mil'; break }

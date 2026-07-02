@@ -76,7 +76,7 @@ param(
     [ValidatePattern('\w{40}')]
     [string] $NewFalconClientSecret,
     [Parameter(Position = 3)]
-    [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2')]
+    [ValidateSet('autodiscover', 'us-1', 'us-2', 'us-3', 'eu-1', 'us-gov-1', 'us-gov-2')]
     [string] $NewFalconCloud = 'autodiscover',
     [Parameter(Position = 4)]
     [string] $NewMemberCid,
@@ -87,7 +87,7 @@ param(
     [ValidatePattern('\w{40}')]
     [string] $OldFalconClientSecret,
     [Parameter(Position = 7)]
-    [ValidateSet('autodiscover', 'us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2')]
+    [ValidateSet('autodiscover', 'us-1', 'us-2', 'us-3', 'eu-1', 'us-gov-1', 'us-gov-2')]
     [string] $OldFalconCloud = 'autodiscover',
     [Parameter(Position = 8)]
     [string] $OldMemberCid,
@@ -992,6 +992,7 @@ function Get-FalconCloud ([string] $xCsRegion) {
         'autodiscover' { 'https://api.crowdstrike.com'; break }
         'us-1' { 'https://api.crowdstrike.com'; break }
         'us-2' { 'https://api.us-2.crowdstrike.com'; break }
+        'us-3' { 'https://api.us-3.crowdstrike.com'; break }
         'eu-1' { 'https://api.eu-1.crowdstrike.com'; break }
         'us-gov-1' { 'https://api.laggar.gcw.crowdstrike.com'; break }
         'us-gov-2' { 'https://api.us-gov-2.crowdstrike.mil'; break }

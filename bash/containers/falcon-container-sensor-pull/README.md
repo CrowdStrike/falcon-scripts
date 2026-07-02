@@ -81,7 +81,7 @@ To check your version of cURL, run the following command: `curl --version`
 ## Auto-Discovery of Falcon Cloud Region
 
 > [!IMPORTANT]
-> Auto-discovery is only available for [us-1, us-2, eu-1] regions.
+> Auto-discovery is only available for [us-1, us-2, us-3, eu-1] regions.
 
 The script supports auto-discovery of the Falcon cloud region. If the cloud region is not provided, the script will attempt to auto-discover it. If you want to set the cloud region manually, or if your region does not support auto-discovery, you set the `FALCON_CLOUD` environment variable or use the `-r, --region` flag.
 
@@ -97,7 +97,7 @@ Required Flags:
 
 Optional Flags:
     -f, --cid <FALCON_CID>                         Falcon Customer ID
-    -r, --region <FALCON_CLOUD>                    Falcon Cloud Region [us-1|us-2|eu-1|us-gov-1|us-gov-2] (Default: us-1)
+    -r, --region <FALCON_CLOUD>                    Falcon Cloud Region [us-1|us-2|us-3|eu-1|us-gov-1|us-gov-2] (Default: us-1)
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
                                                    By default, the image name and tag are appended. Use --copy-omit-image-name
                                                    and/or --copy-custom-tag to change that behavior.
@@ -146,7 +146,7 @@ Help Options:
 | `-f`, `--cid <FALCON_CID>`                     | `$FALCON_CID`           | `None` (Optional)             | CrowdStrike Customer ID (CID). *If not provided, CID will be auto-detected.*                                                                                                                                                                             |
 | `-u`, `--client-id <FALCON_CLIENT_ID>`         | `$FALCON_CLIENT_ID`     | `None` (Required)             | CrowdStrike API Client ID                                                                                                                                                                                                                                |
 | `-s`, `--client-secret <FALCON_CLIENT_SECRET>` | `$FALCON_CLIENT_SECRET` | `None` (Required)             | CrowdStrike API Client Secret                                                                                                                                                                                                                            |
-| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)             | CrowdStrike Region. <br>\**Auto-discovery is only available for [`us-1, us-2, eu-1`] regions.*                                                                                                                                                           |
+| `-r`, `--region <FALCON_CLOUD>`                | `$FALCON_CLOUD`         | `us-1` (Optional)             | CrowdStrike Region. <br>\**Auto-discovery is only available for [`us-1, us-2, us-3, eu-1`] regions.*                                                                                                                                                           |
 | `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)             | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`. <br> *\*By default, the image name and tag are appended. Use `--copy-omit-image-name` and/or `--copy-custom-tag` to change that behavior.*           |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)             | Specify sensor version to retrieve from the registry                                                                                                                                                                                                     |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)             | Specify sensor platform to retrieve from the registry                                                                                                                                                                                                    |

@@ -24,7 +24,7 @@ Authentication:
     - FALCON_CLOUD                      (default: unset)
         The cloud region where your CrowdStrike Falcon instance is hosted.
         Required if using FALCON_ACCESS_TOKEN.
-        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2'].
+        Accepted values are ['us-1', 'us-2', 'us-3', 'eu-1', 'us-gov-1', 'us-gov-2'].
 
 Other Options:
     - FALCON_MAINTENANCE_TOKEN          (default: unset)
@@ -185,6 +185,7 @@ cs_cloud() {
     case "${cs_falcon_cloud}" in
         us-1) echo "api.crowdstrike.com" ;;
         us-2) echo "api.us-2.crowdstrike.com" ;;
+        us-3) echo "api.us-3.crowdstrike.com" ;;
         eu-1) echo "api.eu-1.crowdstrike.com" ;;
         us-gov-1) echo "api.laggar.gcw.crowdstrike.com" ;;
         us-gov-2) echo "api.us-gov-2.crowdstrike.mil" ;;

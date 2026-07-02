@@ -68,7 +68,7 @@ export FALCON_CLIENT_SECRET="YYYYYYYYY"
 #### Auto-Discovery of Falcon Cloud Region
 
 > [!IMPORTANT]
-> Auto-discovery is only available for [us-1, us-2, eu-1] regions.
+> Auto-discovery is only available for [us-1, us-2, us-3, eu-1] regions.
 
 The scripts support auto-discovery of the Falcon cloud region. If the `FALCON_CLOUD` environment variable is not set, the script will attempt to auto-discover it. If you want to set the cloud region manually, or if your region does not support auto-discovery, you can set the `FALCON_CLOUD` environment variable:
 
@@ -124,7 +124,7 @@ Authentication:
     - FALCON_CLOUD                      (default: unset)
         The cloud region where your CrowdStrike Falcon instance is hosted.
         Required if using FALCON_ACCESS_TOKEN.
-        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2'].
+        Accepted values are ['us-1', 'us-2', 'us-3', 'eu-1', 'us-gov-1', 'us-gov-2'].
 
 Other Options
     - FALCON_CID                        (default: auto)
@@ -166,7 +166,7 @@ Other Options
     - FALCON_SENSOR_CLOUD               (default: unset)
         To pin the cloud region for unified sensor installations.
         This allows specifying the cloud region for unified sensors at installation time.
-        Accepted values are [us-1|us-2|eu-1|us-gov-1|us-gov-2].
+        Accepted values are [us-1|us-2|us-3|eu-1|us-gov-1|us-gov-2].
 
     - FALCON_UNINSTALL                  (default: false)
         To uninstall the falcon sensor.
@@ -279,7 +279,7 @@ Authentication:
     - FALCON_CLOUD                      (default: unset)
         The cloud region where your CrowdStrike Falcon instance is hosted.
         Required if using FALCON_ACCESS_TOKEN.
-        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2'].
+        Accepted values are ['us-1', 'us-2', 'us-3', 'eu-1', 'us-gov-1', 'us-gov-2'].
 
 Other Options:
     - FALCON_MAINTENANCE_TOKEN          (default: unset)

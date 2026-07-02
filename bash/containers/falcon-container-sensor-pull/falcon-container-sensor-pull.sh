@@ -18,7 +18,7 @@ Required Flags:
 
 Optional Flags:
     -f, --cid <FALCON_CID>                         Falcon Customer ID
-    -r, --region <FALCON_CLOUD>                    Falcon Cloud Region [us-1|us-2|eu-1|us-gov-1|us-gov-2] (Default: us-1)
+    -r, --region <FALCON_CLOUD>                    Falcon Cloud Region [us-1|us-2|us-3|eu-1|us-gov-1|us-gov-2] (Default: us-1)
     -c, --copy <REGISTRY/NAMESPACE>                Registry to copy the image to, e.g., myregistry.com/mynamespace
                                                    By default, the image name and tag are appended. Use --copy-omit-image-name
                                                    and/or --copy-custom-tag to change that behavior.
@@ -73,6 +73,7 @@ cs_cloud() {
     case "${FALCON_CLOUD}" in
         us-1) echo "api.crowdstrike.com" ;;
         us-2) echo "api.us-2.crowdstrike.com" ;;
+        us-3) echo "api.us-3.crowdstrike.com" ;;
         eu-1) echo "api.eu-1.crowdstrike.com" ;;
         us-gov-1) echo "api.laggar.gcw.crowdstrike.com" ;;
         us-gov-2) echo "api.us-gov-2.crowdstrike.mil" ;;

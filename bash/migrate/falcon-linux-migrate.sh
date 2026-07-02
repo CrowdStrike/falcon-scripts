@@ -28,7 +28,7 @@ Old CID Authentication:
 
     - OLD_FALCON_CLOUD                  (default: 'us-1')
         The cloud region where your old CrowdStrike Falcon instance is hosted.
-        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2'].
+        Accepted values are ['us-1', 'us-2', 'us-3', 'eu-1', 'us-gov-1', 'us-gov-2'].
 
 New CID Authentication:
     - NEW_FALCON_CLIENT_ID              (default: unset) [Required]
@@ -43,7 +43,7 @@ New CID Authentication:
 
     - NEW_FALCON_CLOUD                  (default: 'us-1')
         The cloud region where your new CrowdStrike Falcon instance is hosted.
-        Accepted values are ['us-1', 'us-2', 'eu-1', 'us-gov-1', 'us-gov-2'].
+        Accepted values are ['us-1', 'us-2', 'us-3', 'eu-1', 'us-gov-1', 'us-gov-2'].
 
     - NEW_FALCON_CID                    (default: unset)
         Your CrowdStrike Falcon customer ID (CID) for the new CID.
@@ -108,7 +108,7 @@ Other Options
     - FALCON_SENSOR_CLOUD               (default: unset)
         To pin the cloud region for unified sensor installations.
         This allows specifying the cloud region for unified sensors at installation time.
-        Accepted values are [us-1|us-2|eu-1|us-gov-1|us-gov-2].
+        Accepted values are [us-1|us-2|us-3|eu-1|us-gov-1|us-gov-2].
 
     - ALLOW_LEGACY_CURL                 (default: false)
         To use the legacy version of curl; version < 7.55.0.
@@ -281,6 +281,7 @@ cs_cloud() {
     case "${cs_falcon_cloud}" in
         us-1) echo "api.crowdstrike.com" ;;
         us-2) echo "api.us-2.crowdstrike.com" ;;
+        us-3) echo "api.us-3.crowdstrike.com" ;;
         eu-1) echo "api.eu-1.crowdstrike.com" ;;
         us-gov-1) echo "api.laggar.gcw.crowdstrike.com" ;;
         us-gov-2) echo "api.us-gov-2.crowdstrike.mil" ;;
@@ -1316,6 +1317,9 @@ if [ -n "$FALCON_SENSOR_CLOUD" ]; then
             us-2)
                 echo "us-2"
                 ;;
+            us-3)
+                echo "us-3"
+                ;;
             eu-1)
                 echo "eu-1"
                 ;;
@@ -1326,7 +1330,7 @@ if [ -n "$FALCON_SENSOR_CLOUD" ]; then
                 echo "us-gov-2"
                 ;;
             *)
-                die "Unrecognized SENSOR_CLOUD: ${FALCON_SENSOR_CLOUD} value must be one of : [us-1|us-2|eu-1|us-gov-1|us-gov-2]"
+                die "Unrecognized SENSOR_CLOUD: ${FALCON_SENSOR_CLOUD} value must be one of : [us-1|us-2|us-3|eu-1|us-gov-1|us-gov-2]"
                 ;;
         esac
     )
