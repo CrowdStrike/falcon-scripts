@@ -27,8 +27,8 @@ Optional Flags:
                                                    Accepts version strings or channel keywords:
                                                    -------------------------------------------
                                                    latest       Latest sensor version (default)
-                                                   N-1          Previous major.minor release
-                                                   N-2          Two major.minor releases back
+                                                   N-1          One release prior to the latest
+                                                   N-2          Two releases prior to the latest
                                                    LTS          Latest LTS release
                                                    LTS-1        Previous LTS release
                                                    7.33         Latest build of version 7.33.x

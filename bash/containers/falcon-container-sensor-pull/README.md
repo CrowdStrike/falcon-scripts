@@ -106,8 +106,8 @@ Optional Flags:
                                                    Accepts version strings or channel keywords:
                                                    -------------------------------------------
                                                    latest       Latest sensor version (default)
-                                                   N-1          Previous major.minor release
-                                                   N-2          Two major.minor releases back
+                                                   N-1          One release prior to the latest
+                                                   N-2          Two releases prior to the latest
                                                    LTS          Latest LTS release
                                                    LTS-1        Previous LTS release
                                                    7.33         Latest build of version 7.33.x
@@ -207,12 +207,15 @@ The `-v, --version` flag accepts channel keywords for policy-driven deployments 
 | Keyword  | Description                         |
 | :------- | :---------------------------------- |
 | `latest` | Latest sensor version (default)     |
-| `N-1`    | Previous major.minor release        |
-| `N-2`    | Two major.minor releases back       |
+| `N-1`    | One release prior to the latest     |
+| `N-2`    | Two releases prior to the latest    |
 | `LTS`    | Latest LTS release                  |
 | `LTS-1`  | Previous LTS release                |
 
-Channel keywords are case-insensitive (`n-1`, `N-1`, `lts`, `LTS` all work). N-1/N-2 exclude LTS tags from consideration. No additional API scopes are required — channels are resolved entirely from existing registry tag data.
+Channel keywords are case-insensitive (`n-1`, `N-1`, `lts`, `LTS` all work). N-1/N-2 step back through releases and exclude LTS tags from consideration. No additional API scopes are required — channels are resolved entirely from existing registry tag data.
+
+> [!NOTE]
+> LTS (Long Term Support) sensor release tags are not yet generally available. The `LTS` and `LTS-1` keywords are included ahead of that release and will return an error until LTS-tagged images are published to the registry.
 
 ```shell
 # Pull latest (default behavior)
@@ -279,6 +282,37 @@ The following example will print the image repository path with the latest image
 ```
 
 Example output: `registry.crowdstrike.com/falcon-sensor/us-1/release/falcon-sensor:7.29.0-15501-1.falcon-linux.Release.US-1`
+
+#### Example pinning to a version channel for automation
+
+Channel keywords are useful in CI/CD or GitOps pipelines where you want to track a release channel without hardcoding version numbers. The following example resolves the N-1 channel to a concrete image path that can be pinned into a Kubernetes manifest or Helm value.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-sensor \
+--version N-1 \
+--get-image-path
+```
+
+Example output: `registry.crowdstrike.com/falcon-sensor/release/falcon-sensor:7.30.0-15400-1`
+
+#### Example mirroring a version channel to another registry
+
+The following example resolves the latest LTS release and copies it to an internal registry, so downstream consumers pull from a controlled mirror.
+
+> [!NOTE]
+> LTS tags may not yet be available in the registry. See the [Version Channels](#version-channels) note above for details.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-sensor \
+--version LTS \
+--copy myregistry.com/mynamespace
+```
 
 #### Example downloading the Falcon DaemonSet sensor (unified)
 
