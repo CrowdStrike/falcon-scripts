@@ -29,8 +29,6 @@ Optional Flags:
                                                    latest       Latest sensor version (default)
                                                    N-1          One release prior to the latest
                                                    N-2          Two releases prior to the latest
-                                                   LTS          Latest LTS release
-                                                   LTS-1        Previous LTS release
                                                    7.33         Latest build of version 7.33.x
                                                    7.33.0-18606 Specific sensor build
 
@@ -478,7 +476,7 @@ extract_raw_tags() {
     '
 }
 
-# Resolve version channel keywords (latest, N-1, N-2, LTS, LTS-1) to version prefixes
+# Resolve version channel keywords to version prefixes
 resolve_version_channel() {
     local input="$1"
     local normalized all_tags major_minor_versions lts_tags lts_versions target_version
@@ -947,7 +945,7 @@ if [ "${ERROR}" = "true" ]; then
     die "ERROR: ${CONTAINER_TOOL} login failed. Error message: ${error_message}"
 fi
 
-# Resolve channel keywords (latest, N-1, N-2, LTS, LTS-1) to version prefixes.
+# Resolve channel keywords to version prefixes.
 RESOLVED_VERSION=$(resolve_version_channel "$SENSOR_VERSION")
 
 # Get latest sensor version
@@ -963,7 +961,7 @@ if [ -z "$LATESTSENSOR" ]; then
 Available versions can be listed with: $0 --list-tags -t ${SENSOR_TYPE}
 
 Tips for version matching:
-  - Use channel keywords: -v latest, -v N-1, -v N-2, -v LTS, -v LTS-1
+  - Use channel keywords: -v latest, -v N-1, -v N-2
   - Use exact version: -v 7.31.0
   - Use partial version: -v 7.31 (matches latest 7.31.x)
   - Use major version: -v 7 (matches latest 7.x.x)
