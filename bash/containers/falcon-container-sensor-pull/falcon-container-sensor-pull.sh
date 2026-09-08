@@ -291,12 +291,13 @@ curl_command() {
     # backslash or a double quote in the token has to be escaped first.
     escaped_token=$(printf '%s' "$token" | sed 's/\\/\\\\/g; s/"/\\"/g')
     auth_config=$(printf 'header = "Authorization: Bearer %s"' "$escaped_token")
+    # No -L: the bearer token must never cross a redirect hop. The API corrects a
+    # wrong region before this runs, and the registry answers in a single hop.
     printf '%s\n' "$auth_config" |
-        curl -s -L --proto '=https' --proto-redir '=https' -K- "$@"
+        curl -s --proto '=https' -K- "$@"
 }
 
 fetch_tags() {
-    # No -L, so --proto-redir is dropped too; nothing follows a redirect here.
     bearer_result=$(echo "-u $ART_USERNAME:$ART_PASSWORD" |
         curl -s --proto '=https' \
             "https://$cs_registry/v2/token?account=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=$cs_registry" -K-)

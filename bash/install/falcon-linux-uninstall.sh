@@ -256,8 +256,10 @@ curl_command() {
     # backslash or a double quote in the token has to be escaped first.
     escaped_token=$(printf '%s' "$cs_falcon_oauth_token" | sed 's/\\/\\\\/g; s/"/\\"/g')
     auth_config=$(printf 'header = "Authorization: Bearer %s"' "$escaped_token")
+    # No -L: the bearer token must never cross a redirect hop. A wrong region is
+    # corrected in get_oauth_token, so no call here needs to follow a redirect.
     printf '%s\n' "$auth_config" |
-        curl -s -x "$proxy" -L --proto '=https' --proto-redir '=https' -K- "$@"
+        curl -s -x "$proxy" --proto '=https' -K- "$@"
 }
 
 handle_curl_error() {
@@ -490,10 +492,11 @@ get_oauth_token() {
                 die "Unable to obtain region hint from CrowdStrike Falcon OAuth API, Please provide FALCON_CLOUD environment variable as an override."
             fi
             cs_falcon_cloud="${region_hint}"
-        else
-            if [ "${FALCON_CLOUD}" != "${region_hint}" ]; then
-                echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
-            fi
+        elif [ -n "${region_hint}" ] && [ "${FALCON_CLOUD}" != "${region_hint}" ]; then
+            echo "WARNING: FALCON_CLOUD='${FALCON_CLOUD}' environment variable specified while credentials only exists in '${region_hint}'" >&2
+            # Use the hint. The API answers the wrong region with a redirect, which
+            # curl_command no longer follows.
+            cs_falcon_cloud="${region_hint}"
         fi
     fi
 
