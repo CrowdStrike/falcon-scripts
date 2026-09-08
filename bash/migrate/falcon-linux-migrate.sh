@@ -370,9 +370,7 @@ get_oauth_token() {
                 auth_payload="${auth_payload}&member_cid=${cs_falcon_member_cid}"
             fi
 
-            token_result=$(echo "$auth_payload" | oauth_token_request "$(cs_cloud)" "${response_headers}")
-
-            handle_curl_error $?
+            token_result=$(echo "$auth_payload" | oauth_token_request "$(cs_cloud)" "${response_headers}") || handle_curl_error $?
 
             token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
             if [ -z "$token" ]; then
@@ -387,8 +385,7 @@ get_oauth_token() {
                         # Separate file: --dump-header truncates, and region_hint below
                         # still needs the original response.
                         retry_headers=$(mktemp)
-                        token_result=$(echo "$auth_payload" | oauth_token_request "$retry_host" "$retry_headers")
-                        handle_curl_error $?
+                        token_result=$(echo "$auth_payload" | oauth_token_request "$retry_host" "$retry_headers") || handle_curl_error $?
                         rm -f "$retry_headers"
                         token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
                     fi
@@ -484,9 +481,7 @@ cs_remove_host_from_console() {
         payload="{\"ids\": [\"$aid\"]}"
         url="https://$(cs_cloud)/devices/entities/devices-actions/v2?action_name=hide_host"
 
-        curl_command -X "POST" -H "Content-Type: application/json" -d "$payload" "$url" >/dev/null
-
-        handle_curl_error $?
+        curl_command -X "POST" -H "Content-Type: application/json" -d "$payload" "$url" >/dev/null || handle_curl_error $?
     fi
 }
 
@@ -500,9 +495,7 @@ get_maintenance_token() {
     payload="{\"device_id\": \"$aid\", \"audit_message\": \"CrowdStrike Falcon Uninstall Bash Script\"}"
     url="https://$(cs_cloud)/policy/combined/reveal-uninstall-token/v1"
 
-    response=$(curl_command -X "POST" -H "Content-Type: application/json" -d "$payload" "$url")
-
-    handle_curl_error $?
+    response=$(curl_command -X "POST" -H "Content-Type: application/json" -d "$payload" "$url") || handle_curl_error $?
 
     if echo "$response" | grep -q "\"uninstall_token\""; then
         cs_maintenance_token=$(echo "$response" | json_value "uninstall_token" 1 | sed 's/ *$//g' | sed 's/^ *//g')
@@ -605,9 +598,7 @@ cs_sensor_policy_version() {
     sensor_update_policy=$(
         curl_command -G "https://$(cs_cloud)/policy/combined/sensor-update/v2" \
             --data-urlencode "filter=platform_name:\"Linux\"+name.raw:\"$cs_policy_name\""
-    )
-
-    handle_curl_error $?
+    ) || handle_curl_error $?
 
     if echo "$sensor_update_policy" | grep "authorization failed"; then
         die "Access denied: Please make sure that your Falcon API credentials allow access to sensor update policies (scope Sensor update policies [read])"
@@ -679,9 +670,7 @@ cs_sensor_download() {
     existing_installers=$(
         curl_command -G "https://$(cs_cloud)/sensors/combined/installers/v3?sort=version|desc" \
             --data-urlencode "filter=os:\"$cs_os_name\"$cs_os_version_filter$cs_api_version_filter$cs_os_arch_filter"
-    )
-
-    handle_curl_error $?
+    ) || handle_curl_error $?
 
     if echo "$existing_installers" | grep "authorization failed"; then
         die "Access denied: Please make sure that your Falcon API credentials allow sensor download (scope Sensor Download [read])"
@@ -706,9 +695,7 @@ cs_sensor_download() {
 
     installer="${destination_dir}/falcon-sensor.${file_type}"
 
-    curl_command "https://$(cs_cloud)/sensors/entities/download-installer/v3?id=$sha" -o "${installer}"
-
-    handle_curl_error $?
+    curl_command "https://$(cs_cloud)/sensors/entities/download-installer/v3?id=$sha" -o "${installer}" || handle_curl_error $?
 
     verify_sha256 "$installer" "$sha"
 
@@ -833,8 +820,7 @@ json_value() {
 get_provisioning_token() {
     local check_settings is_required token_value
     # First, let's check if installation tokens are required
-    check_settings=$(curl_command "https://$(cs_cloud)/installation-tokens/entities/customer-settings/v1")
-    handle_curl_error $?
+    check_settings=$(curl_command "https://$(cs_cloud)/installation-tokens/entities/customer-settings/v1") || handle_curl_error $?
 
     if echo "$check_settings" | grep "authorization failed" >/dev/null; then
         # For now we just return. We can error out once more people get a chance to update their API keys
@@ -866,9 +852,7 @@ get_falcon_cid() {
     if [ -n "$FALCON_CID" ]; then
         echo "$FALCON_CID"
     else
-        cs_target_cid=$(curl_command "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
-
-        handle_curl_error $?
+        cs_target_cid=$(curl_command "https://$(cs_cloud)/sensors/queries/installers/ccid/v1") || handle_curl_error $?
 
         if [ -z "$cs_target_cid" ]; then
             die "Unable to obtain CrowdStrike Falcon CID. Response was $cs_target_cid"
@@ -920,9 +904,7 @@ get_falcon_tags() {
     log "INFO" "Retrieving tags for host with AID: $aid"
 
     local response
-    response=$(curl_command "https://$(cs_cloud)/devices/entities/devices/v2?ids=$aid")
-
-    handle_curl_error $?
+    response=$(curl_command "https://$(cs_cloud)/devices/entities/devices/v2?ids=$aid") || handle_curl_error $?
 
     if echo "$response" | grep "authorization failed" >/dev/null; then
         die "Access denied: Please make sure your Falcon API credentials allow access to host data (scope Host [read])"
@@ -999,9 +981,7 @@ EOF
     )
 
     local response
-    response=$(curl_command -X "PATCH" -H "Content-Type: application/json" -d "$payload" "https://$(cs_cloud)/devices/entities/devices/tags/v1")
-
-    handle_curl_error $?
+    response=$(curl_command -X "PATCH" -H "Content-Type: application/json" -d "$payload" "https://$(cs_cloud)/devices/entities/devices/tags/v1") || handle_curl_error $?
 
     if [ "$(echo "$response" | json_value "updated" | xargs)" = "true" ]; then
         return 0

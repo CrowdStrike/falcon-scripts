@@ -299,8 +299,7 @@ fetch_tags() {
     # No -L, so --proto-redir is dropped too; nothing follows a redirect here.
     bearer_result=$(echo "-u $ART_USERNAME:$ART_PASSWORD" |
         curl -s --proto '=https' \
-            "https://$cs_registry/v2/token?account=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=$cs_registry" -K-)
-    handle_curl_error $?
+            "https://$cs_registry/v2/token?account=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=$cs_registry" -K-) || handle_curl_error $?
     registry_bearer=$(echo "$bearer_result" | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
     # Check if registry_bearer is not empty
     if [ -z "$registry_bearer" ]; then
@@ -697,8 +696,7 @@ cs_falcon_oauth_token=$(
 
     auth_payload="client_id=$FALCON_CLIENT_ID&client_secret=$FALCON_CLIENT_SECRET"
 
-    token_result=$(echo "$auth_payload" | oauth_token_request "$(cs_cloud)" "$response_headers")
-    handle_curl_error $?
+    token_result=$(echo "$auth_payload" | oauth_token_request "$(cs_cloud)" "$response_headers") || handle_curl_error $?
     token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
     if [ -z "$token" ]; then
         # Wrong region: retry against the x-cs-region hint instead of following
@@ -712,8 +710,7 @@ cs_falcon_oauth_token=$(
                 # Separate file: --dump-header truncates, and region_hint below
                 # still needs the original response.
                 retry_headers=$(mktemp)
-                token_result=$(echo "$auth_payload" | oauth_token_request "$retry_host" "$retry_headers")
-                handle_curl_error $?
+                token_result=$(echo "$auth_payload" | oauth_token_request "$retry_host" "$retry_headers") || handle_curl_error $?
                 rm -f "$retry_headers"
                 token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
             fi
@@ -798,8 +795,7 @@ cs_falcon_cid_with_checksum=$(
     if [ -n "$FALCON_CID" ]; then
         echo "$FALCON_CID"
     else
-        cs_target_cid=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/sensors/queries/installers/ccid/v1")
-        handle_curl_error $?
+        cs_target_cid=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/sensors/queries/installers/ccid/v1") || handle_curl_error $?
         if echo "$cs_target_cid" | grep -q "authorization failed"; then
             die "Failed to retrieve CID. Ensure the correct API Scopes are assigned: $(display_api_scopes "${SENSOR_TYPE}")"
         fi
@@ -895,8 +891,7 @@ elif [ "${SENSOR_TYPE}" = "falcon-registryassessmentexecutor" ]; then
 fi
 
 #Set Docker token using the BEARER token captured earlier
-raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/$registry_type/entities/image-registry-credentials/v1")
-handle_curl_error $?
+raw_docker_api_token=$(curl_command "$cs_falcon_oauth_token" "https://$(cs_cloud)/$registry_type/entities/image-registry-credentials/v1") || handle_curl_error $?
 docker_api_token=$(echo "$raw_docker_api_token" | json_value "token")
 
 ART_PASSWORD=$(echo "$docker_api_token" | sed 's/ *$//g' | sed 's/^ *//g')
