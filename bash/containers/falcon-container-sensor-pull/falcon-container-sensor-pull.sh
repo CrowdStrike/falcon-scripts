@@ -284,17 +284,55 @@ handle_curl_error() {
 
 curl_command() {
     # Dash does not support arrays, so we have to pass the args as separate arguments
-    local token="$1" escaped_token auth_config
+    local token="$1" escaped_token auth_config headers body status hint old_host new_host arg rc
     shift
     # The configuration value must be quoted, because it holds a space and a
     # colon. curl processes backslash escapes inside a quoted value, so a
     # backslash or a double quote in the token has to be escaped first.
     escaped_token=$(printf '%s' "$token" | sed 's/\\/\\\\/g; s/"/\\"/g')
     auth_config=$(printf 'header = "Authorization: Bearer %s"' "$escaped_token")
-    # No -L: the bearer token must never cross a redirect hop. The API corrects a
-    # wrong region before this runs, and the registry answers in a single hop.
+
+    headers=$(mktemp)
+    body=$(mktemp)
+    # No -L: the bearer token must never cross a redirect hop. The body is held
+    # back so that a redirect body is not emitted ahead of the retry's.
     printf '%s\n' "$auth_config" |
-        curl -s --proto '=https' -K- "$@"
+        curl -s --proto '=https' --dump-header "$headers" -K- "$@" >"$body"
+    rc=$?
+
+    # A wrong region answers with a redirect naming the right one in x-cs-region.
+    # Re-issue against that region instead of following Location. The registry is
+    # a different host, so its URLs are never rewritten.
+    status=$(awk '/^HTTP\//{s=$2} END{print s}' "$headers")
+    case "$status" in
+        301 | 302 | 307 | 308)
+            hint=$(grep -i ^x-cs-region: "$headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
+            if [ -n "$hint" ]; then
+                old_host=$(cs_cloud)
+                # cs_cloud() validates the hint against its own allowlist. Check
+                # for empty rather than trusting its die, which does not stop bash.
+                new_host=$(cs_cloud "$hint")
+                if [ -n "$new_host" ] && [ "$new_host" != "$old_host" ]; then
+                    for arg in "$@"; do
+                        shift
+                        case "$arg" in
+                            "https://$old_host/"*)
+                                arg="https://$new_host/${arg#"https://$old_host/"}"
+                                ;;
+                        esac
+                        set -- "$@" "$arg"
+                    done
+                    printf '%s\n' "$auth_config" |
+                        curl -s --proto '=https' -K- "$@" >"$body"
+                    rc=$?
+                fi
+            fi
+            ;;
+    esac
+
+    cat "$body"
+    rm -f "$headers" "$body"
+    return "$rc"
 }
 
 fetch_tags() {
