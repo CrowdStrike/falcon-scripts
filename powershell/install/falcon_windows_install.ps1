@@ -55,6 +55,13 @@ This parameter forces the sensor to skip those attempts and ignore any proxy con
 User agent string to append to the User-Agent header when making requests to the CrowdStrike API.
 .PARAMETER Verbose
 Enable verbose logging
+.PARAMETER FalconDebug
+Print redacted progress markers: detected OS and PowerShell version, the exact sensor
+query filter, how many installers matched and which was chosen, the API route and HTTP
+status for every call, and the sensor version installed plus the AID (that version is the one resolved from
+the policy or query, not re-read from the binary). Values are dropped
+unless the key is on a fixed allow-list, so secrets cannot appear. Also honors `$env:FALCON_DEBUG=1`.
+Do not use `Set-PSDebug -Trace` or the common `-Debug` parameter for support; they print credentials.
 
 .EXAMPLE
 PS>.\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string>
@@ -74,6 +81,10 @@ Updated 2021-10-22 to include 'sensor_version' property when matching policy to 
 [CmdletBinding()]
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'DeleteInstaller')]
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'DeleteScript')]
+# Read inside Test-FalconDebugEnabled, which the rule does not follow.
+[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'FalconDebug')]
+# Debug markers must stay out of the pipeline and out of the on-disk log.
+[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '')]
 param(
     [Parameter(Position = 1)]
     [ValidateSet('autodiscover', 'us-1', 'us-2', 'us-3', 'eu-1', 'us-gov-1', 'us-gov-2')]
@@ -132,7 +143,10 @@ param(
     [string] $FalconAccessToken,
 
     [Parameter(Position = 19)]
-    [string] $UserAgent
+    [string] $UserAgent,
+
+    [Parameter(Position = 20)]
+    [switch] $FalconDebug
 )
 begin {
     Set-PSDebug -Off
@@ -155,6 +169,8 @@ begin {
     } else {
         $BaseUserAgent
     }
+    # PSEdition is absent on PowerShell 3/4; Desktop is the only edition they had.
+    $PSEditionValue = if ($PSVersionTable.PSEdition) { $PSVersionTable.PSEdition } else { 'Desktop' }
 
     function Write-FalconLog ([string] $Source, [string] $Message, [bool] $stdout = $true) {
         $Content = @(Get-Date -Format 'yyyy-MM-dd hh:MM:ss')
@@ -190,6 +206,70 @@ begin {
 
         # Write to log file, but not stdout
         Write-FalconLog -Source 'VERBOSE' -Message $message -stdout $false
+    }
+
+    function Test-FalconDebugEnabled {
+        if ($FalconDebug) { return $true }
+        if ($env:FALCON_DEBUG -match '^(1|true)\z') { return $true }
+        return $false
+    }
+
+    # Allow-list, the single decision point for both marker paths. Only known-safe
+    # keys keep their value; everything else is dropped, so a future debug line
+    # cannot leak a secret by accident.
+    function Protect-FalconDebugPair([string] $Key, [string] $Value) {
+        $SafeKeys = @(
+            'step', 'source', 'error', 'stage',
+            'cloud', 'old_cloud', 'new_cloud', 'region', 'region_hint', 'sensor_cloud',
+            'http_status', 'curl_exit', 'exit_code', 'path', 'filter', 'sort',
+            'os', 'os_version', 'os_arch', 'os_family', 'kernel', 'pkg_manager', 'distro_id', 'run_as',
+            'count', 'index', 'decrement', 'version', 'sensor_version', 'policy_version', 'file_type', 'sha',
+            'installer', 'bytes', 'sha_verify', 'billing', 'backend', 'apd', 'aid', 'cid_source',
+            'tags_count', 'grouping_tags_count', 'sensor_type', 'param', 'registry', 'repository', 'tag',
+            'client_id_set', 'client_secret_set', 'access_token_set', 'member_cid_set',
+            'provisioning_token_set', 'maintenance_token_set', 'proxy_set', 'policy_name_set',
+            'tags_set', 'grouping_tags_set'
+        )
+        if ($SafeKeys -ccontains $Key) { return "$Key=$Value" }
+        return "$Key=[DROPPED]"
+    }
+
+    function Protect-FalconDebugMessage([string] $Message) {
+        $Filtered = @()
+        foreach ($Token in ($Message -split '\s+')) {
+            if ([string]::IsNullOrEmpty($Token)) { continue }
+            $Split = $Token.IndexOf('=')
+            if ($Split -lt 1) { continue }
+            $Filtered += Protect-FalconDebugPair $Token.Substring(0, $Split) $Token.Substring($Split + 1)
+        }
+        return ($Filtered -join ' ')
+    }
+
+    # Write-Host on purpose: keeps markers out of the pipeline and out of the log file.
+    function Write-FalconDebug {
+        param(
+            [Parameter(Mandatory = $true)][string] $Step,
+            [string] $Message,
+            [System.Collections.IDictionary] $Pairs
+        )
+        if (-not (Test-FalconDebugEnabled)) { return }
+        $Parts = @()
+        if ($Message) { $Parts += Protect-FalconDebugMessage $Message }
+        # -Pairs is required for any value that can contain a space, such as an FQL
+        # filter holding a multi-word policy name. Splitting a joined string cannot
+        # carry those safely: a bare word would be glued onto the previous value.
+        if ($Pairs) {
+            foreach ($Key in $Pairs.Keys) {
+                $Parts += Protect-FalconDebugPair ([string]$Key) ([string]$Pairs[$Key])
+            }
+        }
+        $Filtered = ($Parts | Where-Object { $_ }) -join ' '
+        if ($Filtered) {
+            Write-Host "FALCON_DEBUG: $Step $Filtered"
+        }
+        else {
+            Write-Host "FALCON_DEBUG: $Step"
+        }
     }
 
     function Get-FalconCloud ([string] $xCsRegion) {
@@ -243,6 +323,7 @@ begin {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
         $Headers.Add('User-Agent', $FullUserAgent)
         if ($FalconAccessToken) {
+            Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "source=access_token cloud=${FalconCloud}"
             $Headers.Add('Authorization', "bearer $($FalconAccessToken)")
         }
         else {
@@ -253,7 +334,11 @@ begin {
             # below.
             $RedirectResponse = $null
             try {
+                Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "step=request cloud=${FalconCloud}"
                 $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body -MaximumRedirection 0
+                # Status marker before ConvertFrom-Json: on Windows PowerShell 5.1 a
+                # 308 is returned, not thrown, and parsing it would fail first.
+                Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "step=response http_status=$([int]$response.StatusCode) cloud=${FalconCloud}"
 
                 if ([int]$response.StatusCode -in @(301, 302, 303, 307, 308)) {
                     $RedirectResponse = $response
@@ -270,8 +355,10 @@ begin {
                 }
             }
             catch {
-                # Handle redirects
-                Write-Verbose "Invoke-FalconAuth - CAUGHT EXCEPTION - `$_.Exception.Message`r`n$($_.Exception.Message)"
+                # Status only. Never log the exception, its message, or the response:
+                # they can carry the request body and the Authorization header.
+                $debugStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'none' }
+                Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "http_status=$debugStatus error=oauth_request_failed"
                 $response = $_.Exception.Response
 
                 if (!$response) {
@@ -309,6 +396,9 @@ begin {
                 # Get-FalconCloud validates the region against its own allowlist,
                 # not the Location header.
                 $BaseUrl = Get-FalconCloud($region)
+                # Printed only after validation, so a hostile header cannot inject
+                # arbitrary text into the console.
+                Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "step=region_retry region=$region"
                 $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
             }
         }
@@ -323,6 +413,24 @@ begin {
         else {
             return $false
         }
+    }
+
+    # Reads the AID for the debug marker only; registration is asynchronous, so
+    # a missing AID right after install is normal.
+    function Get-AID {
+        $reg_paths = 'HKLM:\SYSTEM\CrowdStrike\{9b03c1d9-3138-44ed-9fae-d9f4c034b88d}\{16e0423f-7058-48c9-a204-725362b67639}\Default', 'HKLM:\SYSTEM\CurrentControlSet\Services\CSAgent\Sim'
+        $aid = $null
+        foreach ($path in $reg_paths) {
+            try {
+                $agItemProperty = Get-ItemProperty -Path $path -Name AG -ErrorAction Stop
+                $aid = [System.BitConverter]::ToString( ($agItemProperty.AG)).ToLower() -replace '-', ''
+                break
+            }
+            catch {
+                continue
+            }
+        }
+        return $aid
     }
 
     $WinSystem = [Environment]::GetFolderPath('System')
@@ -349,7 +457,9 @@ begin {
 
     function Get-ResourceContent([hashtable] $WebRequestParams, [string] $url, [string] $logKey, [hashtable] $scope, [string] $errorMessage) {
         try {
+            Write-FalconDebug -Step 'Get-ResourceContent' -Message "step=request path=$(([Uri]$url).AbsolutePath)"
             $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'GET' -MaximumRedirection 0
+            Write-FalconDebug -Step 'Get-ResourceContent' -Message "step=response http_status=$([int]$response.StatusCode)"
             $content = ConvertFrom-Json -InputObject $response.Content
             Write-VerboseLog -VerboseInput $content -PreMessage 'Get-ResourceContent - $content:'
 
@@ -369,7 +479,8 @@ begin {
             }
         }
         catch {
-            Write-VerboseLog -VerboseInput $_.Exception.Message -PreMessage 'Get-ResourceContent - CAUGHT EXCEPTION - $_.Exception.Message:'
+            $debugStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'none' }
+            Write-FalconDebug -Step 'Get-ResourceContent' -Message "http_status=$debugStatus error=request_failed"
             $response = $_.Exception.Response
 
             if (!$response) {
@@ -408,6 +519,7 @@ begin {
     function Invoke-FalconDownload ([hashtable] $WebRequestParams, [string] $url, [string] $Outfile) {
         try {
             $ProgressPreference = 'SilentlyContinue'
+            Write-FalconDebug -Step 'Invoke-FalconDownload' -Message "step=request path=$(([Uri]$url).AbsolutePath)"
             $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'GET' -OutFile $Outfile
         }
         catch {
@@ -441,6 +553,22 @@ begin {
     }
 }
 process {
+    Write-FalconDebug -Step 'start' -Pairs ([ordered]@{
+            version           = "$ScriptVersion (PowerShell $($PSVersionTable.PSVersion) $PSEditionValue)"
+            cloud             = $FalconCloud
+            client_id_set     = if ($FalconClientId) { 'yes' } else { 'no' }
+            client_secret_set = if ($FalconClientSecret) { 'yes' } else { 'no' }
+            access_token_set  = if ($FalconAccessToken) { 'yes' } else { 'no' }
+            member_cid_set    = if ($MemberCid) { 'yes' } else { 'no' }
+            proxy_set         = if ($ProxyHost) { 'yes' } else { 'no' }
+            policy_name_set   = if ($SensorUpdatePolicyName -ne 'platform_default') { 'yes' } else { 'no' }
+        })
+    Write-FalconDebug -Step 'environment' -Pairs ([ordered]@{
+            os         = 'windows'
+            os_version = [System.Environment]::OSVersion.Version.ToString()
+            os_arch    = $env:PROCESSOR_ARCHITECTURE
+            run_as     = if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { 'admin' } else { 'user' }
+        })
     # TLS check should be first since it's needed for all HTTPS communication
     if ([Net.ServicePointManager]::SecurityProtocol -notmatch 'Tls12') {
         try {
@@ -551,6 +679,7 @@ process {
     $message = "Retrieving sensor policy details for '$($SensorUpdatePolicyName)'"
     Write-FalconLog 'GetPolicy' $message
     $filter = "platform_name:'Windows'+name.raw:'$($SensorUpdatePolicyName)'"
+    Write-FalconDebug -Step 'GetPolicy' -Pairs ([ordered]@{ step = 'query'; path = '/policy/combined/sensor-update/v2'; filter = $filter })
     $url = "${BaseUrl}/policy/combined/sensor-update/v2?filter=$([System.Web.HttpUtility]::UrlEncode($filter)))"
     $policy_scope = @{
         'Sensor update policies' = @('Read')
@@ -572,22 +701,33 @@ process {
 
     $message = "Retrieved sensor policy details: Policy ID: $policyId, Build: $build, Version: $version"
     Write-FalconLog 'GetPolicy' $message
+    Write-FalconDebug -Step 'GetPolicy' -Pairs ([ordered]@{ step = 'resolved'; policy_version = $version })
 
     # Get installer details based on normalized policy version
     $message = "Retrieving installer details for sensor version: '$($version)'"
     Write-FalconLog 'GetInstaller' $message
-    $encodedFilter = [System.Web.HttpUtility]::UrlEncode("platform:'windows'+version:'$($version)'")
+    $installerFilter = "platform:'windows'+version:'$($version)'"
+    Write-FalconDebug -Step 'GetInstaller' -Pairs ([ordered]@{ step = 'query'; path = '/sensors/combined/installers/v3'; filter = $installerFilter; sort = 'none' })
+    $encodedFilter = [System.Web.HttpUtility]::UrlEncode($installerFilter)
     $url = "${BaseUrl}/sensors/combined/installers/v3?filter=${encodedFilter}"
     $installer_scope = @{
         'Sensor Download' = @('Read')
     }
     $installerDetails = Get-ResourceContent -WebRequestParams $WebRequestParams -url $url -logKey 'GetInstaller' -scope $installer_scope -errorMessage "Unable to fetch installer details from the CrowdStrike Falcon API."
+    Write-FalconDebug -Step 'GetInstaller' -Pairs ([ordered]@{ step = 'matched'; count = @($installerDetails).Count })
 
     if ( $installerDetails.sha256 -and $installerDetails.name ) {
         $cloudHash = $installerDetails.sha256
         $cloudFile = $installerDetails.name
         $message = "Found installer: ($cloudFile) with sha256: '$cloudHash'"
         Write-FalconLog 'GetInstaller' $message
+        $shaString = [string]$cloudHash
+        Write-FalconDebug -Step 'GetInstaller' -Pairs ([ordered]@{
+                step      = 'selected'
+                index     = 0
+                file_type = "$($installerDetails.file_type)"
+                sha       = $shaString.Substring(0, [Math]::Min(12, $shaString.Length))
+            })
     }
     else {
         $message = "Failed to retrieve installer details."
@@ -605,6 +745,7 @@ process {
         $localHash = Get-InstallerHash -Path $localFile
         $message = "Successfull downloaded installer '$localFile' ($localHash)"
         Write-FalconLog 'DownloadFile' $message
+        Write-FalconDebug -Step 'DownloadFile' -Pairs ([ordered]@{ step = 'downloaded'; installer = $localFile; bytes = (Get-Item $localFile).Length })
     }
     else {
         $message = "Failed to download installer."
@@ -644,6 +785,13 @@ process {
     $InstallParams += " ProvWaitTime=$ProvWaitTime"
 
     # Begin installation
+    Write-FalconDebug -Step 'Installer' -Pairs ([ordered]@{
+            step                   = 'configure'
+            cid_source             = if ($FalconCid) { 'param' } else { 'api' }
+            provisioning_token_set = if ($ProvToken) { 'yes' } else { 'no' }
+            tags_count             = if ($Tags) { $Tags.Count } else { 0 }
+            proxy_set              = if ($ProxyHost) { 'yes' } else { 'no' }
+        })
     Write-FalconLog 'Installer' 'Installing Falcon Sensor...'
     Write-FalconLog 'StartProcess' 'Starting installer; command-line parameters omitted from the log because they may contain sensitive values'
     try {
@@ -698,6 +846,10 @@ process {
     }
 
     Write-FalconLog 'InstallerProcess' 'Falcon sensor installed successfully.'
+    # Authoritative install-time version; aid=none is normal here since
+    # registration completes asynchronously once the sensor reaches the cloud.
+    $InstalledAid = Get-AID
+    Write-FalconDebug -Step 'InstallerProcess' -Pairs ([ordered]@{ step = 'installed'; version = $version; aid = if ($InstalledAid) { $InstalledAid } else { 'none' } })
 }
 end {
     Write-FalconLog 'EndScript' 'Script completed.'

@@ -101,7 +101,7 @@ The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET`
 ## Install Script
 
 ```terminal
-Usage: falcon-linux-install.sh [-h|--help]
+Usage: falcon-linux-install.sh [-h|--help|--debug]
 
 Installs and configures the CrowdStrike Falcon Sensor for Linux.
 Version: 1.13.0
@@ -195,9 +195,18 @@ Other Options
         User agent string to append to the User-Agent header when making
         requests to the CrowdStrike API.
 
-This script recognizes the following argument:
+    - FALCON_DEBUG                      (default: unset)
+        Print redacted progress markers to stderr: step name, HTTP status,
+        cloud/region and curl exit code. Values are dropped unless the key is
+        on a fixed allow-list, so secrets cannot appear. Do not use bash -x
+        for support; it prints credentials.
+        Accepted values are ['1', 'true'].
+
+This script recognizes the following arguments:
     -h, --help
         Print this help message and exit.
+    --debug
+        Same as FALCON_DEBUG=1.
 ```
 
 ### Usage
@@ -256,7 +265,7 @@ curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bas
 ## Uninstall Script
 
 ```terminal
-Usage: falcon-linux-uninstall.sh [-h|--help]
+Usage: falcon-linux-uninstall.sh [-h|--help|--debug]
 
 Uninstalls the CrowdStrike Falcon Sensor from Linux operating systems.
 Version: 1.13.0
@@ -306,9 +315,18 @@ Other Options:
         User agent string to append to the User-Agent header when making
         requests to the CrowdStrike API.
 
-This script recognizes the following argument:
+    - FALCON_DEBUG                      (default: unset)
+        Print redacted progress markers to stderr: step name, HTTP status,
+        cloud/region and curl exit code. Values are dropped unless the key is
+        on a fixed allow-list, so secrets cannot appear. Do not use bash -x
+        for support; it prints credentials.
+        Accepted values are ['1', 'true'].
+
+This script recognizes the following arguments:
     -h, --help
         Print this help message and exit.
+    --debug
+        Same as FALCON_DEBUG=1.
 ```
 
 ### Usage
@@ -336,14 +354,51 @@ curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bas
 
 ## Troubleshooting
 
-To troubleshoot installation issues, run the script by using `bash -x`:
+Use the redacted debug mode. It prints, to stderr: the detected OS, architecture,
+kernel and package manager; the exact sensor query filter and how many installers
+matched; which installer was selected, its size and SHA-256 check; the API route,
+HTTP status and curl exit code for every call; and the installed sensor version
+and AID. Values are dropped unless the key is on a fixed allow-list, so
+credentials cannot appear in the output you send to support.
 
 ```bash
-bash -x falcon-linux-install.sh
+FALCON_DEBUG=1 ./falcon-linux-install.sh
+```
+Sample output from a real install (values from a live run, credentials never appear):
+
+```
+FALCON_DEBUG: start version=1.13.0 cloud=us-2 client_id_set=yes access_token_set=no member_cid_set=no proxy_set=no
+FALCON_DEBUG: start step=environment os=Ubuntu os_version=22 os_arch=x86_64 kernel=6.8.0-1066-gcp run_as=root pkg_manager=apt policy_name_set=no decrement=0
+FALCON_DEBUG: oauth2_token step=response http_status=201 cloud=us-2
+FALCON_DEBUG: cs_sensor_download step=query filter=os:"Ubuntu"+os_version:"*22*"+architectures:"x86_64" sort=version|desc decrement=0
+FALCON_DEBUG: curl_command path=/sensors/combined/installers/v3 http_status=200 curl_exit=0
+FALCON_DEBUG: cs_sensor_download step=matched count=23
+FALCON_DEBUG: cs_sensor_download step=selected index=1 file_type=deb sha=455353061160
+FALCON_DEBUG: cs_sensor_download step=downloaded installer=/tmp/tmp.B6yKufQ9Ys/falcon-sensor.deb bytes=71715968
+FALCON_DEBUG: cs_sensor_download step=verified sha_verify=ok
+FALCON_DEBUG: cs_sensor_register step=configure cid_source=api provisioning_token_set=no tags_count=0 apd=unset proxy_set=no billing=unset backend=unset sensor_cloud=unset
+FALCON_DEBUG: main step=installed version=8.10.19402.0 aid=none
 ```
 
-or
+`aid=none` right after an install is normal: registration completes asynchronously
+once the sensor reaches the cloud. Markers go to stderr, and a progress line can
+share a line with one, so match them with `grep FALCON_DEBUG` rather than `grep
+'^FALCON_DEBUG'`.
+
+
+or pass the flag:
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/install/falcon-linux-install.sh | bash -x
+./falcon-linux-install.sh --debug
 ```
+
+or over a pipe:
+
+```bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/install/falcon-linux-install.sh | FALCON_DEBUG=1 bash
+```
+
+Do **not** use `bash -x` for support. It prints every expanded command, including
+`client_secret`, access tokens, provisioning tokens and `Authorization` headers.
+These scripts turn tracing off at startup and warn when they do, but a trace
+enabled before that point can still expose credentials.

@@ -114,6 +114,13 @@ By default, the Falcon sensor for Windows automatically attempts to use any avai
 This parameter forces the sensor to skip those attempts and ignore any proxy configuration, including Windows Proxy Auto Detection.
 .PARAMETER Verbose
 Enable verbose logging
+.PARAMETER FalconDebug
+Print redacted progress markers: detected OS and PowerShell version, the exact sensor
+query filter, how many installers matched and which was chosen, the API route and HTTP
+status for every call, and the sensor version installed plus the AID (that version is the one resolved from
+the policy or query, not re-read from the binary). Values are dropped
+unless the key is on a fixed allow-list, so secrets cannot appear. Also honors `$env:FALCON_DEBUG=1`.
+Do not use `Set-PSDebug -Trace` or the common `-Debug` parameter for support; they print credentials.
 #>
 ```
 
@@ -176,6 +183,13 @@ The proxy host for the sensor to use when communicating with CrowdStrike [defaul
 The proxy port for the sensor to use when communicating with CrowdStrike [default: $null]
 .PARAMETER Verbose
 Enable verbose logging
+.PARAMETER FalconDebug
+Print redacted progress markers: detected OS and PowerShell version, the exact sensor
+query filter, how many installers matched and which was chosen, the API route and HTTP
+status for every call, and the sensor version installed plus the AID (that version is the one resolved from
+the policy or query, not re-read from the binary). Values are dropped
+unless the key is on a fixed allow-list, so secrets cannot appear. Also honors `$env:FALCON_DEBUG=1`.
+Do not use `Set-PSDebug -Trace` or the common `-Debug` parameter for support; they print credentials.
 #>
 ```
 
@@ -195,30 +209,47 @@ Basic example that will uninstall the sensor with the provided maintenance token
 
 ## Troubleshooting
 
-To assist in troubleshooting the installation scripts, you can try the following:
+Use the redacted debug mode. It prints the detected OS and PowerShell version, the
+exact sensor query filter, how many installers matched and which was chosen, the API
+route and HTTP status for every call, and the sensor version installed plus the AID
+(the version is the one resolved from the policy or query, not re-read from the binary).
+Values are dropped unless the key is on a fixed allow-list, so credentials cannot
+appear in the output you send to support.
 
-- Use the `-Verbose` parameter to enable verbose logging.
+```pwsh
+.\falcon_windows_install.ps1 -FalconDebug -FalconClientId <string> -FalconClientSecret <string> -ProvToken <string>
+```
 
-  > Note: This will display additional logging in the console, as well as in the log file.
+Sample output from a real install on Windows PowerShell 5.1 (values from a live run,
+credentials never appear):
 
-  Example:
+```
+FALCON_DEBUG: start version=1.13.0 (PowerShell 5.1.20348.5499 Desktop) cloud=us-2 client_id_set=yes client_secret_set=yes access_token_set=no member_cid_set=no proxy_set=no policy_name_set=no
+FALCON_DEBUG: environment os=windows os_version=10.0.20348.0 os_arch=AMD64 run_as=admin
+FALCON_DEBUG: Invoke-FalconAuth step=response http_status=201 cloud=us-2
+FALCON_DEBUG: GetPolicy step=query path=/policy/combined/sensor-update/v2 filter=platform_name:'Windows'+name.raw:'platform_default'
+FALCON_DEBUG: GetPolicy step=resolved policy_version=8.10.21405
+FALCON_DEBUG: GetInstaller step=query path=/sensors/combined/installers/v3 filter=platform:'windows'+version:'8.10.21405' sort=none
+FALCON_DEBUG: GetInstaller step=matched count=1
+FALCON_DEBUG: GetInstaller step=selected index=0 file_type=exe sha=338d1b7f2508
+FALCON_DEBUG: DownloadFile step=downloaded installer=C:\Windows\Temp\FalconSensor_Windows.exe bytes=131724104
+FALCON_DEBUG: Installer step=configure cid_source=api provisioning_token_set=no tags_count=0 proxy_set=no
+FALCON_DEBUG: InstallerProcess step=installed version=8.10.21405 aid=61c06e35b3104b99a371be2d6943d2e7
+```
 
-    ```pwsh
-    .\falcon_windows_install.ps1 -Verbose -FalconClientId <string> -FalconClientSecret <string> -ProvToken <string>
-    ```
 
-- For a more detailed approach, you can use `Set-PSDebug -Trace`. This cmdlet offers three trace levels (0-2):
+`$env:FALCON_DEBUG = '1'` does the same thing, which is useful when the script runs
+from a job where you cannot add a parameter.
 
-  - 0 : Turn script block logging off. (Equivalent to -Off)
-  - 1 : Turn script block logging on. (Equivalent to -On)
-  - 2 : Turn script block logging on and generate a trace of all commands in a script block and the arguments they were used with.
-    > Similar to the output of `set -x` in bash. Very noisy but contains a lot of useful information.
+`-Verbose` still enables the script's own operational logging in the console and the
+log file. It is not a replacement for `-FalconDebug`.
 
-  Example:
+> Note: debug markers go to the console via `Write-Host`, so they are not written to
+> the script's log file. A `Start-Transcript` session does capture them, so stop any
+> transcript first if you do not want the markers on disk.
 
-    ```pwsh
-    Set-PSDebug -Trace 2
-    .\falcon_windows_install.ps1 -FalconClientId <string> -FalconClientSecret <string> -ProvToken <string>
-    # To turn off tracing
-    Set-PSDebug -Trace 0
-    ```
+Do **not** use `Set-PSDebug -Trace` or the common `-Debug` parameter for support.
+Tracing prints every statement with its arguments, including `FalconClientSecret`,
+`ProvToken`, access tokens, `Authorization` headers and the OAuth request body. These
+scripts call `Set-PSDebug -Off` on entry, but that runs after PowerShell binds the
+parameters, so a trace started beforehand can still expose the values you passed in.

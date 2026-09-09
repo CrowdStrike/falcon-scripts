@@ -79,7 +79,7 @@ export [OLD|NEW]FALCON_CLOUD="us-gov-1"
 ## Usage
 
 ```terminal
-Usage: falcon-linux-migrate.sh [-h|--help]
+Usage: falcon-linux-migrate.sh [-h|--help|--debug]
 
 Migrates the Falcon sensor to another Falcon CID.
 Version: 1.13.0
@@ -188,9 +188,18 @@ Other Options
         User agent string to append to the User-Agent header when making
         requests to the CrowdStrike API.
 
-This script recognizes the following argument:
+    - FALCON_DEBUG                      (default: unset)
+        Print redacted progress markers to stderr: step name, HTTP status,
+        cloud/region and curl exit code. Values are dropped unless the key is
+        on a fixed allow-list, so secrets cannot appear. Do not use bash -x
+        for support; it prints credentials.
+        Accepted values are ['1', 'true'].
+
+This script recognizes the following arguments:
     -h, --help
         Print this help message and exit.
+    --debug
+        Same as FALCON_DEBUG=1.
 ```
 
 ### Examples
@@ -246,17 +255,37 @@ curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bas
 
 ## Troubleshooting
 
-To troubleshoot migration issues, you can run the script with `bash -x` for detailed output:
+Use the redacted debug mode. It prints, to stderr: the detected OS, architecture,
+kernel and package manager; both clouds and which credentials are present; the
+exact sensor query filter and how many installers matched; the old AID before
+removal and the new AID after registration; how many sensor and Falcon grouping
+tags were migrated; and whether the run resumed from the tag recovery file or
+started fresh. Note there is no automatic rollback on failure — the recovery file
+only preserves the old AID and tags so a retry can reapply them. Values are
+dropped unless the key is on a fixed allow-list, so neither the old nor the new
+CID credentials can appear in the output you send to support.
 
 ```bash
-bash -x falcon-linux-migrate.sh
+FALCON_DEBUG=1 ./falcon-linux-migrate.sh
 ```
 
-or
+or pass the flag:
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/migrate/falcon-linux-migrate.sh | bash -x
+./falcon-linux-migrate.sh --debug
 ```
+
+or over a pipe:
+
+```bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/migrate/falcon-linux-migrate.sh | FALCON_DEBUG=1 bash
+```
+
+Do **not** use `bash -x` for support. It prints every expanded command, including
+`OLD_FALCON_CLIENT_SECRET`, `NEW_FALCON_CLIENT_SECRET`, access tokens,
+maintenance tokens and `Authorization` headers. This script turns tracing off at
+startup and warns when it does, but a trace enabled before that point can still
+expose credentials.
 
 The script creates a log file at the location specified by `LOG_PATH` (defaults to `/tmp`) with the name format `falcon_migration_YYYYMMDD_HHMMSS.log`. This log contains detailed information about each step of the migration process.
 

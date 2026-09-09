@@ -64,10 +64,21 @@ This parameter forces the sensor to skip those attempts and ignore any proxy con
 User agent string to append to the User-Agent header when making requests to the CrowdStrike API.
 .PARAMETER Verbose
 Enable verbose logging
+.PARAMETER FalconDebug
+Print redacted progress markers: detected OS and PowerShell version, the exact sensor
+query filter, how many installers matched and which was chosen, the API route and HTTP
+status for every call, and the sensor version installed plus the AID (that version is the one resolved from
+the policy or query, not re-read from the binary). Values are dropped
+unless the key is on a fixed allow-list, so secrets cannot appear. Also honors `$env:FALCON_DEBUG=1`.
+Do not use `Set-PSDebug -Trace` or the common `-Debug` parameter for support; they print credentials.
 #>
 #Requires -Version 3.0
 
 [CmdletBinding()]
+# Read inside Test-FalconDebugEnabled, which the rule does not follow.
+[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'FalconDebug')]
+# Debug markers must stay out of the pipeline and out of the on-disk log.
+[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '')]
 param(
     [Parameter(Position = 1)]
     [ValidatePattern('\w{32}')]
@@ -132,7 +143,9 @@ param(
     [Parameter(Position = 27)]
     [switch] $ProxyDisable,
     [Parameter(Position = 28)]
-    [string] $UserAgent
+    [string] $UserAgent,
+    [Parameter(Position = 29)]
+    [switch] $FalconDebug
 )
 
 Set-PSDebug -Off
@@ -259,6 +272,70 @@ function Write-VerboseLog ([psobject] $VerboseInput, [string] $PreMessage) {
     Write-FalconLog -Source 'VERBOSE' -Message $message -stdout $false
 }
 
+function Test-FalconDebugEnabled {
+    if ($FalconDebug) { return $true }
+    if ($env:FALCON_DEBUG -match '^(1|true)\z') { return $true }
+    return $false
+}
+
+# Allow-list, the single decision point for both marker paths. Only known-safe
+# keys keep their value; everything else is dropped, so a future debug line
+# cannot leak a secret by accident.
+function Protect-FalconDebugPair([string] $Key, [string] $Value) {
+    $SafeKeys = @(
+        'step', 'source', 'error', 'stage',
+        'cloud', 'old_cloud', 'new_cloud', 'region', 'region_hint', 'sensor_cloud',
+        'http_status', 'curl_exit', 'exit_code', 'path', 'filter', 'sort',
+        'os', 'os_version', 'os_arch', 'os_family', 'kernel', 'pkg_manager', 'distro_id', 'run_as',
+        'count', 'index', 'decrement', 'version', 'sensor_version', 'policy_version', 'file_type', 'sha',
+        'installer', 'bytes', 'sha_verify', 'billing', 'backend', 'apd', 'aid', 'cid_source',
+        'tags_count', 'grouping_tags_count', 'sensor_type', 'param', 'registry', 'repository', 'tag',
+        'client_id_set', 'client_secret_set', 'access_token_set', 'member_cid_set',
+        'provisioning_token_set', 'maintenance_token_set', 'proxy_set', 'policy_name_set',
+        'tags_set', 'grouping_tags_set'
+    )
+    if ($SafeKeys -ccontains $Key) { return "$Key=$Value" }
+    return "$Key=[DROPPED]"
+}
+
+function Protect-FalconDebugMessage([string] $Message) {
+    $Filtered = @()
+    foreach ($Token in ($Message -split '\s+')) {
+        if ([string]::IsNullOrEmpty($Token)) { continue }
+        $Split = $Token.IndexOf('=')
+        if ($Split -lt 1) { continue }
+        $Filtered += Protect-FalconDebugPair $Token.Substring(0, $Split) $Token.Substring($Split + 1)
+    }
+    return ($Filtered -join ' ')
+}
+
+# Write-Host on purpose: keeps markers out of the pipeline and out of the log file.
+function Write-FalconDebug {
+    param(
+        [Parameter(Mandatory = $true)][string] $Step,
+        [string] $Message,
+        [System.Collections.IDictionary] $Pairs
+    )
+    if (-not (Test-FalconDebugEnabled)) { return }
+    $Parts = @()
+    if ($Message) { $Parts += Protect-FalconDebugMessage $Message }
+    # -Pairs is required for any value that can contain a space, such as an FQL
+    # filter holding a multi-word policy name. Splitting a joined string cannot
+    # carry those safely: a bare word would be glued onto the previous value.
+    if ($Pairs) {
+        foreach ($Key in $Pairs.Keys) {
+            $Parts += Protect-FalconDebugPair ([string]$Key) ([string]$Pairs[$Key])
+        }
+    }
+    $Filtered = ($Parts | Where-Object { $_ }) -join ' '
+    if ($Filtered) {
+        Write-Host "FALCON_DEBUG: $Step $Filtered"
+    }
+    else {
+        Write-Host "FALCON_DEBUG: $Step"
+    }
+}
+
 
 # Uninstall Falcon Sensor
 function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $UninstallParams, [switch] $RemoveHost, [bool] $DeleteUninstaller, [string] $MaintenanceToken, [string] $UninstallTool) {
@@ -308,6 +385,7 @@ function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $Uninst
         if ($MaintenanceToken) {
             # Assume the maintenance token is a valid Token and skip API calls
             $UninstallParams += " MAINTENANCE_TOKEN=$MaintenanceToken"
+            Write-FalconDebug -Step 'GetToken' -Pairs ([ordered]@{ source = 'param'; maintenance_token_set = 'yes' })
         }
         else {
             if ($oldAid) {
@@ -324,7 +402,9 @@ function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $Uninst
                 try {
                     $url = "${oldBaseUrl}/policy/combined/reveal-uninstall-token/v1"
 
+                    Write-FalconDebug -Step 'GetToken' -Message 'step=request path=/policy/combined/reveal-uninstall-token/v1'
                     $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'POST' -Headers $oldCloudHeaders -Body $bodyJson -MaximumRedirection 0
+                    Write-FalconDebug -Step 'GetToken' -Message "step=response http_status=$([int]$response.StatusCode)"
                     $content = ConvertFrom-Json -InputObject $response.Content
 
                     if ($content.errors) {
@@ -337,10 +417,12 @@ function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $Uninst
                         $MaintenanceToken = $content.resources[0].uninstall_token
                         Write-FalconLog -Source 'Invoke-FalconUninstall' -Message 'Retrieved maintenance token'
                         $UninstallParams += " MAINTENANCE_TOKEN=$MaintenanceToken"
+                        Write-FalconDebug -Step 'GetToken' -Pairs ([ordered]@{ source = 'api'; maintenance_token_set = 'yes' })
                     }
                 }
                 catch {
-                    Write-VerboseLog -VerboseInput $_.Exception -PreMessage 'GetToken - CAUGHT EXCEPTION - $_.Exception:'
+                    $debugStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'none' }
+                    Write-FalconDebug -Step 'GetToken' -Message "http_status=$debugStatus error=request_failed"
                     $response = $_.Exception.Response
 
                     if (!$response) {
@@ -374,6 +456,7 @@ function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $Uninst
         $UninstallerProcess = Start-Process -FilePath "$UninstallerPath" -ArgumentList $UninstallParams -PassThru -Wait
         $UninstallerProcessId = $UninstallerProcess.Id
         Write-FalconLog -Source 'Invoke-FalconUninstall' -Message "Started '$UninstallerPath' ($UninstallerProcessId)"
+        Write-FalconDebug -Step 'Invoke-FalconUninstall' -Pairs ([ordered]@{ step = 'result'; aid = if ($oldAid) { $oldAid } else { 'none' }; exit_code = $UninstallerProcess.ExitCode })
         if ($UninstallerProcess.ExitCode -ne 0) {
             Write-VerboseLog -VerboseInput $UninstallerProcess -PreMessage 'PROCESS EXIT CODE ERROR - $UninstallerProcess:'
             if ($UninstallerProcess.ExitCode -eq 106) {
@@ -387,6 +470,7 @@ function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $Uninst
             if ($RemoveHost) {
                 $Message = 'Uninstall failed, attempting to restore host visibility...'
                 Write-FalconLog -Source 'Invoke-FalconUninstall' -Message $Message
+                Write-FalconDebug -Step 'Invoke-FalconUninstall' -Pairs ([ordered]@{ stage = 'rollback_host_visibility' })
                 Invoke-HostVisibility -WebRequestParams $WebRequestParams -Aid $oldAid -action 'show' -BaseUrl $oldBaseUrl -Headers $oldCloudHeaders
             }
             throw $Message
@@ -432,7 +516,10 @@ function Invoke-FalconUninstall ([hashtable] $WebRequestParams, [string] $Uninst
         Write-FalconLog -Source 'Invoke-FalconUninstall' -Message 'Falcon Sensor successfully uninstalled.'
     }
     catch {
-        Write-VerboseLog -VerboseInput $_.Exception -PreMessage 'Invoke-FalconUninstall - CAUGHT EXCEPTION - $_.Exception:'
+        # Status only. Serialising the exception can put a response body, and
+        # with it the Authorization header, into the on-disk log.
+        $debugStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'none' }
+        Write-FalconDebug -Step 'Invoke-FalconUninstall' -Message "http_status=$debugStatus error=uninstall_failed"
         $errorMessage = if ($_.Exception -and $_.Exception.Message) {
             $_.Exception.Message
         } else {
@@ -486,6 +573,7 @@ function Invoke-FalconInstall ([hashtable] $WebRequestParams, [string] $InstallP
         $message = "Retrieving sensor policy details for '$($SensorUpdatePolicyName)'"
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
         $filter = "platform_name:'Windows'+name.raw:'$($SensorUpdatePolicyName)'"
+        Write-FalconDebug -Step 'Invoke-FalconInstall' -Pairs ([ordered]@{ step = 'query'; path = '/policy/combined/sensor-update/v2'; filter = $filter })
         $url = "${newBaseUrl}/policy/combined/sensor-update/v2?filter=$([System.Web.HttpUtility]::UrlEncode($filter))"
         $policy_scope = @{
             'Sensor update policies' = @('Read')
@@ -507,22 +595,33 @@ function Invoke-FalconInstall ([hashtable] $WebRequestParams, [string] $InstallP
 
         $message = "Retrieved sensor policy details: Policy ID: $policyId, Build: $build, Version: $version"
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
+        Write-FalconDebug -Step 'Invoke-FalconInstall' -Pairs ([ordered]@{ step = 'resolved'; policy_version = $version })
 
         # Get installer details based on policy version
         $message = "Retrieving installer details for sensor version: '$($version)'"
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
-        $encodedFilter = [System.Web.HttpUtility]::UrlEncode("platform:'windows'+version:'$($version)'")
+        $installerFilter = "platform:'windows'+version:'$($version)'"
+        Write-FalconDebug -Step 'Invoke-FalconInstall' -Pairs ([ordered]@{ step = 'query'; path = '/sensors/combined/installers/v3'; filter = $installerFilter; sort = 'none' })
+        $encodedFilter = [System.Web.HttpUtility]::UrlEncode($installerFilter)
         $url = "${newBaseUrl}/sensors/combined/installers/v3?filter=${encodedFilter}"
         $installer_scope = @{
             'Sensor Download' = @('Read')
         }
         $installerDetails = Get-ResourceContent -WebRequestParams $WebRequestParams -url $url -logKey 'GetInstaller' -scope $installer_scope -errorMessage "Unable to fetch installer details from the CrowdStrike Falcon API." -Headers $newCloudHeaders
+        Write-FalconDebug -Step 'Invoke-FalconInstall' -Pairs ([ordered]@{ step = 'matched'; count = @($installerDetails).Count })
 
         if ( $installerDetails.sha256 -and $installerDetails.name ) {
             $cloudHash = $installerDetails.sha256
             $cloudFile = $installerDetails.name
             $message = "Found installer: ($cloudFile) with sha256: '$cloudHash'"
             Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
+            $shaString = [string]$cloudHash
+            Write-FalconDebug -Step 'Invoke-FalconInstall' -Pairs ([ordered]@{
+                    step      = 'selected'
+                    index     = 0
+                    file_type = "$($installerDetails.file_type)"
+                    sha       = $shaString.Substring(0, [Math]::Min(12, $shaString.Length))
+                })
         }
         else {
             $message = "Failed to retrieve installer details."
@@ -540,6 +639,7 @@ function Invoke-FalconInstall ([hashtable] $WebRequestParams, [string] $InstallP
             $localHash = Get-InstallerHash -Path $localFile
             $message = "Successfull downloaded installer '$localFile' ($localHash)"
             Write-FalconLog -Source 'Invoke-FalconInstall' -Message $message
+            Write-FalconDebug -Step 'Invoke-FalconInstall' -Pairs ([ordered]@{ step = 'downloaded'; installer = $localFile; bytes = (Get-Item $localFile).Length })
         }
         else {
             $message = "Failed to download installer."
@@ -579,6 +679,13 @@ function Invoke-FalconInstall ([hashtable] $WebRequestParams, [string] $InstallP
         $InstallParams += " ProvWaitTime=$ProvWaitTime"
 
         # Begin installation
+        Write-FalconDebug -Step 'Invoke-FalconInstall' -Pairs ([ordered]@{
+                step                   = 'configure'
+                cid_source             = if ($NewFalconCid) { 'param' } else { 'api' }
+                provisioning_token_set = if ($ProvToken) { 'yes' } else { 'no' }
+                tags_count             = if ($Tags) { @($Tags -split ',').Count } else { 0 }
+                proxy_set              = if ($ProxyHost) { 'yes' } else { 'no' }
+            })
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message "Installing Falcon Sensor..."
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message "Starting installer '$LocalFile'; command-line parameters omitted from the log because they may contain sensitive values"
 
@@ -622,6 +729,10 @@ function Invoke-FalconInstall ([hashtable] $WebRequestParams, [string] $InstallP
 
         $Message = 'Successfully finished install...'
         Write-FalconLog -Source 'Invoke-FalconInstall' -Message $Message
+        # Authoritative install-time version; aid=none is normal here since
+        # registration completes asynchronously once the sensor reaches the cloud.
+        $InstalledAid = Get-AID
+        Write-FalconDebug -Step 'Invoke-FalconInstall' -Pairs ([ordered]@{ step = 'installed'; version = $version; aid = if ($InstalledAid) { $InstalledAid } else { 'none' } })
     }
     catch {
         $errorMessage = if ($_.Exception -and $_.Exception.Message) {
@@ -683,7 +794,9 @@ function Format-403Error([string] $url, [hashtable] $scope) {
 
 function Get-ResourceContent([hashtable] $WebRequestParams, [string] $url, [string] $logKey, [hashtable] $scope, [string] $errorMessage, [hashtable] $Headers) {
     try {
+        Write-FalconDebug -Step 'Get-ResourceContent' -Message "step=request path=$(([Uri]$url).AbsolutePath)"
         $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'GET' -Headers $Headers -MaximumRedirection 0
+        Write-FalconDebug -Step 'Get-ResourceContent' -Message "step=response http_status=$([int]$response.StatusCode)"
         $content = ConvertFrom-Json -InputObject $response.Content
         Write-VerboseLog -VerboseInput $content -PreMessage 'Get-ResourceContent - $content:'
 
@@ -703,7 +816,8 @@ function Get-ResourceContent([hashtable] $WebRequestParams, [string] $url, [stri
         }
     }
     catch {
-        Write-VerboseLog -VerboseInput $_.Exception -PreMessage 'Get-ResourceContent - CAUGHT EXCEPTION - $_.Exception:'
+        $debugStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'none' }
+        Write-FalconDebug -Step 'Get-ResourceContent' -Message "http_status=$debugStatus error=request_failed"
         $response = $_.Exception.Response
 
         if (!$response) {
@@ -771,7 +885,9 @@ function Invoke-HostVisibility ([hashtable] $WebRequestParams, [string] $Aid, [s
     $bodyJson = $Body | ConvertTo-Json
     try {
         $url = "${BaseUrl}/devices/entities/devices-actions/v2?action_name=${action}"
+        Write-FalconDebug -Step 'Invoke-HostVisibility' -Message 'step=request path=/devices/entities/devices-actions/v2'
         $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'POST' -Headers $Headers -Body $bodyJson -MaximumRedirection 0
+        Write-FalconDebug -Step 'Invoke-HostVisibility' -Message "step=response http_status=$([int]$response.StatusCode)"
         $content = ConvertFrom-Json -InputObject $response.Content
         Write-VerboseLog -VerboseInput $content -PreMessage 'Invoke-HostVisibility - $content:'
 
@@ -787,7 +903,8 @@ function Invoke-HostVisibility ([hashtable] $WebRequestParams, [string] $Aid, [s
         }
     }
     catch {
-        Write-VerboseLog -VerboseInput $_.Exception -PreMessage 'Invoke-HostVisibility - CAUGHT EXCEPTION - $_.Exception:'
+        $debugStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'none' }
+        Write-FalconDebug -Step 'Invoke-HostVisibility' -Message "http_status=$debugStatus error=request_failed"
         $response = $_.Exception.Response
 
         if (!$response) {
@@ -836,6 +953,7 @@ function Get-InstallerHash ([string] $Path) {
 function Invoke-FalconDownload ([hashtable] $WebRequestParams, [string] $url, [string] $Outfile, [hashtable] $Headers) {
     try {
         $ProgressPreference = 'SilentlyContinue'
+        Write-FalconDebug -Step 'Invoke-FalconDownload' -Message "step=request path=$(([Uri]$url).AbsolutePath)"
         $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'GET' -Headers $Headers -OutFile $Outfile
     }
     catch {
@@ -876,7 +994,9 @@ function Set-Tag ([hashtable] $WebRequestParams, [string] $Aid, [array] $Tags, [
             'tags'       = $Tags
         }
         $body = ConvertTo-Json -InputObject $body
+        Write-FalconDebug -Step 'Set-Tag' -Message 'step=request path=/devices/entities/devices/tags/v1'
         $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'PATCH' -Headers $Headers -Body $body -MaximumRedirection 0
+        Write-FalconDebug -Step 'Set-Tag' -Message "step=response http_status=$([int]$response.StatusCode)"
         $content = ConvertFrom-Json -InputObject $response.Content
         Write-VerboseLog -VerboseInput $content -PreMessage 'Set-Tag - $content:'
 
@@ -898,7 +1018,8 @@ function Set-Tag ([hashtable] $WebRequestParams, [string] $Aid, [array] $Tags, [
         return $tagsSet, $errorMessage
     }
     catch {
-        Write-VerboseLog -VerboseInput $_.Exception -PreMessage 'Set-Tag - CAUGHT EXCEPTION - $_.Exception:'
+        $debugStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'none' }
+        Write-FalconDebug -Step 'Set-Tag' -Message "http_status=$debugStatus error=request_failed"
         $response = $_.Exception.Response
 
         if (!$response) {
@@ -926,7 +1047,9 @@ function Get-Tag ([hashtable] $WebRequestParams, [string] $Aid, [string] $BaseUr
         $url = "${BaseUrl}/devices/entities/devices/v2?ids=${aid}"
 
         Write-FalconLog -Source 'Get-Tag' -Message "Calling ${url}"
+        Write-FalconDebug -Step 'Get-Tag' -Message 'step=request path=/devices/entities/devices/v2'
         $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'GET' -Headers $Headers -MaximumRedirection 0
+        Write-FalconDebug -Step 'Get-Tag' -Message "step=response http_status=$([int]$response.StatusCode)"
         $content = ConvertFrom-Json -InputObject $response.Content
         Write-VerboseLog -VerboseInput $content -PreMessage 'Get-Tag - $content:'
 
@@ -944,7 +1067,8 @@ function Get-Tag ([hashtable] $WebRequestParams, [string] $Aid, [string] $BaseUr
         }
     }
     catch {
-        Write-VerboseLog -VerboseInput $_.Exception -PreMessage 'Get-Tag - CAUGHT EXCEPTION - $_.Exception:'
+        $debugStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'none' }
+        Write-FalconDebug -Step 'Get-Tag' -Message "http_status=$debugStatus error=request_failed"
         $response = $_.Exception.Response
 
         Write-FalconLog -Source 'Get-Tag' -Message $_.Exception
@@ -1045,7 +1169,11 @@ function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [ha
     # funnel into $RedirectResponse and are handled once below.
     $RedirectResponse = $null
     try {
+        Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "step=request cloud=${FalconCloud}"
         $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body -MaximumRedirection 0
+        # Status marker before ConvertFrom-Json: on Windows PowerShell 5.1 a 308
+        # is returned, not thrown, and parsing it would fail first.
+        Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "step=response http_status=$([int]$response.StatusCode) cloud=${FalconCloud}"
 
         if ([int]$response.StatusCode -in @(301, 302, 303, 307, 308)) {
             $RedirectResponse = $response
@@ -1062,8 +1190,10 @@ function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [ha
         }
     }
     catch {
-        # Handle redirects
-        Write-Verbose "Invoke-FalconAuth - CAUGHT EXCEPTION - `$_.Exception.Message`r`n$($_.Exception.Message)"
+        # Status only. Never log the exception, its message, or the response:
+        # they can carry the request body and the Authorization header.
+        $debugStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'none' }
+        Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "http_status=$debugStatus error=oauth_request_failed"
         $response = $_.Exception.Response
 
         if (!$response) {
@@ -1101,6 +1231,9 @@ function Invoke-FalconAuth([hashtable] $WebRequestParams, [string] $BaseUrl, [ha
         # Get-FalconCloud validates the region against its own allowlist, not
         # the Location header.
         $BaseUrl = Get-FalconCloud($region)
+        # Printed only after validation, so a hostile header cannot inject
+        # arbitrary text into the console.
+        Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "step=region_retry region=$region"
         $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
     }
 
@@ -1146,6 +1279,25 @@ $FullUserAgent = if ($UserAgent) {
 } else {
     $BaseUserAgent
 }
+# PSEdition is absent on PowerShell 3/4; Desktop is the only edition they had.
+$PSEditionValue = if ($PSVersionTable.PSEdition) { $PSVersionTable.PSEdition } else { 'Desktop' }
+Write-FalconDebug -Step 'start' -Pairs ([ordered]@{
+        version           = "$ScriptVersion (PowerShell $($PSVersionTable.PSVersion) $PSEditionValue)"
+        old_cloud         = $OldFalconCloud
+        new_cloud         = $NewFalconCloud
+        client_id_set     = if ($NewFalconClientId -and $OldFalconClientId) { 'yes' } else { 'no' }
+        client_secret_set = if ($NewFalconClientSecret -and $OldFalconClientSecret) { 'yes' } else { 'no' }
+        member_cid_set    = if ($NewMemberCid -or $OldMemberCid) { 'yes' } else { 'no' }
+        proxy_set         = if ($ProxyHost) { 'yes' } else { 'no' }
+        tags_set          = if ($Tags) { 'yes' } else { 'no' }
+        grouping_tags_set = if ($FalconTags) { 'yes' } else { 'no' }
+    })
+Write-FalconDebug -Step 'environment' -Pairs ([ordered]@{
+        os         = 'windows'
+        os_version = [System.Environment]::OSVersion.Version.ToString()
+        os_arch    = $env:PROCESSOR_ARCHITECTURE
+        run_as     = if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { 'admin' } else { 'user' }
+    })
 
 # Hashtable for common Invoke-WebRequest parameters
 $WebRequestParams = @{}
@@ -1179,10 +1331,12 @@ if ($proxy) {
 $sensorGroupingTags = @()
 $falconGroupingTags = @()
 $oldAid = Get-AID
+Write-FalconDebug -Step 'GetOldAID' -Pairs ([ordered]@{ aid = if ($oldAid) { $oldAid } else { 'none' } })
 $recoveryMode = (Test-Path $recoveryCsvPath)
 
 if ($recoveryMode) {
     Write-FalconLog -Source 'RecoveryMode' -Message 'Recovery mode detected. Attempting to recover from previous migration attempt.'
+    Write-FalconDebug -Step 'RecoveryMode' -Pairs ([ordered]@{ stage = 'recovery' })
     $recoveryData = Read-RecoveryCsv -Path $recoveryCsvPath
     $sensorGroupingTags = $recoveryData.SensorGroupingTags
     $falconGroupingTags = $recoveryData.FalconGroupingTags
@@ -1216,7 +1370,9 @@ $sensorGroupingTags += $sensorGroupingTagsDiff | Where-Object { $_ -ne "" }
 $falconGroupingTags += $falconGroupingTagsDiff | Where-Object { $_ -ne "" }
 
 Write-FalconLog -Source 'DisplaySensorTags' -Message "Sensor Grouping tags: $sensorGroupingTags"
+Write-FalconDebug -Step 'DisplaySensorTags' -Pairs ([ordered]@{ grouping_tags_count = @($sensorGroupingTags).Count })
 Write-FalconLog -Source 'DisplayFalconTags' -Message "Falcon Grouping tags: $falconGroupingTags"
+Write-FalconDebug -Step 'DisplayFalconTags' -Pairs ([ordered]@{ tags_count = @($falconGroupingTags).Count })
 
 Write-FalconLog -Source 'CreateRecoveryCSV' -Message 'Creating recovery csv to keep track of tags...'
 Write-RecoveryCsv -SensorGroupingTags $sensorGroupingTags -FalconGroupingTags $falconGroupingTags -OldAid $oldAid -Path $recoveryCsvPath
@@ -1242,6 +1398,7 @@ if ($null -eq $newAid) {
 }
 else {
     Write-FalconLog -Source 'GetNewAID' -Message "Successfully retrieved new AID: $newAid"
+    Write-FalconDebug -Step 'GetNewAID' -Pairs ([ordered]@{ aid = $newAid })
 }
 
 # Set falcon sensor tags

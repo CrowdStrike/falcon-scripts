@@ -15,6 +15,7 @@ Please refer to the [Deprecation](DEPRECATION.md) document for more information 
 - [Prerequisites](#prerequisites)
 - [Auto-Discovery of Falcon Cloud Region](#auto-discovery-of-falcon-cloud-region)
 - [Usage](#usage)
+- [Troubleshooting](#troubleshooting)
 
 ## Multi-Architecture Support :rocket:
 
@@ -135,6 +136,10 @@ Optional Flags:
     --get-cid                                      Get the CID assigned to the API Credentials
     --list-tags                                    List all tags available for the selected sensor type and platform, sorted in ascending order
     --allow-legacy-curl                            Deprecated. Accepted and ignored; no longer needed
+    --debug                                        Print redacted progress markers to stderr (or set FALCON_DEBUG=1).
+                                                   Step name, HTTP status, cloud/region and curl exit only; values are
+                                                   dropped unless the key is on a fixed allow-list, so secrets cannot
+                                                   appear. Do not use bash -x for support; it prints credentials.
 
 Internal Flags:
     --internal-build-stage <BUILD_STAGE>           (Internal only) Falcon Build Stage [release|stage] (Default: release)
@@ -166,6 +171,7 @@ Help Options:
 | `--get-cid`                                    | N/A                     | `None`                        | Get the CID assigned to the API Credentials.                                                                                                                                                                                                             |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)            | List all tags available for the selected sensor                                                                                                                                                                                                          |
 | `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)            | Deprecated. Accepted and ignored; no longer needed                                                                                                                                                                                                       |
+| `--debug`                                      | `$FALCON_DEBUG`         | `unset` (Optional)            | Print redacted progress markers to stderr. Step, HTTP status, cloud/region and curl exit only; values are dropped unless the key is allow-listed, so secrets cannot appear. Do not use `bash -x` for support.                                              |
 | `-h`, `--help`                                 | N/A                     | `None`                        | Display help message                                                                                                                                                                                                                                     |
 
 ---
@@ -438,3 +444,30 @@ The following example will pull the `falcon-sensor` image for the `x86_64` platf
 --type falcon-sensor \
 --platform x86_64
 ```
+
+---
+
+## Troubleshooting
+
+Use the redacted debug mode. It prints, to stderr: the detected OS, architecture,
+kernel and package manager; the exact sensor query filter and how many installers
+matched; which installer was selected, its size and SHA-256 check; the API route,
+HTTP status and curl exit code for every call; and the installed sensor version
+and AID. Values are dropped unless the key is on a fixed allow-list, so
+credentials cannot appear in the output you send to support.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-sensor \
+--debug
+```
+
+`FALCON_DEBUG=1` does the same thing, which is useful when the script runs from a
+pipe or a job where you cannot add a flag.
+
+Do **not** use `bash -x` for support. It prints every expanded command, including
+`client_secret`, access tokens, the registry password and `Authorization`
+headers. This script turns tracing off at startup and warns when it does, but a
+trace enabled before that point can still expose credentials.

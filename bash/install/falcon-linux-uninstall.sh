@@ -16,10 +16,75 @@ FALCON_ACCESS_TOKEN=$falcon_access_token
 FALCON_MAINTENANCE_TOKEN=$falcon_maintenance_token
 unset falcon_client_secret falcon_access_token falcon_maintenance_token
 
+# Opt-in redacted debug. Never re-enable set -x around credential paths.
+falcon_debug_enabled() {
+    case "${FALCON_DEBUG:-}" in
+        1 | true) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# Allow-list. Only known-safe keys keep their value; everything else is dropped,
+# so a future debug line cannot leak a secret by accident.
+falcon_debug_filter() {
+    printf '%s\n' "$@" | awk '
+        BEGIN {
+            split("step source error stage \
+                   cloud old_cloud new_cloud region region_hint sensor_cloud \
+                   http_status curl_exit exit_code path filter sort \
+                   os os_version os_arch os_family kernel pkg_manager distro_id run_as \
+                   count index decrement version sensor_version policy_version file_type sha \
+                   installer bytes sha_verify billing backend apd aid cid_source \
+                   tags_count grouping_tags_count sensor_type param registry repository tag \
+                   client_id_set client_secret_set access_token_set member_cid_set \
+                   provisioning_token_set maintenance_token_set proxy_set policy_name_set \
+                   tags_set grouping_tags_set", safe, " ")
+            for (i in safe) { ok[safe[i]] = 1 }
+        }
+        {
+            eq = index($0, "=")
+            if (eq < 2) { next }
+            key = substr($0, 1, eq - 1)
+            printf " %s=%s", key, (key in ok) ? substr($0, eq + 1) : "[DROPPED]"
+        }
+    '
+}
+
+falcon_debug() {
+    falcon_debug_enabled || return 0
+    local falcon_debug_label
+    falcon_debug_label=$1
+    shift
+    printf 'FALCON_DEBUG: %s%s\n' "$falcon_debug_label" "$(falcon_debug_filter "$@")" >&2
+}
+
+# Last HTTP status from a curl --dump-header file. Status only — no header dump.
+falcon_debug_http_status() {
+    [ -f "$1" ] || return 0
+    grep -i '^HTTP/' "$1" 2>/dev/null | tail -n 1 | awk '{print $2}'
+}
+
+# Mirrors the selection order in os_install_package / remove_package.
+falcon_debug_pkg_manager() {
+    if type dnf >/dev/null 2>&1; then
+        echo dnf
+    elif type yum >/dev/null 2>&1; then
+        echo yum
+    elif type zypper >/dev/null 2>&1; then
+        echo zypper
+    elif type apt-get >/dev/null 2>&1; then
+        echo apt
+    elif type rpm >/dev/null 2>&1; then
+        echo rpm
+    else
+        echo unknown
+    fi
+}
+
 print_usage() {
     cat <<EOF
 
-Usage: $0 [-h|--help]
+Usage: $0 [-h|--help|--debug]
 
 Uninstalls the CrowdStrike Falcon Sensor from Linux operating systems.
 Version: $VERSION
@@ -72,22 +137,52 @@ Other Options:
         User agent string to append to the User-Agent header when making
         requests to the CrowdStrike API.
 
-This script recognizes the following argument:
+    - FALCON_DEBUG                      (default: unset)
+        Print redacted progress markers to stderr: detected OS and package
+        manager, the exact sensor query filter, how many installers matched and
+        which was chosen, the API route, HTTP status and curl exit code, and the
+        installed version and AID. Values are dropped unless the key is on a
+        fixed allow-list, so secrets cannot appear. Do not use bash -x for
+        support; it prints credentials.
+        Accepted values are ['1', 'true'].
+
+This script recognizes the following arguments:
     -h, --help
         Print this help message and exit.
+    --debug
+        Same as FALCON_DEBUG=1.
 
 EOF
 }
 
 VERSION="1.13.0"
 
-# If -h or --help is passed, print the usage and exit
-if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-    print_usage
-    exit 0
-fi
+# Scan for -h/--help and --debug in any position
+for arg in "$@"; do
+    case "$arg" in
+        -h | --help)
+            print_usage
+            exit 0
+            ;;
+        --debug)
+            FALCON_DEBUG=1
+            ;;
+    esac
+done
 
 main() {
+    falcon_debug start "version=$VERSION" "cloud=${FALCON_CLOUD:-unset}" \
+        "client_id_set=$([ -n "${FALCON_CLIENT_ID}" ] && echo yes || echo no)" \
+        "access_token_set=$([ -n "${FALCON_ACCESS_TOKEN}" ] && echo yes || echo no)" \
+        "maintenance_token_set=$([ -n "${FALCON_MAINTENANCE_TOKEN}" ] && echo yes || echo no)" \
+        "proxy_set=$([ -n "${proxy}" ] && echo yes || echo no)"
+    # OS values here are informational only: uninstall never filters an API
+    # query by OS, so a mis-detected value cannot break sensor selection.
+    falcon_debug start "step=environment" \
+        "os=$(awk -F= '/^NAME=/{print $2}' /etc/*release 2>/dev/null | tr -d '"' | head -n 1)" \
+        "os_version=$(awk -F= '/^VERSION_ID=/{print $2}' /etc/*release 2>/dev/null | tr -d '"' | head -n 1)" \
+        "os_arch=$(uname -m)" "kernel=$(uname -r 2>/dev/null)" "run_as=$(id -un 2>/dev/null)" \
+        "pkg_manager=$(falcon_debug_pkg_manager)"
     if [ "$GET_ACCESS_TOKEN" = "true" ]; then
         get_oauth_token
         echo "$cs_falcon_oauth_token"
@@ -101,6 +196,7 @@ main() {
     cs_maintenance_token=""
     if [ -n "$FALCON_MAINTENANCE_TOKEN" ]; then
         cs_maintenance_token="$FALCON_MAINTENANCE_TOKEN"
+        falcon_debug maintenance_token "source=env" "maintenance_token_set=yes"
     elif [ -n "$FALCON_CLIENT_ID" ] && [ -n "$FALCON_CLIENT_SECRET" ] && [ -n "$aid" ]; then
         get_oauth_token
         get_maintenance_token
@@ -165,12 +261,16 @@ cs_sensor_remove() {
         fi
     }
 
+    falcon_debug cs_sensor_remove "step=start" "pkg_manager=$(falcon_debug_pkg_manager)"
+
     # Handle maintenance protection
     if [ -n "$cs_maintenance_token" ]; then
         # shellcheck disable=SC2086
         if ! /opt/CrowdStrike/falconctl -s -f --maintenance-token=${cs_maintenance_token} >/dev/null 2>&1; then
+            falcon_debug cs_sensor_remove "step=maintenance_protection" "error=apply_failed"
             die "Failed to apply maintenance token. Uninstallation may fail."
         fi
+        falcon_debug cs_sensor_remove "step=maintenance_protection" "maintenance_token_set=yes"
     fi
 
     # Check for package manager lock prior to uninstallation
@@ -182,6 +282,7 @@ cs_sensor_remove() {
     removal_exit_code=$?
     set -e
 
+    falcon_debug cs_sensor_remove "step=removed" "exit_code=$removal_exit_code"
     if [ "$removal_exit_code" -ne 0 ]; then
         die "Failed to remove falcon-sensor package (exit code $removal_exit_code). This may indicate that tamper protection is enabled on the sensor. Please provide FALCON_MAINTENANCE_TOKEN or set FALCON_CLIENT_ID and FALCON_CLIENT_SECRET to retrieve a maintenance token via the API."
     fi
@@ -189,12 +290,15 @@ cs_sensor_remove() {
 
 cs_remove_host_from_console() {
     if [ -z "$aid" ]; then
+        falcon_debug cs_remove_host_from_console "step=skipped" "aid=none"
         echo 'Unable to find AID. Skipping host removal from console.'
     else
+        falcon_debug cs_remove_host_from_console "step=request" "aid=$aid"
         payload="{\"ids\": [\"$aid\"]}"
         url="https://$(cs_cloud)/devices/entities/devices-actions/v2?action_name=hide_host"
 
         curl_command -X "POST" -H "Content-Type: application/json" -d "$payload" "$url" >/dev/null || handle_curl_error $?
+        falcon_debug cs_remove_host_from_console "step=done"
     fi
 }
 
@@ -214,6 +318,7 @@ cs_cloud() {
 
 cs_sensor_installed() {
     if ! test -f /opt/CrowdStrike/falconctl; then
+        falcon_debug cs_sensor_installed "step=already_uninstalled"
         echo "Falcon sensor is already uninstalled." && exit 0
     fi
     # Get AID if FALCON_REMOVE_HOST is set to true or if we need to get a maintenance token
@@ -237,21 +342,41 @@ get_maintenance_token() {
     if echo "$response" | grep -q "\"uninstall_token\""; then
         cs_maintenance_token=$(echo "$response" | json_value "uninstall_token" 1 | sed 's/ *$//g' | sed 's/^ *//g')
         if [ -z "$cs_maintenance_token" ]; then
+            falcon_debug maintenance_token "source=api" "error=empty_token"
             die "Retrieved empty maintenance token from API."
         fi
+        falcon_debug maintenance_token "source=api" "maintenance_token_set=yes"
     else
+        falcon_debug maintenance_token "source=api" "error=no_token_in_response"
         die "Failed to retrieve a maintenance token from the Falcon API."
     fi
 }
 
 curl_command() {
     # Dash does not support arrays, so we have to pass the args as separate arguments
-    local escaped_token auth_config headers body status hint old_host new_host arg rc
+    local escaped_token auth_config headers body status hint old_host new_host arg rc req_path
     # The configuration value must be quoted, because it holds a space and a
     # colon. curl processes backslash escapes inside a quoted value, so a
     # backslash or a double quote in the token has to be escaped first.
     escaped_token=$(printf '%s' "$cs_falcon_oauth_token" | sed 's/\\/\\\\/g; s/"/\\"/g')
     auth_config=$(printf 'header = "Authorization: Bearer %s"' "$escaped_token")
+
+    # API route only, for the debug marker. The query string is dropped: it can
+    # carry an installer id, and the route alone identifies the call.
+    req_path=""
+    for arg in "$@"; do
+        case "$arg" in
+            https://*)
+                req_path=${arg#https://}
+                case "$req_path" in
+                    */*) req_path=/${req_path#*/} ;;
+                    *) req_path=/ ;;
+                esac
+                req_path=${req_path%%\?*}
+                break
+                ;;
+        esac
+    done
 
     headers=$(mktemp)
     body=$(mktemp)
@@ -265,6 +390,7 @@ curl_command() {
     # Re-issue against that region instead of following Location. Take the last
     # status line, because a proxy CONNECT dumps one of its own first.
     status=$(awk '/^HTTP\//{s=$2} END{print s}' "$headers")
+    falcon_debug curl_command "path=$req_path" "http_status=$status" "curl_exit=$rc"
     case "$status" in
         301 | 302 | 307 | 308)
             hint=$(grep -i ^x-cs-region: "$headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
@@ -286,6 +412,7 @@ curl_command() {
                     printf '%s\n' "$auth_config" |
                         curl -s -x "$proxy" --proto '=https' -K- "$@" >"$body"
                     rc=$?
+                    falcon_debug curl_command "step=region_retry" "path=$req_path" "region=$hint" "curl_exit=$rc"
                 fi
             fi
             ;;
@@ -297,6 +424,7 @@ curl_command() {
 }
 
 handle_curl_error() {
+    falcon_debug handle_curl_error "curl_exit=$1"
     if [ "$1" = "28" ]; then
         err_msg="Operation timed out (exit code 28)."
         if [ -n "$proxy" ]; then
@@ -340,6 +468,8 @@ fi
 
 aws_ssm_parameter() {
     local param_name="$1" imds_err
+
+    falcon_debug aws_ssm_parameter "step=request" "param=$param_name"
 
     hmac_sha256() {
         key="$1"
@@ -389,6 +519,7 @@ $request_dgst
 EOF
     )
 
+    falcon_debug aws_ssm_parameter "step=request" "param=$param_name" "region=${aws_my_region:-unset}"
     response=$(
         {
             printf 'header = "Authorization: AWS4-HMAC-SHA256 Credential=%s/%s/%s/ssm/aws4_request, SignedHeaders=content-type;host;x-amz-date;x-amz-security-token;x-amz-target, Signature=%s"\n' \
@@ -484,11 +615,14 @@ get_oauth_token() {
 
     cs_falcon_oauth_token=$(
         if [ -n "$FALCON_ACCESS_TOKEN" ]; then
+            falcon_debug oauth2_token "source=access_token" "cloud=${cs_falcon_cloud:-unset}"
             token=$FALCON_ACCESS_TOKEN
         else
             auth_payload="client_id=$cs_falcon_client_id&client_secret=$cs_falcon_client_secret"
 
+            falcon_debug oauth2_token "step=request" "cloud=${cs_falcon_cloud:-unset}"
             token_result=$(echo "$auth_payload" | oauth_token_request "$(cs_cloud)" "${response_headers}") || handle_curl_error $?
+            falcon_debug oauth2_token "step=response" "http_status=$(falcon_debug_http_status "${response_headers}")" "cloud=${cs_falcon_cloud:-unset}"
 
             token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
             if [ -z "$token" ]; then
@@ -503,7 +637,9 @@ get_oauth_token() {
                         # Separate file: --dump-header truncates, and region_hint below
                         # still needs the original response.
                         retry_headers=$(mktemp)
+                        falcon_debug oauth2_token "step=retry" "region=$hinted"
                         token_result=$(echo "$auth_payload" | oauth_token_request "$retry_host" "$retry_headers") || handle_curl_error $?
+                        falcon_debug oauth2_token "step=retry_response" "http_status=$(falcon_debug_http_status "$retry_headers")" "region=$hinted"
                         rm -f "$retry_headers"
                         token=$(echo "$token_result" | json_value "access_token" | sed 's/ *$//g' | sed 's/^ *//g')
                     fi
@@ -518,6 +654,7 @@ get_oauth_token() {
 
     if [ -z "$FALCON_ACCESS_TOKEN" ]; then
         region_hint=$(grep -i ^x-cs-region: "$response_headers" | head -n 1 | tr '[:upper:]' '[:lower:]' | tr -d '\r' | sed 's/^x-cs-region: //g')
+        falcon_debug oauth2_token "region_hint=${region_hint:-none}" "cloud=${cs_falcon_cloud:-unset}"
 
         if [ -z "${FALCON_CLOUD}" ]; then
             if [ -z "${region_hint}" ]; then
@@ -537,6 +674,7 @@ get_oauth_token() {
 
 get_aid() {
     aid="$(/opt/CrowdStrike/falconctl -g --aid | awk -F '"' '{print $2}')"
+    falcon_debug get_aid "aid=${aid:-none}"
 }
 
 #------Start of the script------#

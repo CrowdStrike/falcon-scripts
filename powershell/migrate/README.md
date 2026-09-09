@@ -102,6 +102,13 @@ Remove host from CrowdStrike Falcon
 Opt in/out of migrating tags. Tags passed to the Tags flag will still be added.
 .PARAMETER Verbose
 Enable verbose logging
+.PARAMETER FalconDebug
+Print redacted progress markers: detected OS and PowerShell version, the exact sensor
+query filter, how many installers matched and which was chosen, the API route and HTTP
+status for every call, and the sensor version installed plus the AID (that version is the one resolved from
+the policy or query, not re-read from the binary). Values are dropped
+unless the key is on a fixed allow-list, so secrets cannot appear. Also honors `$env:FALCON_DEBUG=1`.
+Do not use `Set-PSDebug -Trace` or the common `-Debug` parameter for support; they print credentials.
 ```
 
 ----------
@@ -174,43 +181,34 @@ Migrate from one CID to another within the same cloud:
 
 ## Troubleshooting
 
-To assist in troubleshooting the migration script, you can try the following:
+Use the redacted debug mode. It prints step names, HTTP status and cloud/region.
+Values are dropped unless the key is on a fixed allow-list, so neither the old nor
+the new CID credentials can appear in the output you send to support.
 
-- Use the `-Verbose` parameter to enable verbose logging.
+```pwsh
+.\falcon_windows_migrate.ps1 `
+    -FalconDebug `
+    -NewFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
+    -NewFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
+    -OldFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
+    -OldFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
+    -NewFalconCloud "us-2" `
+    -OldFalconCloud "us-1"
+```
 
-  > Note: This will display additional logging in the console, as well as in the log file.
+`$env:FALCON_DEBUG = '1'` does the same thing, which is useful when the script runs
+from a job where you cannot add a parameter.
 
-  Example:
+`-Verbose` still enables the script's own operational logging in the console and the
+log file. It is not a replacement for `-FalconDebug`.
 
-    ```pwsh
-    .\falcon_windows_migrate.ps1 `
-        -Verbose `
-        -NewFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
-        -NewFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
-        -OldFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
-        -OldFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
-        -NewFalconCloud "us-2" `
-        -OldFalconCloud "us-1"
-    ```
+> Note: debug markers go to the console via `Write-Host`, so they are not written to
+> the script's log file. A `Start-Transcript` session does capture them, so stop any
+> transcript first if you do not want the markers on disk.
 
-- For a more detailed approach, you can use `Set-PSDebug -Trace`. This cmdlet offers three trace levels (0-2):
-
-  - 0 : Turn script block logging off. (Equivalent to -Off)
-  - 1 : Turn script block logging on. (Equivalent to -On)
-  - 2 : Turn script block logging on and generate a trace of all commands in a script block and the arguments they were used with.
-    > Similar to the output of `set -x` in bash. Very noisy but contains a lot of useful information.
-
-  Example:
-
-    ```pwsh
-    Set-PSDebug -Trace 2
-    .\falcon_windows_migrate.ps1 `
-        -NewFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
-        -NewFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
-        -OldFalconClientId 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
-        -OldFalconClientSecret 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' `
-        -NewFalconCloud "us-2" `
-        -OldFalconCloud "us-1"
-    # To turn off tracing
-    Set-PSDebug -Trace 0
-    ```
+Do **not** use `Set-PSDebug -Trace` or the common `-Debug` parameter for support.
+Tracing prints every statement with its arguments, including
+`OldFalconClientSecret`, `NewFalconClientSecret`, access tokens, maintenance tokens,
+`Authorization` headers and the OAuth request body. This script calls
+`Set-PSDebug -Off` on entry, but that runs after PowerShell binds the parameters, so
+a trace started beforehand can still expose the values you passed in.

@@ -47,6 +47,13 @@ The proxy port for the sensor to use when communicating with CrowdStrike [defaul
 User agent string to append to the User-Agent header when making requests to the CrowdStrike API.
 .PARAMETER Verbose
 Enable verbose logging
+.PARAMETER FalconDebug
+Print redacted progress markers: detected OS and PowerShell version, the exact sensor
+query filter, how many installers matched and which was chosen, the API route and HTTP
+status for every call, and the sensor version installed plus the AID (that version is the one resolved from
+the policy or query, not re-read from the binary). Values are dropped
+unless the key is on a fixed allow-list, so secrets cannot appear. Also honors `$env:FALCON_DEBUG=1`.
+Do not use `Set-PSDebug -Trace` or the common `-Debug` parameter for support; they print credentials.
 
 .EXAMPLE
 PS>.\falcon_windows_uninstall.ps1 -MaintenanceToken <string>
@@ -61,6 +68,10 @@ after uninstalling.
 [CmdletBinding()]
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'DeleteUninstaller')]
 [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'DeleteScript')]
+# Read inside Test-FalconDebugEnabled, which the rule does not follow.
+[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'FalconDebug')]
+# Debug markers must stay out of the pipeline and out of the on-disk log.
+[System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '')]
 param(
     [Parameter(Position = 1)]
     [string] $MaintenanceToken,
@@ -112,7 +123,10 @@ param(
     [string] $FalconAccessToken,
 
     [Parameter(Position = 16)]
-    [string] $UserAgent
+    [string] $UserAgent,
+
+    [Parameter(Position = 17)]
+    [switch] $FalconDebug
 )
 begin {
     Set-PSDebug -Off
@@ -141,6 +155,8 @@ begin {
     } else {
         $BaseUserAgent
     }
+    # PSEdition is absent on PowerShell 3/4; Desktop is the only edition they had.
+    $PSEditionValue = if ($PSVersionTable.PSEdition) { $PSVersionTable.PSEdition } else { 'Desktop' }
 
     function Write-FalconLog ([string] $Source, [string] $Message, [bool] $stdout = $true) {
         $Content = @(Get-Date -Format 'yyyy-MM-dd hh:MM:ss')
@@ -176,6 +192,70 @@ begin {
 
         # Write to log file, but not stdout
         Write-FalconLog -Source 'VERBOSE' -Message $message -stdout $false
+    }
+
+    function Test-FalconDebugEnabled {
+        if ($FalconDebug) { return $true }
+        if ($env:FALCON_DEBUG -match '^(1|true)\z') { return $true }
+        return $false
+    }
+
+    # Allow-list, the single decision point for both marker paths. Only known-safe
+    # keys keep their value; everything else is dropped, so a future debug line
+    # cannot leak a secret by accident.
+    function Protect-FalconDebugPair([string] $Key, [string] $Value) {
+        $SafeKeys = @(
+            'step', 'source', 'error', 'stage',
+            'cloud', 'old_cloud', 'new_cloud', 'region', 'region_hint', 'sensor_cloud',
+            'http_status', 'curl_exit', 'exit_code', 'path', 'filter', 'sort',
+            'os', 'os_version', 'os_arch', 'os_family', 'kernel', 'pkg_manager', 'distro_id', 'run_as',
+            'count', 'index', 'decrement', 'version', 'sensor_version', 'policy_version', 'file_type', 'sha',
+            'installer', 'bytes', 'sha_verify', 'billing', 'backend', 'apd', 'aid', 'cid_source',
+            'tags_count', 'grouping_tags_count', 'sensor_type', 'param', 'registry', 'repository', 'tag',
+            'client_id_set', 'client_secret_set', 'access_token_set', 'member_cid_set',
+            'provisioning_token_set', 'maintenance_token_set', 'proxy_set', 'policy_name_set',
+            'tags_set', 'grouping_tags_set'
+        )
+        if ($SafeKeys -ccontains $Key) { return "$Key=$Value" }
+        return "$Key=[DROPPED]"
+    }
+
+    function Protect-FalconDebugMessage([string] $Message) {
+        $Filtered = @()
+        foreach ($Token in ($Message -split '\s+')) {
+            if ([string]::IsNullOrEmpty($Token)) { continue }
+            $Split = $Token.IndexOf('=')
+            if ($Split -lt 1) { continue }
+            $Filtered += Protect-FalconDebugPair $Token.Substring(0, $Split) $Token.Substring($Split + 1)
+        }
+        return ($Filtered -join ' ')
+    }
+
+    # Write-Host on purpose: keeps markers out of the pipeline and out of the log file.
+    function Write-FalconDebug {
+        param(
+            [Parameter(Mandatory = $true)][string] $Step,
+            [string] $Message,
+            [System.Collections.IDictionary] $Pairs
+        )
+        if (-not (Test-FalconDebugEnabled)) { return }
+        $Parts = @()
+        if ($Message) { $Parts += Protect-FalconDebugMessage $Message }
+        # -Pairs is required for any value that can contain a space, such as an FQL
+        # filter holding a multi-word policy name. Splitting a joined string cannot
+        # carry those safely: a bare word would be glued onto the previous value.
+        if ($Pairs) {
+            foreach ($Key in $Pairs.Keys) {
+                $Parts += Protect-FalconDebugPair ([string]$Key) ([string]$Pairs[$Key])
+            }
+        }
+        $Filtered = ($Parts | Where-Object { $_ }) -join ' '
+        if ($Filtered) {
+            Write-Host "FALCON_DEBUG: $Step $Filtered"
+        }
+        else {
+            Write-Host "FALCON_DEBUG: $Step"
+        }
     }
 
     function Get-FalconCloud ([string] $xCsRegion) {
@@ -229,6 +309,7 @@ begin {
         $Headers = @{'Accept' = 'application/json'; 'Content-Type' = 'application/x-www-form-urlencoded'; 'charset' = 'utf-8' }
         $Headers.Add('User-Agent', $FullUserAgent)
         if ($FalconAccessToken) {
+            Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "source=access_token cloud=${FalconCloud}"
             $Headers.Add('Authorization', "bearer $($FalconAccessToken)")
         }
         else {
@@ -239,7 +320,11 @@ begin {
             # below.
             $RedirectResponse = $null
             try {
+                Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "step=request cloud=${FalconCloud}"
                 $response = Invoke-WebRequest @WebRequestParams -Uri "$($BaseUrl)/oauth2/token" -UseBasicParsing -Method 'POST' -Headers $Headers -Body $Body -MaximumRedirection 0
+                # Status marker before ConvertFrom-Json: on Windows PowerShell 5.1 a
+                # 308 is returned, not thrown, and parsing it would fail first.
+                Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "step=response http_status=$([int]$response.StatusCode) cloud=${FalconCloud}"
 
                 if ([int]$response.StatusCode -in @(301, 302, 303, 307, 308)) {
                     $RedirectResponse = $response
@@ -256,8 +341,10 @@ begin {
                 }
             }
             catch {
-                # Handle redirects
-                Write-Verbose "Invoke-FalconAuth - CAUGHT EXCEPTION - `$_.Exception.Message`r`n$($_.Exception.Message)"
+                # Status only. Never log the exception, its message, or the response:
+                # they can carry the request body and the Authorization header.
+                $debugStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'none' }
+                Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "http_status=$debugStatus error=oauth_request_failed"
                 $response = $_.Exception.Response
 
                 if (!$response) {
@@ -295,6 +382,9 @@ begin {
                 # Get-FalconCloud validates the region against its own allowlist,
                 # not the Location header.
                 $BaseUrl = Get-FalconCloud($region)
+                # Printed only after validation, so a hostile header cannot inject
+                # arbitrary text into the console.
+                Write-FalconDebug -Step 'Invoke-FalconAuth' -Message "step=region_retry region=$region"
                 $BaseUrl, $Headers = Invoke-FalconAuth -WebRequestParams $WebRequestParams -BaseUrl $BaseUrl -Body $Body -FalconCloud $FalconCloud
             }
         }
@@ -376,7 +466,9 @@ begin {
         $url = "${BaseUrl}/devices/entities/devices-actions/v2?action_name=${action}"
 
         try {
+            Write-FalconDebug -Step 'Invoke-HostVisibility' -Message 'step=request path=/devices/entities/devices-actions/v2'
             $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'POST' -Body $bodyJson -MaximumRedirection 0
+            Write-FalconDebug -Step 'Invoke-HostVisibility' -Message "step=response http_status=$([int]$response.StatusCode)"
             $content = ConvertFrom-Json -InputObject $response.Content
             Write-VerboseLog -VerboseInput $content -PreMessage 'Invoke-HostVisibility - $content:'
 
@@ -392,7 +484,8 @@ begin {
             }
         }
         catch {
-            Write-VerboseLog -VerboseInput $_.Exception.Message -PreMessage 'Invoke-HostVisibility - CAUGHT EXCEPTION - $_.Exception.Message:'
+            $debugStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'none' }
+            Write-FalconDebug -Step 'Invoke-HostVisibility' -Message "http_status=$debugStatus error=request_failed"
             $response = $_.Exception.Response
 
             if (!$response) {
@@ -424,6 +517,22 @@ begin {
     }
 }
 process {
+    Write-FalconDebug -Step 'start' -Pairs ([ordered]@{
+            version                = "$ScriptVersion (PowerShell $($PSVersionTable.PSVersion) $PSEditionValue)"
+            cloud                  = $FalconCloud
+            client_id_set          = if ($FalconClientId) { 'yes' } else { 'no' }
+            client_secret_set      = if ($FalconClientSecret) { 'yes' } else { 'no' }
+            access_token_set       = if ($FalconAccessToken) { 'yes' } else { 'no' }
+            member_cid_set         = if ($MemberCid) { 'yes' } else { 'no' }
+            maintenance_token_set  = if ($MaintenanceToken) { 'yes' } else { 'no' }
+            proxy_set              = if ($ProxyHost) { 'yes' } else { 'no' }
+        })
+    Write-FalconDebug -Step 'environment' -Pairs ([ordered]@{
+            os         = 'windows'
+            os_version = [System.Environment]::OSVersion.Version.ToString()
+            os_arch    = $env:PROCESSOR_ARCHITECTURE
+            run_as     = if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { 'admin' } else { 'user' }
+        })
     if (!$GetAccessToken) {
         if (([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
                 [Security.Principal.WindowsBuiltInRole]::Administrator) -eq $false) {
@@ -549,6 +658,7 @@ process {
             $Message = "Found AID: $aid"
         }
         Write-FalconLog 'GetAID' $Message
+        Write-FalconDebug -Step 'GetAID' -Pairs ([ordered]@{ aid = if ($aid) { $aid } else { 'none' } })
     }
 
     if ($RemoveHost) {
@@ -560,6 +670,7 @@ process {
     if ($MaintenanceToken) {
         # Assume the maintenance token is a valid Token and skip API calls
         $UninstallParams += " MAINTENANCE_TOKEN=$MaintenanceToken"
+        Write-FalconDebug -Step 'GetToken' -Pairs ([ordered]@{ source = 'param'; maintenance_token_set = 'yes' })
     }
     else {
         if ($aid) {
@@ -575,7 +686,9 @@ process {
             $url = "${BaseUrl}/policy/combined/reveal-uninstall-token/v1"
 
             try {
+                Write-FalconDebug -Step 'GetToken' -Message 'step=request path=/policy/combined/reveal-uninstall-token/v1'
                 $response = Invoke-WebRequest @WebRequestParams -Uri $url -UseBasicParsing -Method 'POST' -Body $bodyJson -MaximumRedirection 0
+                Write-FalconDebug -Step 'GetToken' -Message "step=response http_status=$([int]$response.StatusCode)"
                 $content = ConvertFrom-Json -InputObject $response.Content
 
                 if ($content.errors) {
@@ -588,10 +701,12 @@ process {
                     $MaintenanceToken = $content.resources[0].uninstall_token
                     Write-FalconLog 'GetToken' 'Retrieved maintenance token'
                     $UninstallParams += " MAINTENANCE_TOKEN=$MaintenanceToken"
+                    Write-FalconDebug -Step 'GetToken' -Pairs ([ordered]@{ source = 'api'; maintenance_token_set = 'yes' })
                 }
             }
             catch {
-                Write-VerboseLog -VerboseInput $_.Exception.Message -PreMessage 'GetToken - CAUGHT EXCEPTION - $_.Exception.Message:'
+                $debugStatus = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'none' }
+                Write-FalconDebug -Step 'GetToken' -Message "http_status=$debugStatus error=request_failed"
                 $response = $_.Exception.Response
 
                 if (!$response) {
@@ -640,6 +755,7 @@ process {
     $UninstallerProcess = Start-Process -FilePath "$UninstallerPath" -ArgumentList $UninstallParams -PassThru -Wait
     $UninstallerProcessId = $UninstallerProcess.Id
     Write-FalconLog 'StartProcess' "Started '$UninstallerPath' ($UninstallerProcessId)"
+    Write-FalconDebug -Step 'StartProcess' -Pairs ([ordered]@{ step = 'result'; exit_code = $UninstallerProcess.ExitCode })
     if ($UninstallerProcess.ExitCode -ne 0) {
         Write-VerboseLog -VerboseInput $UninstallerProcess -PreMessage 'PROCESS EXIT CODE ERROR - $UninstallerProcess:'
         if ($UninstallerProcess.ExitCode -eq 106) {
