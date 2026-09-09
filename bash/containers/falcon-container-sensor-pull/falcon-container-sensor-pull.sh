@@ -67,7 +67,7 @@ Description: Bash script to copy Falcon DaemonSet Sensor, Container Sensor, or K
 
 set -e
 
-VERSION="1.13.0"
+VERSION="1.14.0"
 
 usage() {
     echo "Usage: $0 [options]

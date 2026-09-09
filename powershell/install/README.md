@@ -129,7 +129,7 @@ Do not use `Set-PSDebug -Trace` or the common `-Debug` parameter for support; th
 To download the script:
 
 ```pwsh
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/powershell/install/falcon_windows_install.ps1 -OutFile falcon_windows_install.ps1
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/powershell/install/falcon_windows_install.ps1 -OutFile falcon_windows_install.ps1
 ```
 
 Basic example that will install the sensor with the provided provisioning token
@@ -198,7 +198,7 @@ Do not use `Set-PSDebug -Trace` or the common `-Debug` parameter for support; th
 To download the script:
 
 ```pwsh
-Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/powershell/install/falcon_windows_uninstall.ps1 -OutFile falcon_windows_uninstall.ps1
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/powershell/install/falcon_windows_uninstall.ps1 -OutFile falcon_windows_uninstall.ps1
 ```
 
 Basic example that will uninstall the sensor with the provided maintenance token
@@ -224,7 +224,7 @@ Sample output from a real install on Windows PowerShell 5.1 (values from a live 
 credentials never appear):
 
 ```
-FALCON_DEBUG: start version=1.13.0 (PowerShell 5.1.20348.5499 Desktop) cloud=us-2 client_id_set=yes client_secret_set=yes access_token_set=no member_cid_set=no proxy_set=no policy_name_set=no
+FALCON_DEBUG: start version=1.14.0 (PowerShell 5.1.20348.5499 Desktop) cloud=us-2 client_id_set=yes client_secret_set=yes access_token_set=no member_cid_set=no proxy_set=no policy_name_set=no
 FALCON_DEBUG: environment os=windows os_version=10.0.20348.0 os_arch=AMD64 run_as=admin
 FALCON_DEBUG: Invoke-FalconAuth step=response http_status=201 cloud=us-2
 FALCON_DEBUG: GetPolicy step=query path=/policy/combined/sensor-update/v2 filter=platform_name:'Windows'+name.raw:'platform_default'

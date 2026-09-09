@@ -196,7 +196,7 @@ This script recognizes the following arguments:
 EOF
 }
 
-VERSION="1.13.0"
+VERSION="1.14.0"
 
 # Scan for -h/--help and --debug in any position
 for arg in "$@"; do

@@ -116,7 +116,7 @@ Do not use `Set-PSDebug -Trace` or the common `-Debug` parameter for support; th
 To download the script, run the following command:
 
 ```pwsh
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/powershell/migrate/falcon_windows_migrate.ps1" -OutFile "falcon_windows_migrate.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/powershell/migrate/falcon_windows_migrate.ps1" -OutFile "falcon_windows_migrate.ps1"
 ```
 
 ### Example 1
