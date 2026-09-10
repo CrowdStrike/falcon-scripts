@@ -82,7 +82,7 @@ export [OLD|NEW]FALCON_CLOUD="us-gov-1"
 Usage: falcon-linux-migrate.sh [-h|--help|--debug]
 
 Migrates the Falcon sensor to another Falcon CID.
-Version: 1.13.0
+Version: 1.14.0
 
 This script recognizes the following environmental variables:
 
@@ -213,7 +213,7 @@ export OLD_FALCON_CLOUD="us-1"
 export NEW_FALCON_CLIENT_ID="ZZZZZZZ"
 export NEW_FALCON_CLIENT_SECRET="WWWWWWW"
 export NEW_FALCON_CLOUD="us-2"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
 ```
 
 #### Migrate a sensor to EU-1 with removal from old console
@@ -226,7 +226,7 @@ export NEW_FALCON_CLIENT_ID="ZZZZZZZ"
 export NEW_FALCON_CLIENT_SECRET="WWWWWWW"
 export NEW_FALCON_CLOUD="eu-1"
 export FALCON_REMOVE_HOST="true"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
 ```
 
 #### Migrate a sensor with custom tags
@@ -238,7 +238,7 @@ export NEW_FALCON_CLIENT_ID="ZZZZZZZ"
 export NEW_FALCON_CLIENT_SECRET="WWWWWWW"
 export FALCON_TAGS="department/it,location/hq"
 export FALCON_GROUPING_TAGS="environment/production,criticality/high"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
 ```
 
 #### Migrate a sensor from one CID to another within the same cloud
@@ -250,7 +250,7 @@ export OLD_FALCON_CLOUD="us-1"
 export NEW_FALCON_CLIENT_ID="ZZZZZZZ"
 export NEW_FALCON_CLIENT_SECRET="WWWWWWW"
 export NEW_FALCON_CLOUD="us-1"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
 ```
 
 ## Troubleshooting
@@ -278,7 +278,7 @@ or pass the flag:
 or over a pipe:
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/migrate/falcon-linux-migrate.sh | FALCON_DEBUG=1 bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/migrate/falcon-linux-migrate.sh | FALCON_DEBUG=1 bash
 ```
 
 Do **not** use `bash -x` for support. It prints every expanded command, including

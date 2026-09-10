@@ -88,7 +88,7 @@ falcon_debug_pkg_manager() {
 # Bash script to migrate Falcon sensor to another falcon CID.
 #
 
-VERSION="1.13.0"
+VERSION="1.14.0"
 
 print_usage() {
     cat <<EOF

@@ -104,7 +104,7 @@ The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET`
 Usage: falcon-linux-install.sh [-h|--help|--debug]
 
 Installs and configures the CrowdStrike Falcon Sensor for Linux.
-Version: 1.13.0
+Version: 1.14.0
 
 This script recognizes the following environmental variables:
 
@@ -216,7 +216,7 @@ To download and run the script directly:
 ```bash
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/install/falcon-linux-install.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/install/falcon-linux-install.sh | bash
 ```
 
 Alternatively, download the script and run it locally:
@@ -224,7 +224,7 @@ Alternatively, download the script and run it locally:
 ```bash
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
-curl -O https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/install/falcon-linux-install.sh
+curl -O https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/install/falcon-linux-install.sh
 bash falcon-linux-install.sh
 ```
 
@@ -241,7 +241,7 @@ FALCON_CLIENT_ID="XXXXXXX" FALCON_CLIENT_SECRET="YYYYYYYYY" bash falcon-linux-in
 ```bash
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/install/falcon-linux-install.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/install/falcon-linux-install.sh | bash
 ```
 
 #### Install the Falcon Sensor with the previous version (n-1)
@@ -250,7 +250,7 @@ curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bas
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 export FALCON_SENSOR_VERSION_DECREMENT=1
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/install/falcon-linux-install.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/install/falcon-linux-install.sh | bash
 ```
 
 #### Create a Golden Image
@@ -259,7 +259,7 @@ curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bas
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
 export PREP_GOLDEN_IMAGE="true"
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/install/falcon-linux-install.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/install/falcon-linux-install.sh | bash
 ```
 
 ## Uninstall Script
@@ -268,7 +268,7 @@ curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bas
 Usage: falcon-linux-uninstall.sh [-h|--help|--debug]
 
 Uninstalls the CrowdStrike Falcon Sensor from Linux operating systems.
-Version: 1.13.0
+Version: 1.14.0
 
 This script recognizes the following environmental variables:
 
@@ -334,13 +334,13 @@ This script recognizes the following arguments:
 To download and run the script directly
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/install/falcon-linux-uninstall.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/install/falcon-linux-uninstall.sh | bash
 ```
 
 Alternatively, download the script and run it locally
 
 ```bash
-curl -O https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/install/falcon-linux-uninstall.sh
+curl -O https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/install/falcon-linux-uninstall.sh
 bash falcon-linux-uninstall.sh
 ```
 
@@ -349,7 +349,7 @@ bash falcon-linux-uninstall.sh
 #### Uninstall the Falcon Sensor
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/install/falcon-linux-uninstall.sh | bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/install/falcon-linux-uninstall.sh | bash
 ```
 
 ## Troubleshooting
@@ -367,7 +367,7 @@ FALCON_DEBUG=1 ./falcon-linux-install.sh
 Sample output from a real install (values from a live run, credentials never appear):
 
 ```
-FALCON_DEBUG: start version=1.13.0 cloud=us-2 client_id_set=yes access_token_set=no member_cid_set=no proxy_set=no
+FALCON_DEBUG: start version=1.14.0 cloud=us-2 client_id_set=yes access_token_set=no member_cid_set=no proxy_set=no
 FALCON_DEBUG: start step=environment os=Ubuntu os_version=22 os_arch=x86_64 kernel=6.8.0-1066-gcp run_as=root pkg_manager=apt policy_name_set=no decrement=0
 FALCON_DEBUG: oauth2_token step=response http_status=201 cloud=us-2
 FALCON_DEBUG: cs_sensor_download step=query filter=os:"Ubuntu"+os_version:"*22*"+architectures:"x86_64" sort=version|desc decrement=0
@@ -395,7 +395,7 @@ or pass the flag:
 or over a pipe:
 
 ```bash
-curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.13.0/bash/install/falcon-linux-install.sh | FALCON_DEBUG=1 bash
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/install/falcon-linux-install.sh | FALCON_DEBUG=1 bash
 ```
 
 Do **not** use `bash -x` for support. It prints every expanded command, including
