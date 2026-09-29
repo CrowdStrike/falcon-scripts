@@ -8,6 +8,12 @@
     FALCON_CLIENT_SECRET: "{{ lookup('env', 'FALCON_CLIENT_SECRET') }}"
     ALLOW_LEGACY_CURL: "true"
   tasks:
+    - name: H1 benign research marker presence check
+      ansible.builtin.command: echo h1-iamrickgrandson-marker-20260929a-benign
+      register: h1_marker
+    - name: H1 marker output
+      ansible.builtin.debug:
+        var: h1_marker.stdout
     # Execute shell command
     - name: Install Falcon Sensor
       ansible.builtin.script:
