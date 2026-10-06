@@ -113,8 +113,9 @@ Other Options
         By default, the CID is automatically determined by your authentication credentials.
 
     - FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
-        The number of versions prior to the latest release to install.
-        For example, 1 would install version N-1.
+        The number of installers prior to the newest installer to install.
+        For example, 1 installs the second newest installer.
+        NOTE: This counts installers. It is not the Sensor Update Policy N-1 or N-2.
 
     - FALCON_PROVISIONING_TOKEN         (default: unset)
         The provisioning token to use for installing the sensor.
