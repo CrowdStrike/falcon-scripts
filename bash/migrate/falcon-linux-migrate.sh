@@ -159,8 +159,9 @@ Other Options
         Accepted values are ['true', 'false'].
 
     - FALCON_SENSOR_VERSION_DECREMENT   (default: 0 [latest])
-        The number of versions prior to the latest release to install.
-        For example, 1 would install version N-1.
+        The number of installers prior to the newest installer to install.
+        For example, 1 installs the second newest installer.
+        NOTE: This counts installers. It is not the Sensor Update Policy N-1 or N-2.
 
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
         The name of the sensor update policy to use for installing the sensor.
