@@ -16,6 +16,7 @@ Credentials travel on cURL's configuration input rather than the command line, a
 - [Falcon API Permissions](#falcon-api-permissions)
 - [Configuration](#configuration)
   - [Setting up Authentication](#setting-up-authentication)
+  - [Choosing the Sensor Version](#choosing-the-sensor-version)
 - [Install Script](#install-script)
   - [Usage](#usage)
   - [Examples](#examples)
@@ -98,6 +99,27 @@ export FALCON_CLOUD="us-1"
 
 The installer is AWS SSM aware, if `FALCON_CLIENT_ID` and `FALCON_CLIENT_SECRET` are not provided AND the script is running on an AWS instance, the script will try to get API credentials from the SSM store of the region.
 
+### Choosing the Sensor Version
+
+By default, the script installs the newest sensor installer for your OS, OS version and architecture.
+
+To install the sensor version of a Sensor Update Policy, set `FALCON_SENSOR_UPDATE_POLICY_NAME`. This needs the **Sensor update policies** [read] API scope. You get the same build that the policy gives, including hotfix builds.
+
+The policy does not have to apply to the host. If you control the sensor version with a package manager and not with policies, you can create a policy that the script uses only to look up a version, such as **Auto - N-1**:
+
+1. In the Falcon console, go to **Host setup and management** > **Deploy** > **Sensor update policies**.
+2. Create a Linux policy, for example `install-n-1`, and set the sensor version to **Auto - N-1**. You can also set a specific sensor version.
+3. Leave the policy disabled, and do not assign host groups to it. The script can read a disabled policy, and a disabled policy does not apply to hosts.
+4. Run the script with `FALCON_SENSOR_UPDATE_POLICY_NAME="install-n-1"`.
+
+One Linux policy gives the version for x86_64 and for arm64. The script selects the build for the architecture of the host.
+
+> [!NOTE]
+> The script uses the policy only to choose the version that it installs. After the sensor registers, the Sensor Update Policy that applies to the host controls the version.
+
+> [!IMPORTANT]
+> `FALCON_SENSOR_VERSION_DECREMENT` is not the same as the Sensor Update Policy N-1 or N-2. It counts installers in the installer list, and that list includes hotfix builds. For example, `FALCON_SENSOR_VERSION_DECREMENT=1` can install a hotfix of the newest version. Use a policy to get N-1 or N-2. If you set both variables, the script uses the policy.
+
 ## Install Script
 
 ```terminal
@@ -133,6 +155,7 @@ Other Options
         The number of installers prior to the newest installer to install.
         For example, 1 installs the second newest installer.
         NOTE: This counts installers. It is not the Sensor Update Policy N-1 or N-2.
+        To install the version of a policy, use FALCON_SENSOR_UPDATE_POLICY_NAME.
 
     - FALCON_PROVISIONING_TOKEN         (default: unset)
         The provisioning token to use for installing the sensor.
@@ -242,6 +265,17 @@ FALCON_CLIENT_ID="XXXXXXX" FALCON_CLIENT_SECRET="YYYYYYYYY" bash falcon-linux-in
 ```bash
 export FALCON_CLIENT_ID="XXXXXXX"
 export FALCON_CLIENT_SECRET="YYYYYYYYY"
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/install/falcon-linux-install.sh | bash
+```
+
+#### Install the sensor version of a Sensor Update Policy
+
+The policy can be disabled and have no host groups. See [Choosing the Sensor Version](#choosing-the-sensor-version).
+
+```bash
+export FALCON_CLIENT_ID="XXXXXXX"
+export FALCON_CLIENT_SECRET="YYYYYYYYY"
+export FALCON_SENSOR_UPDATE_POLICY_NAME="install-n-1"
 curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/install/falcon-linux-install.sh | bash
 ```
 
@@ -365,9 +399,10 @@ credentials cannot appear in the output you send to support.
 ```bash
 FALCON_DEBUG=1 ./falcon-linux-install.sh
 ```
+
 Sample output from a real install (values from a live run, credentials never appear):
 
-```
+```text
 FALCON_DEBUG: start version=1.14.0 cloud=us-2 client_id_set=yes access_token_set=no member_cid_set=no proxy_set=no
 FALCON_DEBUG: start step=environment os=Ubuntu os_version=22 os_arch=x86_64 kernel=6.8.0-1066-gcp run_as=root pkg_manager=apt policy_name_set=no decrement=0
 FALCON_DEBUG: oauth2_token step=response http_status=201 cloud=us-2
@@ -385,7 +420,6 @@ FALCON_DEBUG: main step=installed version=8.10.19402.0 aid=none
 once the sensor reaches the cloud. Markers go to stderr, and a progress line can
 share a line with one, so match them with `grep FALCON_DEBUG` rather than `grep
 '^FALCON_DEBUG'`.
-
 
 or pass the flag:
 

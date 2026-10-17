@@ -13,6 +13,7 @@ Credentials travel on cURL's configuration input rather than the command line, a
 - [Falcon API Permissions](#falcon-api-permissions)
 - [Configuration](#configuration)
   - [Setting up Authentication](#setting-up-authentication)
+  - [Choosing the Sensor Version](#choosing-the-sensor-version)
 - [Usage](#usage)
   - [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
@@ -75,6 +76,13 @@ The scripts support auto-discovery of the Falcon cloud region. If the `[OLD|NEW]
 ```bash
 export [OLD|NEW]FALCON_CLOUD="us-gov-1"
 ```
+
+### Choosing the Sensor Version
+
+By default, the script installs the newest sensor installer for your OS, OS version and architecture. To install the sensor version of a Sensor Update Policy in the new CID, such as **Auto - N-1**, set `FALCON_SENSOR_UPDATE_POLICY_NAME`. The policy does not have to apply to the host. It can be disabled and have no host groups. For the steps, see [Choosing the Sensor Version](../install/README.md#choosing-the-sensor-version) in the install script documentation.
+
+> [!WARNING]
+> The script reads the policy only when it installs the new sensor, which is after it removes the old sensor. Before you migrate, make sure that the policy exists in the new CID. To test, run the install script against the new CID with the same `FALCON_SENSOR_UPDATE_POLICY_NAME` and `FALCON_DOWNLOAD_ONLY=true`.
 
 ## Usage
 
@@ -148,6 +156,7 @@ Other Options
         The number of installers prior to the newest installer to install.
         For example, 1 installs the second newest installer.
         NOTE: This counts installers. It is not the Sensor Update Policy N-1 or N-2.
+        To install the version of a policy, use FALCON_SENSOR_UPDATE_POLICY_NAME.
 
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
         The name of the sensor update policy to use for installing the sensor.
@@ -239,6 +248,19 @@ export NEW_FALCON_CLIENT_ID="ZZZZZZZ"
 export NEW_FALCON_CLIENT_SECRET="WWWWWWW"
 export FALCON_TAGS="department/it,location/hq"
 export FALCON_GROUPING_TAGS="environment/production,criticality/high"
+curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
+```
+
+#### Migrate a sensor and install the sensor version of a Sensor Update Policy
+
+The policy must exist in the new CID. It can be disabled and have no host groups.
+
+```bash
+export OLD_FALCON_CLIENT_ID="XXXXXXX"
+export OLD_FALCON_CLIENT_SECRET="YYYYYYYYY"
+export NEW_FALCON_CLIENT_ID="ZZZZZZZ"
+export NEW_FALCON_CLIENT_SECRET="WWWWWWW"
+export FALCON_SENSOR_UPDATE_POLICY_NAME="install-n-1"
 curl -L https://raw.githubusercontent.com/crowdstrike/falcon-scripts/v1.14.0/bash/migrate/falcon-linux-migrate.sh | sudo bash
 ```
 
