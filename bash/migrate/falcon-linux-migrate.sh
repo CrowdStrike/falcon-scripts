@@ -162,6 +162,7 @@ Other Options
         The number of installers prior to the newest installer to install.
         For example, 1 installs the second newest installer.
         NOTE: This counts installers. It is not the Sensor Update Policy N-1 or N-2.
+        To install the version of a policy, use FALCON_SENSOR_UPDATE_POLICY_NAME.
 
     - FALCON_SENSOR_UPDATE_POLICY_NAME  (default: unset)
         The name of the sensor update policy to use for installing the sensor.
@@ -823,11 +824,13 @@ cs_sensor_download() {
     local destination_dir="$1" existing_installers sha_list INDEX sha file_type installer sensor_filter
 
     if [ -n "$cs_sensor_policy_name" ]; then
-        cs_sensor_version=$(cs_sensor_policy_version "$cs_sensor_policy_name")
+        # die in cs_sensor_policy_version ends only its own subshell, so stop here too.
+        cs_sensor_version=$(cs_sensor_policy_version "$cs_sensor_policy_name") || exit 1
         cs_api_version_filter="+version:\"$cs_sensor_version\""
 
         if [ "$cs_falcon_sensor_version_dec" -gt 0 ]; then
-            echo "WARNING: Disabling FALCON_SENSOR_VERSION_DECREMENT because it conflicts with FALCON_SENSOR_UPDATE_POLICY_NAME"
+            # stdout is captured as the package path, so warn on stderr.
+            echo "WARNING: Disabling FALCON_SENSOR_VERSION_DECREMENT because it conflicts with FALCON_SENSOR_UPDATE_POLICY_NAME" >&2
             cs_falcon_sensor_version_dec=0
         fi
     fi
