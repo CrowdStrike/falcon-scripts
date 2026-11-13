@@ -141,7 +141,7 @@ die() {
 
 # todo: Remove in next major release
 deprecated() {
-    echo "WARNING: $* is deprecated and will be removed in a future release"
+    echo "WARNING: $* is deprecated and will be removed in a future release" >&2
 }
 
 cs_cloud() {
@@ -793,22 +793,22 @@ esac
 
 # Add deprecation warning for falcon-sensor-regional
 if [ "${SENSOR_TYPE}" = "falcon-sensor-regional" ]; then
-    echo "WARNING: Use 'falcon-sensor' for the new unified sensor image as the regional sensor images will eventually be EOL."
+    echo "WARNING: Use 'falcon-sensor' for the new unified sensor image as the regional sensor images will eventually be EOL." >&2
 fi
 
 # Add deprecation warning for falcon-container-regional
 if [ "${SENSOR_TYPE}" = "falcon-container-regional" ]; then
-    echo "WARNING: Use 'falcon-container' for the new unified container image as the regional container images will eventually be EOL."
+    echo "WARNING: Use 'falcon-container' for the new unified container image as the regional container images will eventually be EOL." >&2
 fi
 
 # Add deprecation warning for falcon-kac-regional
 if [ "${SENSOR_TYPE}" = "falcon-kac-regional" ]; then
-    echo "WARNING: Use 'falcon-kac' for the new unified KAC image as the regional KAC images will eventually be EOL."
+    echo "WARNING: Use 'falcon-kac' for the new unified KAC image as the regional KAC images will eventually be EOL." >&2
 fi
 
 # Add deprecation warning for falcon-imageanalyzer-regional
 if [ "${SENSOR_TYPE}" = "falcon-imageanalyzer-regional" ]; then
-    echo "WARNING: Use 'falcon-imageanalyzer' for the new unified IAR image as the regional IAR images will eventually be EOL."
+    echo "WARNING: Use 'falcon-imageanalyzer' for the new unified IAR image as the regional IAR images will eventually be EOL." >&2
 fi
 
 #Check all mandatory variables set
