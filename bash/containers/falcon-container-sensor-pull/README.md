@@ -135,6 +135,8 @@ Optional Flags:
     --get-pull-token                               Get the pull token of the selected SENSOR_TYPE for Kubernetes
     --get-cid                                      Get the CID assigned to the API Credentials
     --list-tags                                    List all tags available for the selected sensor type and platform, sorted in ascending order
+    --list-digests                                 List the sha256 digest of each tag and of each platform image, as JSON.
+                                                   Combine with -v to show one version. No container runtime needed.
     --allow-legacy-curl                            Deprecated. Accepted and ignored; no longer needed
     --debug                                        Print redacted progress markers to stderr (or set FALCON_DEBUG=1).
                                                    Step name, HTTP status, cloud/region and curl exit only; values are
@@ -170,6 +172,7 @@ Help Options:
 | `--get-pull-token`                             | N/A                     | `None`                        | Get the pull token of the selected `SENSOR_TYPE` for Kubernetes.                                                                                                                                                                                         |
 | `--get-cid`                                    | N/A                     | `None`                        | Get the CID assigned to the API Credentials.                                                                                                                                                                                                             |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)            | List all tags available for the selected sensor                                                                                                                                                                                                          |
+| `--list-digests`                               | `$LISTDIGESTS`          | `False` (Optional)            | List the sha256 digest of each tag (or of the `-v` version) and of each platform image, as JSON. No container runtime needed.                                                                                                                            |
 | `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)            | Deprecated. Accepted and ignored; no longer needed                                                                                                                                                                                                       |
 | `--debug`                                      | `$FALCON_DEBUG`         | `unset` (Optional)            | Print redacted progress markers to stderr. Step, HTTP status, cloud/region and curl exit only; values are dropped unless the key is allow-listed, so secrets cannot appear. Do not use `bash -x` for support.                                              |
 | `-h`, `--help`                                 | N/A                     | `None`                        | Display help message                                                                                                                                                                                                                                     |
@@ -240,6 +243,43 @@ The following example will attempt to autodiscover the region and download the l
 --client-secret <FALCON_CLIENT_SECRET> \
 --type falcon-kac
 ```
+
+#### Example listing image digests
+
+`--list-digests` prints the sha256 digest of every tag, or of the one version selected with `-v`. For multi-arch images it also prints the digest of each platform image. The tag digest is computed from the manifest bytes the registry returns rather than read from a response header. Only `curl` and `sha256sum` (or `shasum`) are needed.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-kac \
+--version 8.12 \
+--list-digests
+```
+
+Example output:
+
+```json
+{
+  "name": "falcon-kac",
+  "repository": "registry.crowdstrike.com/falcon-kac/release/falcon-kac",
+  "images": [
+    {
+      "tag": "8.12.0-4106",
+      "digest": "sha256:f553c96342bf3fae20fb563b7de6c23ef218be758f803e33f0fd701dd278e81e",
+      "ref": "registry.crowdstrike.com/falcon-kac/release/falcon-kac@sha256:f553c96342bf3fae20fb563b7de6c23ef218be758f803e33f0fd701dd278e81e",
+      "platforms": {
+        "linux/amd64": "sha256:01414f3040be7ea4151ea8016ac854c853ab24a672a58736af99b05f30a9ce8c",
+        "linux/arm64": "sha256:b801af6a1694e7819e742535c480a87f72f11a9974747b008b68be0c708345e8"
+      }
+    }
+  ]
+}
+```
+
+Use `ref` to pin an image by digest. A tag can be moved to a different image; a digest cannot.
+
+The top-level `digest` only survives a copy that keeps the index byte-for-byte, such as `skopeo copy --all` or `crane copy`. Other tools rewrite the index, which changes its digest but not the platform digests, so compare a mirrored image against the `platforms` entries.
 
 #### Example getting the full image path for the Falcon DaemonSet sensor (unified)
 

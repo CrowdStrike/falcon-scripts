@@ -119,6 +119,8 @@ Optional Flags:
     --get-pull-token                               Get the pull token of the selected SENSOR_TYPE for Kubernetes
     --get-cid                                      Get the CID assigned to the API Credentials
     --list-tags                                    List all tags available for the selected sensor type and platform, sorted in ascending order
+    --list-digests                                 List the sha256 digest of each tag and of each platform image, as JSON.
+                                                   Combine with -v to show one version. No container runtime needed.
     --allow-legacy-curl                            Deprecated. Accepted and ignored; no longer needed
     --debug                                        Print redacted progress markers to stderr (or set FALCON_DEBUG=1).
                                                    Sensor type, resolved registry/repository/tag, how many tags matched,
@@ -162,6 +164,13 @@ json_value() {
     KEY=$1
     num=$2
     awk -F"[,:}]" '{for(i=1;i<=NF;i++){if($i~/'"$KEY"'\042/){print $(i+1)}}}' | tr -d '"' | sed -n "${num}p"
+}
+
+is_sha256_digest() {
+    case "${1#sha256:}" in
+        "$1" | *[!0123456789abcdef]*) return 1 ;;
+    esac
+    [ ${#1} -eq 71 ]
 }
 
 while [ $# != 0 ]; do
@@ -250,6 +259,11 @@ while [ $# != 0 ]; do
                 LISTTAGS=true
             fi
             ;;
+        --list-digests)
+            if [ -n "${1}" ]; then
+                LISTDIGESTS=true
+            fi
+            ;;
         --allow-legacy-curl)
             if [ -n "${1}" ]; then
                 ALLOW_LEGACY_CURL=true
@@ -305,6 +319,10 @@ falcon_debug start "version=$VERSION" "cloud=${FALCON_CLOUD:-unset}" "sensor_typ
 
 if ! command -v curl >/dev/null 2>&1; then
     die "The 'curl' command is missing. Please install it before continuing. Aborting..."
+fi
+
+if [ "$LISTDIGESTS" ] && ! command -v sha256sum >/dev/null 2>&1 && ! command -v shasum >/dev/null 2>&1; then
+    die "Computing digests needs 'sha256sum' or 'shasum'. Please install one before continuing. Aborting..."
 fi
 
 if [ "${ALLOW_LEGACY_CURL:-false}" = "true" ]; then
@@ -751,6 +769,121 @@ match_sensor_version() {
     return 1
 }
 
+sha256_file() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1"
+    else
+        shasum -a 256 "$1"
+    fi | awk '{print $1}'
+}
+
+# Prints "<tag>\t<os>/<arch>[/<variant>]\t<digest>" for each child of a top-level
+# "manifests" array. A character scan rather than tr or sed, because their
+# behavior differs across GNU, BSD and BusyBox.
+manifest_platforms() {
+    awk -v tag="$1" '
+        { s = s $0 }
+        END {
+            n = length(s)
+            for (i = 1; i <= n; i++) {
+                c = substr(s, i, 1)
+                if (c == "\"") {
+                    for (j = i + 1; j <= n && substr(s, j, 1) != "\""; j++) {
+                        if (substr(s, j, 1) == "\\") j++
+                    }
+                    str = substr(s, i + 1, j - i - 1)
+                    i = j
+                    if (want_key) {
+                        key = str
+                        want_key = 0
+                    } else if (child && depth == 3 && key == "digest") {
+                        d = str
+                    } else if (child && depth == 4 && name[4] == "platform") {
+                        if (key == "os") o = str
+                        if (key == "architecture") a = str
+                        if (key == "variant") v = str
+                    }
+                } else if (c == "{" || c == "[") {
+                    depth++
+                    type[depth] = c
+                    name[depth] = (type[depth - 1] == "{") ? key : ""
+                    want_key = (c == "{")
+                    if (depth == 3 && c == "{" && type[2] == "[" && name[2] == "manifests" && type[1] == "{") {
+                        child = 1
+                        d = o = a = v = ""
+                    }
+                } else if (c == "}" || c == "]") {
+                    # unknown/unknown children are buildx attestations, not images.
+                    if (depth == 3 && child && d != "" && o != "" && a != "" && !(o == "unknown" && a == "unknown")) {
+                        print tag "\t" o "/" a ((v != "") ? "/" v : "") "\t" d
+                    }
+                    if (depth == 3) child = 0
+                    depth--
+                } else if (c == ",") {
+                    want_key = (type[depth] == "{")
+                }
+            }
+        }'
+}
+
+# Fills $digest_table with "<tag>\t<platform>\t<digest>" rows, platform "-" for
+# the tag itself. The tag digest is hashed locally from the manifest bytes, so
+# it is checked rather than taken from a Docker-Content-Digest header.
+collect_digests() {
+    local resolved tags bearer tag pf digest
+    local accept="application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json"
+
+    if [ -n "$SENSOR_VERSION" ]; then
+        resolved=$(resolve_version_channel "$SENSOR_VERSION") || exit 1
+        tags=$(match_sensor_version "$resolved") || die "No sensor version found matching: ${SENSOR_VERSION}"
+    else
+        tags=$(extract_raw_tags)
+    fi
+    if [ -z "$tags" ]; then
+        die "No tags found for sensor type: ${SENSOR_TYPE}"
+    fi
+
+    bearer=$(fetch_registry_bearer) || exit 1
+    for tag in $tags; do
+        curl_command "$bearer" -f -H "Accept: $accept" \
+            "https://$cs_registry/v2/$registry_opts/$repository_name/manifests/$tag" >"$digest_manifest" || handle_curl_error $?
+        falcon_debug collect_digests "tag=$tag"
+        if ! grep -q '"schemaVersion"' "$digest_manifest"; then
+            die "The registry did not return a manifest for tag: $tag"
+        fi
+        printf '%s\t-\tsha256:%s\n' "$tag" "$(sha256_file "$digest_manifest")" >>"$digest_table"
+        manifest_platforms "$tag" <"$digest_manifest" >>"$digest_table"
+    done
+
+    while IFS="$(printf '\t')" read -r tag pf digest; do
+        if ! is_sha256_digest "$digest"; then
+            die "Invalid digest for tag $tag ($pf): $digest"
+        fi
+    done <"$digest_table"
+}
+
+list_digests() {
+    awk -F '\t' -v name="$IMAGE_NAME" -v repo="$REPOSITORY" '
+        function close_image() {
+            if (platforms) printf "\n      }"
+            if (images) printf "\n    }"
+        }
+        BEGIN { printf "{\n  \"name\": \"%s\",\n  \"repository\": \"%s\",\n  \"images\": [", name, repo }
+        $2 == "-" {
+            close_image()
+            printf "%s\n    {\n      \"tag\": \"%s\",\n      \"digest\": \"%s\",\n      \"ref\": \"%s@%s\"", (images++ ? "," : ""), $1, $3, repo, $3
+            platforms = 0
+            next
+        }
+        {
+            printf "%s\n        \"%s\": \"%s\"", (platforms++ ? "," : ",\n      \"platforms\": {"), $2, $3
+        }
+        END {
+            close_image()
+            printf "\n  ]\n}\n"
+        }' "$digest_table"
+}
+
 # shellcheck disable=SC2086
 FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
 
@@ -973,7 +1106,7 @@ case "${BUILD_STAGE}" in
     Valid values are [release|stage]""" ;;
 esac
 
-if [ ! "$LISTTAGS" ] && [ ! "$PULLTOKEN" ] && [ ! "$GETIMAGEPATH" ]; then
+if [ ! "$LISTTAGS" ] && [ ! "$LISTDIGESTS" ] && [ ! "$PULLTOKEN" ] && [ ! "$GETIMAGEPATH" ]; then
     echo "Using the following settings:"
     echo "Falcon Region:   $(cs_cloud)"
     echo "Falcon Registry: ${cs_registry}"
@@ -1083,6 +1216,15 @@ REPOSITORY="$cs_registry/$registry_opts/$repository_name"
 
 if [ "$LISTTAGS" ]; then
     list_tags
+    exit 0
+fi
+
+if [ "$LISTDIGESTS" ]; then
+    digest_table=$(mktemp)
+    digest_manifest=$(mktemp)
+    trap 'rm -f "$digest_table" "$digest_manifest"' EXIT
+    collect_digests
+    list_digests
     exit 0
 fi
 
