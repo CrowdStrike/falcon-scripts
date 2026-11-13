@@ -121,6 +121,8 @@ Optional Flags:
     --list-tags                                    List all tags available for the selected sensor type and platform, sorted in ascending order
     --list-digests                                 List the sha256 digest of each tag and of each platform image, as JSON.
                                                    Combine with -v to show one version. No container runtime needed.
+    --verify-digest <DIGEST>                       Report which tag and platform a sha256 digest or image@sha256 reference
+                                                   belongs to. Searches all tags, or the -v version. Exits 1 if not found.
     --allow-legacy-curl                            Deprecated. Accepted and ignored; no longer needed
     --debug                                        Print redacted progress markers to stderr (or set FALCON_DEBUG=1).
                                                    Sensor type, resolved registry/repository/tag, how many tags matched,
@@ -264,6 +266,12 @@ while [ $# != 0 ]; do
                 LISTDIGESTS=true
             fi
             ;;
+        --verify-digest)
+            if [ -n "${2:-}" ]; then
+                VERIFY_DIGEST="${2}"
+                shift
+            fi
+            ;;
         --allow-legacy-curl)
             if [ -n "${1}" ]; then
                 ALLOW_LEGACY_CURL=true
@@ -319,6 +327,14 @@ falcon_debug start "version=$VERSION" "cloud=${FALCON_CLOUD:-unset}" "sensor_typ
 
 if ! command -v curl >/dev/null 2>&1; then
     die "The 'curl' command is missing. Please install it before continuing. Aborting..."
+fi
+
+if [ -n "$VERIFY_DIGEST" ]; then
+    VERIFY_DIGEST="sha256:${VERIFY_DIGEST##*sha256:}"
+    if ! is_sha256_digest "$VERIFY_DIGEST"; then
+        die "Invalid digest: expected sha256:<64 lowercase hex> or <image>@sha256:<64 lowercase hex>"
+    fi
+    LISTDIGESTS=true
 fi
 
 if [ "$LISTDIGESTS" ] && ! command -v sha256sum >/dev/null 2>&1 && ! command -v shasum >/dev/null 2>&1; then
@@ -884,6 +900,24 @@ list_digests() {
         }' "$digest_table"
 }
 
+# A single-arch tag has no platform rows, so its own digest is a "manifest",
+# not an "index".
+verify_digest() {
+    awk -F '\t' -v want="$VERIFY_DIGEST" -v repo="$REPOSITORY" '
+        NR == FNR {
+            if ($2 != "-") multi[$1] = 1
+            next
+        }
+        $3 == want {
+            kind = ($2 != "-") ? $2 : (($1 in multi) ? "index" : "manifest")
+            printf "%s matches %s:%s (%s)\n", want, repo, $1, kind
+            found = 1
+        }
+        END { exit !found }' "$digest_table" "$digest_table" && return 0
+    echo "$VERIFY_DIGEST was not found in $REPOSITORY" >&2
+    exit 1
+}
+
 # shellcheck disable=SC2086
 FALCON_CLOUD=$(echo ${FALCON_CLOUD:-'us-1'} | tr '[:upper:]' '[:lower:]')
 
@@ -1224,7 +1258,11 @@ if [ "$LISTDIGESTS" ]; then
     digest_manifest=$(mktemp)
     trap 'rm -f "$digest_table" "$digest_manifest"' EXIT
     collect_digests
-    list_digests
+    if [ -n "$VERIFY_DIGEST" ]; then
+        verify_digest
+    else
+        list_digests
+    fi
     exit 0
 fi
 

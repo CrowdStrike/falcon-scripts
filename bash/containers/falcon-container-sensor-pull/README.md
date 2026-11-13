@@ -137,6 +137,8 @@ Optional Flags:
     --list-tags                                    List all tags available for the selected sensor type and platform, sorted in ascending order
     --list-digests                                 List the sha256 digest of each tag and of each platform image, as JSON.
                                                    Combine with -v to show one version. No container runtime needed.
+    --verify-digest <DIGEST>                       Report which tag and platform a sha256 digest or image@sha256 reference
+                                                   belongs to. Searches all tags, or the -v version. Exits 1 if not found.
     --allow-legacy-curl                            Deprecated. Accepted and ignored; no longer needed
     --debug                                        Print redacted progress markers to stderr (or set FALCON_DEBUG=1).
                                                    Step name, HTTP status, cloud/region and curl exit only; values are
@@ -173,6 +175,7 @@ Help Options:
 | `--get-cid`                                    | N/A                     | `None`                        | Get the CID assigned to the API Credentials.                                                                                                                                                                                                             |
 | `--list-tags`                                  | `$LISTTAGS`             | `False` (Optional)            | List all tags available for the selected sensor                                                                                                                                                                                                          |
 | `--list-digests`                               | `$LISTDIGESTS`          | `False` (Optional)            | List the sha256 digest of each tag (or of the `-v` version) and of each platform image, as JSON. No container runtime needed.                                                                                                                            |
+| `--verify-digest <DIGEST>`                     | `$VERIFY_DIGEST`        | `None` (Optional)             | Report which tag and platform a `sha256:` digest or `image@sha256:` reference belongs to. Searches all tags, or the `-v` version. Exits 1 if not found.                                                                                                  |
 | `--allow-legacy-curl`                          | `$ALLOW_LEGACY_CURL`    | `False` (Optional)            | Deprecated. Accepted and ignored; no longer needed                                                                                                                                                                                                       |
 | `--debug`                                      | `$FALCON_DEBUG`         | `unset` (Optional)            | Print redacted progress markers to stderr. Step, HTTP status, cloud/region and curl exit only; values are dropped unless the key is allow-listed, so secrets cannot appear. Do not use `bash -x` for support.                                              |
 | `-h`, `--help`                                 | N/A                     | `None`                        | Display help message                                                                                                                                                                                                                                     |
@@ -280,6 +283,22 @@ Example output:
 Use `ref` to pin an image by digest. A tag can be moved to a different image; a digest cannot.
 
 The top-level `digest` only survives a copy that keeps the index byte-for-byte, such as `skopeo copy --all` or `crane copy`. Other tools rewrite the index, which changes its digest but not the platform digests, so compare a mirrored image against the `platforms` entries.
+
+#### Example verifying an image digest
+
+`--verify-digest` reports which tag and platform a digest belongs to. It accepts a bare `sha256:` digest or any `<image>@sha256:` reference, such as a pod's `imageID`, and searches every tag unless `-v` is given. It exits 0 and prints one line per match, or exits 1 when the digest is not in the CrowdStrike repository.
+
+```shell
+./falcon-container-sensor-pull.sh \
+--client-id <FALCON_CLIENT_ID> \
+--client-secret <FALCON_CLIENT_SECRET> \
+--type falcon-kac \
+--verify-digest sha256:01414f3040be7ea4151ea8016ac854c853ab24a672a58736af99b05f30a9ce8c
+```
+
+Example output: `sha256:01414f3040be7ea4151ea8016ac854c853ab24a672a58736af99b05f30a9ce8c matches registry.crowdstrike.com/falcon-kac/release/falcon-kac:8.12.0-4106 (linux/amd64)`
+
+Both index and platform digests count as a match on purpose. A pod's `imageID` can be either one, depending on the runtime and on how the image was referenced. Most copy tools rewrite the index of a mirrored image but keep its platform digests.
 
 #### Example getting the full image path for the Falcon DaemonSet sensor (unified)
 
