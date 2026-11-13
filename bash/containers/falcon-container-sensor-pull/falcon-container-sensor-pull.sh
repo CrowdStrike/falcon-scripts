@@ -416,16 +416,22 @@ curl_command() {
     return "$rc"
 }
 
-fetch_tags() {
-    falcon_debug fetch_tags "step=registry_token"
+fetch_registry_bearer() {
+    local bearer_result registry_bearer
+    falcon_debug fetch_registry_bearer "step=registry_token"
     bearer_result=$(echo "-u $ART_USERNAME:$ART_PASSWORD" |
         curl -s --proto '=https' \
             "https://$cs_registry/v2/token?account=$ART_USERNAME&scope=repository:$registry_opts/$repository_name:pull&service=$cs_registry" -K-) || handle_curl_error $?
     registry_bearer=$(echo "$bearer_result" | json_value "token" | sed 's/ *$//g' | sed 's/^ *//g')
-    # Check if registry_bearer is not empty
     if [ -z "$registry_bearer" ]; then
         die "Failed to retrieve the registry bearer token."
     fi
+    echo "$registry_bearer"
+}
+
+fetch_tags() {
+    local registry_bearer
+    registry_bearer=$(fetch_registry_bearer) || exit 1
     curl_command "$registry_bearer" "https://$cs_registry/v2/$registry_opts/$repository_name/tags/list"
 }
 
