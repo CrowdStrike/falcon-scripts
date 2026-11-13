@@ -300,6 +300,47 @@ Example output: `sha256:01414f3040be7ea4151ea8016ac854c853ab24a672a58736af99b05f
 
 Both index and platform digests count as a match on purpose. A pod's `imageID` can be either one, depending on the runtime and on how the image was referenced. Most copy tools rewrite the index of a mirrored image but keep its platform digests.
 
+To check each image running in the `falcon-system` namespace against the KAC repository (change `-t` for other sensor types):
+
+```shell
+kubectl get pods -n falcon-system -o jsonpath='{..imageID}' | tr ' ' '\n' | sort -u | while read -r id; do ./falcon-container-sensor-pull.sh -t falcon-kac --verify-digest "$id"; done
+```
+
+#### Example verifying, mirroring and signing an image
+
+CrowdStrike does not publish image signatures today. You can still enforce that only checked images run: verify the digest against `registry.crowdstrike.com`, mirror the image, sign the mirrored digest with your own key, and require that signature at admission. The signature proves the image passed your own check. It does not prove who built it.
+
+1. Get the digest of the version you want to deploy from the CrowdStrike registry:
+
+    ```shell
+    ./falcon-container-sensor-pull.sh \
+    --client-id <FALCON_CLIENT_ID> \
+    --client-secret <FALCON_CLIENT_SECRET> \
+    --type falcon-kac \
+    --version 8.12 \
+    --list-digests
+    ```
+
+2. Mirror the image with `skopeo copy --all`, which keeps the index byte-for-byte so the mirror has the same top-level digest. Leave out `--platform`, because a single-platform copy has only the platform digest:
+
+    ```shell
+    ./falcon-container-sensor-pull.sh \
+    --client-id <FALCON_CLIENT_ID> \
+    --client-secret <FALCON_CLIENT_SECRET> \
+    --type falcon-kac \
+    --version 8.12 \
+    --copy myregistry.com/mynamespace \
+    --runtime skopeo
+    ```
+
+3. Sign the mirrored image by the digest from step 1, never by tag:
+
+    ```shell
+    cosign sign --key <key> myregistry.com/mynamespace/falcon-kac@sha256:<digest>
+    ```
+
+4. Enforce the signature at admission with a [Kyverno `verifyImages`](https://kyverno.io/docs/policy-types/cluster-policy/verify-images/) rule or the [Sigstore policy-controller](https://docs.sigstore.dev/policy-controller/overview/), using the public half of `<key>`.
+
 #### Example getting the full image path for the Falcon DaemonSet sensor (unified)
 
 The following example will print the image repository path with the latest image tag of the Falcon DaemonSet sensor using the new unified sensor.
