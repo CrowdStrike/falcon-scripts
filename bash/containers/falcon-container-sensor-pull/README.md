@@ -67,7 +67,7 @@ Credentials travel on cURL's configuration input rather than the command line, a
 > [!IMPORTANT]
 > The following API scopes are the minimum required to retrieve the images. If you need to perform other operations post-retrieval, please refer to the CrowdStrike documentation to identify any additional scopes that may be required.
 
-- **falcon-sensor | falcon-sensor-regional | falcon-container | falcon-container-regional | falcon-kac | falcon-kac-regional | falcon-imageanalyzer | falcon-imageanalyzer-regional | falcon-jobcontroller | falcon-registryassessmentexecutor**
+- **falcon-sensor | falcon-sensor-regional | falcon-container | falcon-container-regional | falcon-kac | falcon-kac-regional | falcon-imageanalyzer | falcon-imageanalyzer-regional | falcon-jobcontroller | falcon-registryassessmentexecutor | falcon-clusterguard**
   - `Sensor Download (read)`
   - `Falcon Images Download (read)`
 - **falcon-snapshot**
@@ -126,6 +126,7 @@ Optional Flags:
                                                    fcs
                                                    falcon-jobcontroller
                                                    falcon-registryassessmentexecutor
+                                                   falcon-clusterguard
 
     --runtime <RUNTIME>                            Use a different container runtime [docker, podman, skopeo] (Default: docker)
     --dump-credentials                             Print registry credentials to stdout to copy/paste into container tools
@@ -161,7 +162,7 @@ Help Options:
 | `-c`, `--copy <REGISTRY/NAMESPACE>`            | `$COPY`                 | `None` (Optional)             | Registry you want to copy the sensor image to. Example: `myregistry.com/mynamespace`. <br> *\*By default, the image name and tag are appended. Use `--copy-omit-image-name` and/or `--copy-custom-tag` to change that behavior.*           |
 | `-v`, `--version <SENSOR_VERSION>`             | `$SENSOR_VERSION`       | `None` (Optional)             | Specify sensor version to retrieve from the registry. Accepts version strings (e.g., `7.33`, `7.33.0`) or channel keywords: `latest`, `N-1`, `N-2`                                                                                      |
 | `-p`, `--platform <SENSOR_PLATFORM>`           | `$SENSOR_PLATFORM`      | `None` (Optional)             | Specify sensor platform to retrieve from the registry                                                                                                                                                                                                    |
-| `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`          | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-container-regional`, `falcon-sensor`, `falcon-sensor-regional`, `falcon-kac`, `falcon-kac-regional`, `falcon-snapshot`, `falcon-imageanalyzer`, `falcon-imageanalyzer-regional`, `fcs`, `falcon-jobcontroller`, `falcon-registryassessmentexecutor`] ([see more details below](#sensor-types)) |
+| `-t`, `--type <SENSOR_TYPE>`                   | `$SENSOR_TYPE`          | `falcon-container` (Optional) | Specify which sensor to download [`falcon-container`, `falcon-container-regional`, `falcon-sensor`, `falcon-sensor-regional`, `falcon-kac`, `falcon-kac-regional`, `falcon-snapshot`, `falcon-imageanalyzer`, `falcon-imageanalyzer-regional`, `fcs`, `falcon-jobcontroller`, `falcon-registryassessmentexecutor`, `falcon-clusterguard`] ([see more details below](#sensor-types)) |
 | `--runtime`                                    | `$CONTAINER_TOOL`       | `docker` (Optional)           | Use a different container runtime [docker, podman, skopeo]. **Default is Docker**.                                                                                                                                                                       |
 | `--dump-credentials`                           | `$CREDS`                | `False` (Optional)            | Print registry credentials to stdout to copy/paste into container tools                                                                                                                                                                                  |
 | `--get-image-path`                             | N/A                     | `None`                        | Get the full image path including the registry, repository, and latest tag for the specified `SENSOR_TYPE`.                                                                                                                                              |
@@ -201,6 +202,7 @@ The following sensor types are available to download:
 | `fcs`                               | The Falcon Cloud Security CLI tool                                              |
 | `falcon-jobcontroller`              | The Self Hosted Registry Assessment Jobs Controller                             |
 | `falcon-registryassessmentexecutor` | The Self Hosted Registry Assessment Executor                                    |
+| `falcon-clusterguard`               | The Falcon ClusterGuard                                                         |
 
 ### Version Channels
 

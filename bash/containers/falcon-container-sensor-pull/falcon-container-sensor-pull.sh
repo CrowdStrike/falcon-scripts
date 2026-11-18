@@ -110,6 +110,7 @@ Optional Flags:
                                                    fcs
                                                    falcon-jobcontroller
                                                    falcon-registryassessmentexecutor
+                                                   falcon-clusterguard
 
     --runtime <RUNTIME>                            Use a different container runtime [docker, podman, skopeo] (Default: docker)
     --dump-credentials                             Print registry credentials to stdout to copy/paste into container tools
@@ -584,7 +585,7 @@ detect_container_tool() {
 display_api_scopes() {
     local sensor_type=$1
     case "${sensor_type}" in
-        falcon-sensor | falcon-sensor-regional | falcon-container | falcon-container-regional | falcon-kac | falcon-kac-regional | falcon-imageanalyzer | falcon-imageanalyzer-regional | falcon-jobcontroller | falcon-registryassessmentexecutor)
+        falcon-sensor | falcon-sensor-regional | falcon-container | falcon-container-regional | falcon-kac | falcon-kac-regional | falcon-imageanalyzer | falcon-imageanalyzer-regional | falcon-jobcontroller | falcon-registryassessmentexecutor | falcon-clusterguard)
             echo "Sensor Download [read], Falcon Images Download [read]"
             ;;
         falcon-snapshot)
@@ -773,7 +774,7 @@ fi
 
 # Check if SENSOR_TYPE is set to a valid value
 case "${SENSOR_TYPE}" in
-    falcon-container | falcon-container-regional | falcon-sensor | falcon-sensor-regional | falcon-kac | falcon-kac-regional | falcon-snapshot | falcon-imageanalyzer | falcon-imageanalyzer-regional | fcs | falcon-jobcontroller | falcon-registryassessmentexecutor) ;;
+    falcon-container | falcon-container-regional | falcon-sensor | falcon-sensor-regional | falcon-kac | falcon-kac-regional | falcon-snapshot | falcon-imageanalyzer | falcon-imageanalyzer-regional | fcs | falcon-jobcontroller | falcon-registryassessmentexecutor | falcon-clusterguard) ;;
     *) die """
     Unrecognized sensor type: ${SENSOR_TYPE}
     Valid values are:
@@ -788,7 +789,8 @@ case "${SENSOR_TYPE}" in
         falcon-imageanalyzer-regional
         fcs
         falcon-jobcontroller
-        falcon-registryassessmentexecutor""" ;;
+        falcon-registryassessmentexecutor
+        falcon-clusterguard""" ;;
 esac
 
 # Add deprecation warning for falcon-sensor-regional
@@ -927,6 +929,9 @@ registry_opts=$(
         else
             echo "falcon-imageanalyzer/$FALCON_CLOUD"
         fi
+    # Handle falcon-clusterguard (unified, no region)
+    elif [ "${SENSOR_TYPE}" = "falcon-clusterguard" ]; then
+        echo "falcon-clusterguard"
     # Account for govcloud api mismatch for other sensor types
     elif [ "${FALCON_CLOUD}" = "us-gov-1" ]; then
         echo "$SENSOR_TYPE/gov1"
@@ -1034,6 +1039,10 @@ elif [ "${SENSOR_TYPE}" = "falcon-registryassessmentexecutor" ]; then
     elif [ "${FALCON_CLOUD}" = "us-gov-2" ]; then
         registry_opts="${registry_opts}/gov2"
     fi
+elif [ "${SENSOR_TYPE}" = "falcon-clusterguard" ]; then
+    # Unified format: use falcon-clusterguard image name
+    IMAGE_NAME="falcon-clusterguard"
+    repository_name="$BUILD_STAGE/falcon-clusterguard"
 fi
 
 #Set Docker token using the BEARER token captured earlier
